@@ -22,3 +22,6 @@ apply_*.py
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Caché local del Firebase CLI
+.firebase/

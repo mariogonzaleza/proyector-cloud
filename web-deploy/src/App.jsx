@@ -8,7 +8,7 @@ import {
   LayoutGrid, Calculator, ChevronLeft, Table as TableIcon,
   Layers, ListOrdered, ChevronDown, ChevronUp, Box, ShieldAlert,
   Hash, FileDown, MinusCircle, HardDrive, Star, Bookmark,
-  FileText, Building2, Home, Pencil, Copy
+  FileText, Building2, Home, Pencil, Copy, Lock, Unlock
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -84,19 +84,12 @@ const calcularEquipamientoCasilla = (totalElecciones, usarMamparas = false, conf
     const urnasLocalesOpl = numEleccionesLocales;
     const basesPortaUrnaOpl = numEleccionesLocales;
     const cancelPorCasillaOpl = 1; // El IEEM/OPL provee un cancel electoral por cada casilla (fijo, independiente del cancel/mampara del INE)
-    let cancelOpcionalOpl = 0;
-    let mamparaOpcionalOpl = 0;
-    let marcadoresBoletasOpl = 0;
-    if (totalEleccionesNum >= 5) {
-        if (usarMamparas) { mamparaOpcionalOpl = 2; } else { cancelOpcionalOpl = 1; }
-        marcadoresBoletasOpl = 4;
-    }
 
     return {
         mobiliario: { tablonesMesas: mobiliarioCalculado },
         sillas: { total: sillasTotal, fmdcu: sillasFMDCU, nacionales: sillasNacionales, locales: sillasLocales, urna: sillasUrna },
         materialIne: { canceles, mamparas, marcadorasCredenciales, liquidosIndelebles, marcadoresBoletas, urnasFederales },
-        materialOpl: { urnasLocales: urnasLocalesOpl, basesPortaUrna: basesPortaUrnaOpl, cancelPorCasilla: cancelPorCasillaOpl, cancelOpcional: cancelOpcionalOpl, mamparaOpcional: mamparaOpcionalOpl, marcadoresBoletas: marcadoresBoletasOpl }
+        materialOpl: { urnasLocales: urnasLocalesOpl, basesPortaUrna: basesPortaUrnaOpl, cancelPorCasilla: cancelPorCasillaOpl }
     };
 };
 
@@ -257,7 +250,8 @@ export default function App() {
   const [equipConfig, setEquipConfig] = useState(DEFAULT_EQUIP_CONFIG);
   const [mamparasPorCasilla, setMamparasPorCasilla] = useState({});
 
-  const [equipExpandido, setEquipExpandido] = useState({ config: false, representaciones: false, mobiliario: false, paquetes: false, especiales: false, asignacion: false, volumen: false });
+  const [equipExpandido, setEquipExpandido] = useState({ config: false, paquetes: false, asignacion: false, volumen: false });
+  const [configEquipoBloqueada, setConfigEquipoBloqueada] = useState(true);
   const toggleEquipSeccion = (key) => setEquipExpandido(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [seccionesExpandidas, setSeccionesExpandidas] = useState({});
@@ -265,6 +259,7 @@ export default function App() {
   const [resumenExpandido, setResumenExpandido] = useState(false);
   const [busquedaProyeccion, setBusquedaProyeccion] = useState('');
   const [listadoExpandido, setListadoExpandido] = useState(false);
+  const [ubicacionExpandido, setUbicacionExpandido] = useState(false);
   const [filtroAlerta, setFiltroAlerta] = useState(null); // null | 'variacion' | 'menos100'
   const [foliosExpandido, setFoliosExpandido] = useState(false);
   const [fechaCorte, setFechaCorte] = useState("");
@@ -291,9 +286,8 @@ export default function App() {
   const CATALOGO_TIPO_DOMICILIO = ['ESCUELA', 'DOMICILIO PARTICULAR', 'LOCAL COMERCIAL', 'OFICINA PÚBLICA', 'EDIFICIO PÚBLICO', 'OTRO'];
 
   const NAV_SECCIONES = [
-      { key: 'extraordinary', label: 'Diseño', icon: LayoutGrid },
+      { key: 'extraordinary', label: 'Extraordinarias', icon: LayoutGrid },
       { key: 'final', label: 'Proyección', icon: Calculator },
-      { key: 'ubicacion', label: 'Ubicación', icon: Building2 },
       { key: 'equipamiento', label: 'Equipamiento', icon: Box },
   ];
 
@@ -1459,36 +1453,69 @@ export default function App() {
 
   const exportarReporteEquipamientoMCU = () => {
     if (!window.XLSX) return;
+    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
+    const dataCellStyle = { font: { sz: 10 }, alignment: { horizontal: 'center' } };
+
+    const wb = window.XLSX.utils.book_new();
+
+    // --- HOJA 1: EQUIPAMIENTO MCU ---
     const headers = [
-      "Municipio", "Sección", "Casilla", "Tipo Espacio",
+      "Municipio", "Sección", "Casilla", "Tipo Espacio", "Tipo de Domicilio",
       "Tablones/Mesas", "Sillas FMDCU", "Sillas RPP Nacionales", "Sillas RPP Locales", "Sillas Urna", "Sillas Total",
       "Canceles (INE)", "Mamparas (INE)", "Urna Federal (INE)", "Marcadora Credenciales (INE)",
       "Líquido Indeleble (INE)", "Marcadores Boletas (INE)",
-      "Urnas Locales (OPL)", "Base Porta Urna (OPL)", "Cancel IEEM (OPL)", "Cancel Opcional (OPL)", "Mampara Opcional (OPL)", "Marcadores Boletas Adic. (OPL)"
+      "Urnas Locales (OPL)", "Base Porta Urna (OPL)", "Cancel IEEM (OPL)"
     ];
     const rows = [headers];
-    const totales = Array(headers.length - 4).fill(0);
+    const totales = Array(headers.length - 5).fill(0);
 
     todasLasCasillasEquipamiento.forEach(c => {
       const tipo = mamparasPorCasilla[c.id] || 'cancel';
       const req = calcularEquipamientoCasilla(equipConfig.totalElecciones, tipo === 'mampara', equipConfig);
+      const asign = ubicacionCasillas[claveCasillaUbicacion(c.seccion, c.nombre)];
+      const tipoDomicilio = asign ? (domicilios[asign.domicilioId]?.tipoDomicilio || 'SIN TIPO') : 'SIN ASIGNAR';
       const fila = [
-        c.municipio, f4(c.seccion), c.nombre, tipo === 'mampara' ? 'Mampara Especial' : 'Cancel',
+        c.municipio, f4(c.seccion), c.nombre, tipo === 'mampara' ? 'Mampara Especial' : 'Cancel', tipoDomicilio,
         req.mobiliario.tablonesMesas, req.sillas.fmdcu, req.sillas.nacionales, req.sillas.locales, req.sillas.urna, req.sillas.total,
         req.materialIne.canceles, req.materialIne.mamparas, req.materialIne.urnasFederales, req.materialIne.marcadorasCredenciales,
         req.materialIne.liquidosIndelebles, req.materialIne.marcadoresBoletas,
-        req.materialOpl.urnasLocales, req.materialOpl.basesPortaUrna, req.materialOpl.cancelPorCasilla, req.materialOpl.cancelOpcional, req.materialOpl.mamparaOpcional, req.materialOpl.marcadoresBoletas
+        req.materialOpl.urnasLocales, req.materialOpl.basesPortaUrna, req.materialOpl.cancelPorCasilla
       ];
       rows.push(fila);
-      fila.slice(4).forEach((v, i) => { totales[i] += Number(v) || 0; });
+      fila.slice(5).forEach((v, i) => { totales[i] += Number(v) || 0; });
     });
 
-    rows.push(["", "", "", "TOTALES DISTRITALES", ...totales]);
+    const totalesRowIdx = rows.length;
+    rows.push(["", "", "", "TOTALES DISTRITALES", "", ...totales]);
 
     const ws = window.XLSX.utils.aoa_to_sheet(rows);
-    const wb = window.XLSX.utils.book_new();
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 2, 24)) }));
+    headers.forEach((_, i) => { const addr = window.XLSX.utils.encode_cell({ r: 0, c: i }); if (ws[addr]) ws[addr].s = headerStyleIne; });
+    for (let r = 1; r < totalesRowIdx; r++) {
+      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (ws[addr]) ws[addr].s = dataCellStyle; }
+    }
+    for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: totalesRowIdx, c }); if (ws[addr]) ws[addr].s = totalesRowStyle; }
     window.XLSX.utils.book_append_sheet(wb, ws, "Equipamiento MCU");
-    
+
+    // --- HOJA 2: DOMICILIOS (mamparas de accesibilidad por domicilio) ---
+    const headersDom = ['Municipio', 'Sección', 'Domicilio', 'Tipo de Domicilio', 'Categoría', 'N° Casillas', 'Casillas que lo componen', 'Mamparas de Accesibilidad Requeridas'];
+    const rowsDom = [headersDom];
+    mamparasAccesibilidadPorDomicilio.detalle.forEach(g => {
+        rowsDom.push([g.municipio, f4(g.seccion), g.domicilio, g.tipoDomicilio || 'SIN ASIGNAR', g.categoria, g.numCasillas, g.casillas.join(', '), g.mamparas]);
+    });
+    const totalRowIdxDom = rowsDom.length;
+    rowsDom.push(['', '', '', '', 'TOTALES', mamparasAccesibilidadPorDomicilio.detalle.reduce((s, g) => s + g.numCasillas, 0), '', mamparasAccesibilidadPorDomicilio.total]);
+
+    const wsDom = window.XLSX.utils.aoa_to_sheet(rowsDom);
+    wsDom['!cols'] = [{ wch: 11 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 40 }, { wch: 16 }];
+    headersDom.forEach((_, i) => { const addr = window.XLSX.utils.encode_cell({ r: 0, c: i }); if (wsDom[addr]) wsDom[addr].s = headerStyleIne; });
+    for (let r = 1; r < totalRowIdxDom; r++) {
+      for (let c = 0; c < headersDom.length; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDom[addr]) wsDom[addr].s = dataCellStyle; }
+    }
+    for (let c = 0; c < headersDom.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: totalRowIdxDom, c }); if (wsDom[addr]) wsDom[addr].s = totalesRowStyle; }
+    window.XLSX.utils.book_append_sheet(wb, wsDom, "Domicilios");
+
     window.XLSX.writeFile(wb, `Reporte Equipamiento MCU Distrito ${f4(distritoInfo.numero)} ${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
@@ -1523,6 +1550,10 @@ export default function App() {
         acc.lista += parseInt(m.lista) || 0;
         return acc;
     }, { padron: 0, lista: 0 });
+  }, [rawElectoralData]);
+
+  const totalMunicipios = useMemo(() => {
+    return new Set(rawElectoralData.map(m => String(m.municipio).trim()).filter(Boolean)).size;
   }, [rawElectoralData]);
 
   const sectionsPorNumero = useMemo(() => {
@@ -1740,6 +1771,7 @@ export default function App() {
                 seccion: row.seccion,
                 categoria: esNoInstala ? 'BASICA' : row.categoria,
                 nombreCasilla: esNoInstala ? 'BÁSICA' : formatearNombreFolio(row.categoria, item.nombre),
+                codigoCorto: esNoInstala ? 'B' : item.nombre,
                 ciudadanos: esEspecial ? 1000 : (Number(item.valor) || 0),
             });
         });
@@ -1844,7 +1876,39 @@ export default function App() {
     });
 
     const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, String(distritoInfo.numero || 'Distrito'));
+    const nombreHojaFolios = String(distritoInfo.numero || 'Distrito');
+    window.XLSX.utils.book_append_sheet(wb, ws, nombreHojaFolios);
+
+    // Segunda hoja: mismo folio de Diputaciones Federales, en el formato "ID Paquete" que se
+    // usa para etiquetar los paquetes electorales. Cantidad y folios se toman en vivo de la
+    // hoja de Folios (columnas H/I/J de cada fila) para que nunca se puedan desincronizar.
+    const rowsPlantilla = [['ID PAQUETE', 'ELECCION', 'CANTIDAD', 'FOLIO INICIAL', 'FOLIO FINAL']];
+    filasFolios.forEach((f, idx) => {
+        const filaHojaFolios = dataStartRow + idx + 1;
+        rowsPlantilla.push([
+            `${f4(f.seccion)} ${f.codigoCorto}`,
+            'Diputaciones Federales',
+            { t: 'n', f: `'${nombreHojaFolios}'!H${filaHojaFolios}` },
+            { t: 'str', f: `'${nombreHojaFolios}'!I${filaHojaFolios}` },
+            { t: 'str', f: `'${nombreHojaFolios}'!J${filaHojaFolios}` },
+        ]);
+    });
+    const wsPlantilla = window.XLSX.utils.aoa_to_sheet(rowsPlantilla);
+    wsPlantilla['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    ['A', 'B', 'C', 'D', 'E'].forEach(col => { const cell = wsPlantilla[`${col}1`]; if (cell) cell.s = headerPlantilla; });
+    filasFolios.forEach((f, idx) => {
+        const r = idx + 2;
+        ['A', 'B', 'C', 'D', 'E'].forEach(col => {
+            const cell = wsPlantilla[`${col}${r}`];
+            if (!cell) return;
+            const estilo = { font: { name: FUENTE, sz: 9 }, alignment: { horizontal: 'center' } };
+            if (col === 'C') estilo.numFmt = '#,##0';
+            if (f.categoria === 'ESPECIAL') estilo.fill = { patternType: 'solid', fgColor: { rgb: 'FFFF00' } };
+            cell.s = estilo;
+        });
+    });
+    window.XLSX.utils.book_append_sheet(wb, wsPlantilla, 'Plantilla Boletas');
 
     window.XLSX.writeFile(wb, `Asignacion_Folios_Distrito_${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`, { cellStyles: true });
   };
@@ -1894,16 +1958,16 @@ export default function App() {
   }, [seccionesFiltradas, filtroAlerta]);
 
   const desgloseTiposCasilla = useMemo(() => {
-      let basicas = 0; let contiguas = 0; let extraordinarias = 0; let especiales = 0;
+      let basicas = 0; let contiguas = 0; let extraordinarias = 0; let extraordinariasContiguas = 0; let especiales = 0;
       consolidadoB_C.forEach(r => {
           if (r.countPadron > 0) { basicas += 1; contiguas += (r.countPadron - 1); }
       });
       casillasGlobales.forEach(c => {
           const st = calcularProyeccion(c);
           if (String(c.tipo).startsWith('S')) especiales += st.totalMesasPadron;
-          else extraordinarias += st.totalMesasPadron;
+          else { extraordinarias += 1; extraordinariasContiguas += (st.totalMesasPadron - 1); }
       });
-      return { basicas, contiguas, extraordinarias, especiales };
+      return { basicas, contiguas, extraordinarias, extraordinariasContiguas, especiales };
   }, [consolidadoB_C, casillasGlobales]);
 
   const totalCasillasDistrito = useMemo(() => {
@@ -2019,13 +2083,13 @@ export default function App() {
          if (asign && asign.domicilioId) {
              const dom = domicilios[asign.domicilioId];
              const key = `real-${asign.domicilioId}`;
-             if (!gruposReales[key]) gruposReales[key] = { municipio: c.municipio, seccion: c.seccion, domicilio: dom?.domicilio || '(domicilio sin dirección)', categorias: new Set(), casillas: [] };
+             if (!gruposReales[key]) gruposReales[key] = { municipio: c.municipio, seccion: c.seccion, domicilio: dom?.domicilio || '(domicilio sin dirección)', tipoDomicilio: dom?.tipoDomicilio || '', categorias: new Set(), casillas: [] };
              gruposReales[key].categorias.add(c.categoria);
              gruposReales[key].casillas.push(c.nombre);
          } else {
              const domicilioBase = c.categoria === 'BASICA' ? 'B' : String(c.nombre).replace(/C\d+$/, '');
              const key = `${c.seccion}-${domicilioBase}`;
-             if (!gruposDefault[key]) gruposDefault[key] = { municipio: c.municipio, seccion: c.seccion, domicilio: domicilioBase, categorias: new Set([c.categoria]), casillas: [] };
+             if (!gruposDefault[key]) gruposDefault[key] = { municipio: c.municipio, seccion: c.seccion, domicilio: domicilioBase, tipoDomicilio: '', categorias: new Set([c.categoria]), casillas: [] };
              gruposDefault[key].casillas.push(c.nombre);
          }
      });
@@ -2036,45 +2100,17 @@ export default function App() {
             const mamparas = Math.ceil(g.casillas.length / 4);
             totalMamparasAccesibilidad += mamparas;
             const categoria = g.categorias.size > 1 ? 'MIXTO' : [...g.categorias][0];
-            return { municipio: g.municipio, seccion: g.seccion, domicilio: g.domicilio, categoria, numCasillas: g.casillas.length, casillas: g.casillas, mamparas };
+            return { municipio: g.municipio, seccion: g.seccion, domicilio: g.domicilio, tipoDomicilio: g.tipoDomicilio, categoria, numCasillas: g.casillas.length, casillas: g.casillas, mamparas };
         });
      return { total: totalMamparasAccesibilidad, totalDomicilios: detalle.length, detalle };
   }, [todasLasCasillasEquipamiento, ubicacionCasillas, domicilios]);
-
-  const exportarReporteDomicilios = () => {
-    if (!window.XLSX) return;
-    const headers = ['Municipio', 'Sección', 'Domicilio', 'Categoría', 'N° Casillas', 'Casillas que lo componen', 'Mamparas de Accesibilidad Requeridas'];
-    const rows = [headers];
-    mamparasAccesibilidadPorDomicilio.detalle.forEach(g => {
-        rows.push([g.municipio, f4(g.seccion), g.domicilio, g.categoria, g.numCasillas, g.casillas.join(', '), g.mamparas]);
-    });
-    rows.push(['', '', '', 'TOTALES', mamparasAccesibilidadPorDomicilio.detalle.reduce((s, g) => s + g.numCasillas, 0), '', mamparasAccesibilidadPorDomicilio.total]);
-
-    const ws = window.XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 11 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 40 }, { wch: 16 }];
-
-    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    headers.forEach((_, i) => {
-        const addr = window.XLSX.utils.encode_cell({ r: 0, c: i });
-        if (ws[addr]) ws[addr].s = headerStyle;
-    });
-    const totalRowIdx = mamparasAccesibilidadPorDomicilio.detalle.length + 1;
-    ['D', 'E', 'G'].forEach(col => {
-        const cell = ws[`${col}${totalRowIdx + 1}`];
-        if (cell) cell.s = { font: { bold: true }, alignment: { horizontal: 'center' } };
-    });
-
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, 'Domicilios');
-    window.XLSX.writeFile(wb, `Reporte_Domicilios_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
-  };
 
   const equipamientoDistrital = useMemo(() => {
       const totales = {
           mobiliario: { tablonesMesas: 0 },
           sillas: { total: 0, fmdcu: 0, nacionales: 0, locales: 0, urna: 0 },
           materialIne: { canceles: 0, mamparas: 0, marcadorasCredenciales: 0, liquidosIndelebles: 0, marcadoresBoletas: 0, urnasFederales: 0 },
-          materialOpl: { urnasLocales: 0, basesPortaUrna: 0, cancelPorCasilla: 0, cancelOpcional: 0, mamparaOpcional: 0, marcadoresBoletas: 0 }
+          materialOpl: { urnasLocales: 0, basesPortaUrna: 0, cancelPorCasilla: 0 }
       };
       todasLasCasillasEquipamiento.forEach(c => {
           const tipo = mamparasPorCasilla[c.id] || 'cancel';
@@ -2082,7 +2118,7 @@ export default function App() {
           totales.mobiliario.tablonesMesas += req.mobiliario.tablonesMesas;
           totales.sillas.total += req.sillas.total; totales.sillas.fmdcu += req.sillas.fmdcu; totales.sillas.nacionales += req.sillas.nacionales; totales.sillas.locales += req.sillas.locales; totales.sillas.urna += req.sillas.urna;
           totales.materialIne.canceles += req.materialIne.canceles; totales.materialIne.mamparas += req.materialIne.mamparas; totales.materialIne.marcadorasCredenciales += req.materialIne.marcadorasCredenciales; totales.materialIne.liquidosIndelebles += req.materialIne.liquidosIndelebles; totales.materialIne.marcadoresBoletas += req.materialIne.marcadoresBoletas; totales.materialIne.urnasFederales += req.materialIne.urnasFederales;
-          totales.materialOpl.urnasLocales += req.materialOpl.urnasLocales; totales.materialOpl.basesPortaUrna += req.materialOpl.basesPortaUrna; totales.materialOpl.cancelPorCasilla += req.materialOpl.cancelPorCasilla; totales.materialOpl.cancelOpcional += req.materialOpl.cancelOpcional; totales.materialOpl.mamparaOpcional += req.materialOpl.mamparaOpcional; totales.materialOpl.marcadoresBoletas += req.materialOpl.marcadoresBoletas;
+          totales.materialOpl.urnasLocales += req.materialOpl.urnasLocales; totales.materialOpl.basesPortaUrna += req.materialOpl.basesPortaUrna; totales.materialOpl.cancelPorCasilla += req.materialOpl.cancelPorCasilla;
       });
       return totales;
   }, [todasLasCasillasEquipamiento, mamparasPorCasilla, equipConfig]);
@@ -2275,7 +2311,7 @@ export default function App() {
     <header className="bg-white text-slate-800 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-600">
       <div className="flex items-center gap-4">
         <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
-        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'DISEÑO' : view === 'equipamiento' ? 'EQUIPAMIENTO' : view === 'ubicacion' ? 'UBICACIÓN DE CASILLAS' : 'PROYECCIÓN DE CASILLAS'}</h1>
+        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
         <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200 ml-4 pointer-events-none">
            {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
         </div>
@@ -2535,9 +2571,9 @@ export default function App() {
                   </div>
               </div>
 
-              {/* CONTROLES PRINCIPALES */}
+              {/* CONTROLES PRINCIPALES (Configuración + Representaciones + Mobiliario, fusionados) */}
               <SeccionColapsable title="Configuración de la Elección" icon={<Settings2 className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.config} onToggle={() => toggleEquipSeccion('config')}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Base de Proyección</label>
                           <div className="flex bg-slate-100 p-1 rounded-xl w-max border border-slate-200">
@@ -2546,70 +2582,67 @@ export default function App() {
                           </div>
                           <p className="text-xs text-slate-400 mt-2 italic">Afecta el total de casillas estimadas (Actualmente: {statsEquipamiento.total} casillas).</p>
                       </div>
-                      <div>
+                      <div className="flex flex-col items-center text-center">
                           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Total de Elecciones a realizar</label>
-                          <div className="flex items-center gap-2">
-                              <input
-                                  type="number"
-                                  min="1"
-                                  placeholder="Default (3)"
-                                  className="w-32 bg-white border-2 border-slate-300 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800"
-                                  value={equipConfig.totalElecciones}
-                                  onChange={e => setEquipConfig({...equipConfig, totalElecciones: e.target.value === '' ? '' : parseInt(e.target.value)})}
-                              />
-                              {equipConfig.totalElecciones !== 3 && equipConfig.totalElecciones !== '' && (
-                                  <button onClick={() => setEquipConfig({...equipConfig, totalElecciones: 3})} title="Restaurar a default (3)" className="bg-slate-100 border border-slate-200 p-2 rounded-lg hover:bg-slate-200 transition-colors text-slate-600"><RotateCcw className="w-4 h-4" /></button>
-                              )}
+                          <div className="w-32 bg-slate-100 border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-black text-center text-slate-600 flex items-center justify-center gap-2">
+                              <Lock className="w-3.5 h-3.5 text-slate-400" /> {equipConfig.totalElecciones}
                           </div>
-                          <p className="text-xs text-slate-400 mt-2 italic">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). 5+ eleva mobiliario y habilita aportación OPL adicional.</p>
+                          <p className="text-xs text-slate-400 mt-2 italic max-w-[220px]">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). Fijo — por ahora no es posible que cambie el número de elecciones.</p>
+                      </div>
+                      <div className="flex flex-col items-center text-center">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Editar Configuración</label>
+                          <button onClick={() => setConfigEquipoBloqueada(!configEquipoBloqueada)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black uppercase shadow-sm transition-all ${configEquipoBloqueada ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
+                              {configEquipoBloqueada ? <><Lock className="w-4 h-4" /> Bloqueado</> : <><Unlock className="w-4 h-4" /> Desbloqueado</>}
+                          </button>
+                          <p className="text-xs text-slate-400 mt-2 italic">{configEquipoBloqueada ? 'Toca para desbloquear y editar' : 'Toca para bloquear de nuevo'}</p>
                       </div>
                   </div>
-              </SeccionColapsable>
 
-              {/* REPRESENTACIONES ACREDITADAS (afecta sillas y urnas locales) */}
-              <SeccionColapsable title="Representaciones y Elecciones Locales" icon={<Users className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.representaciones} onToggle={() => toggleEquipSeccion('representaciones')}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
-                          <input type="number" min="0" className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                          <p className="text-[10px] text-slate-400 mt-1">2 sillas c/u. Nota: 8 PPN con registro (Acuerdos INE/CG344/2026 e INE/CG347/2026).</p>
-                      </div>
-                      <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Locales</label>
-                          <input type="number" min="0" className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                          <p className="text-[10px] text-slate-400 mt-1">2 PPL con registro vigente en Edomex: PRD (local desde 2024) y Podemos (nuevo, 2026) — corte agosto 2026.</p>
-                      </div>
-                      <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Sillas x Partido Local</label>
-                          <input type="number" min="0" className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                          <p className="text-[10px] text-slate-400 mt-1">Modelo INE 2026-2027: 1 silla (solo puede estar una representación local a la vez en casilla)</p>
-                      </div>
-                      <div>
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Elecciones Locales (urnas OPL)</label>
-                          <input type="number" min="0" className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                          <p className="text-[10px] text-slate-400 mt-1">Edomex: Dip. Locales + Ayuntamientos = 2</p>
+                  <div className="mt-8 pt-6 border-t-2 border-slate-100">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-pink-500" /> Representaciones y Elecciones Locales</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
+                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">2 sillas c/u. Nota: 8 PPN con registro (Acuerdos INE/CG344/2026 e INE/CG347/2026).</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Locales</label>
+                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">2 PPL con registro vigente en Edomex: PRD (local desde 2024) y Podemos (nuevo, 2026) — corte agosto 2026.</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Sillas x Partido Local</label>
+                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">Modelo INE 2026-2027: 1 silla (solo puede estar una representación local a la vez en casilla)</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Elecciones Locales (urnas OPL)</label>
+                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">Edomex: Dip. Locales + Ayuntamientos = 2</p>
+                          </div>
                       </div>
                   </div>
-              </SeccionColapsable>
 
-              {/* EQUIPAMIENTO MOBILIARIO */}
-              <SeccionColapsable title="Equipamiento Mobiliario" icon={<LayoutGrid className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.mobiliario} onToggle={() => toggleEquipSeccion('mobiliario')}>
-                  <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
-                      <p className="text-xs text-slate-500 mb-3">Tablones/mesas grandes + mesa pequeña para urna(s) o mamparas. Requisito obligatorio de la casilla (haya o no que gestionarlo con un proveedor externo).</p>
-                      <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="checkbox" checked={equipConfig.sillasParaUrna} onChange={(e) => setEquipConfig({...equipConfig, sillasParaUrna: e.target.checked})} className="w-5 h-5 text-pink-600 rounded border-slate-300 focus:ring-pink-500 cursor-pointer" />
-                              <span className="text-sm font-black uppercase text-slate-700">Usar Silla para Urna (en lugar de Mesa Pequeña)</span>
-                          </label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteCancel.mobiliario.tablonesMesas})</label>
-                              <div className="flex items-center gap-2">
-                                  <input type="number" min="0" placeholder="Automático (INE)" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.mobiliarioPorCasilla} onChange={e => setEquipConfig({...equipConfig, mobiliarioPorCasilla: e.target.value})} />
-                                  {equipConfig.mobiliarioPorCasilla !== '' && (
-                                      <button onClick={() => setEquipConfig({...equipConfig, mobiliarioPorCasilla: ''})} title="Restaurar a default" className="bg-slate-200 p-2 rounded-xl hover:bg-slate-300 transition-colors text-slate-600"><RotateCcw className="w-4 h-4" /></button>
-                                  )}
+                  <div className="mt-8 pt-6 border-t-2 border-slate-100">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-pink-500" /> Equipamiento Mobiliario</h3>
+                      <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
+                          <p className="text-xs text-slate-500 mb-3">Tablones/mesas grandes + mesa pequeña para urna(s) o mamparas. Requisito obligatorio de la casilla (haya o no que gestionarlo con un proveedor externo).</p>
+                          <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                  <input type="checkbox" checked={equipConfig.sillasParaUrna} onChange={(e) => setEquipConfig({...equipConfig, sillasParaUrna: e.target.checked})} className="w-5 h-5 text-pink-600 rounded border-slate-300 focus:ring-pink-500 cursor-pointer" />
+                                  <span className="text-sm font-black uppercase text-slate-700">Usar Silla para Urna (en lugar de Mesa Pequeña)</span>
+                              </label>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <div className="flex-1">
+                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteCancel.mobiliario.tablonesMesas})</label>
+                                  <div className="flex items-center gap-2">
+                                      <input type="number" min="0" disabled={configEquipoBloqueada} placeholder="Automático (INE)" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.mobiliarioPorCasilla} onChange={e => setEquipConfig({...equipConfig, mobiliarioPorCasilla: e.target.value})} />
+                                      {!configEquipoBloqueada && equipConfig.mobiliarioPorCasilla !== '' && (
+                                          <button onClick={() => setEquipConfig({...equipConfig, mobiliarioPorCasilla: ''})} title="Restaurar a default" className="bg-slate-200 p-2 rounded-xl hover:bg-slate-300 transition-colors text-slate-600"><RotateCcw className="w-4 h-4" /></button>
+                                      )}
+                                  </div>
                               </div>
                           </div>
                       </div>
@@ -2650,10 +2683,6 @@ export default function App() {
                               <li>Urnas Locales: <span className="text-white ml-1">{paqueteCancel.materialOpl.urnasLocales}</span></li>
                               <li>Base Porta Urna: <span className="text-white ml-1">{paqueteCancel.materialOpl.basesPortaUrna}</span></li>
                               <li>Cancel IEEM: <span className="text-white ml-1">{paqueteCancel.materialOpl.cancelPorCasilla}</span></li>
-                              {equipConfig.totalElecciones >= 5 && (<>
-                                  <li>Cancel Adicional: <span className="text-white ml-1">{paqueteCancel.materialOpl.cancelOpcional}</span></li>
-                                  <li>Marc. Boleta Adic.: <span className="text-white ml-1">{paqueteCancel.materialOpl.marcadoresBoletas}</span></li>
-                              </>)}
                           </ul>
                       </div>
                   </div>
@@ -2689,37 +2718,10 @@ export default function App() {
                               <li>Urnas Locales: <span className="text-white ml-1">{paqueteMampara.materialOpl.urnasLocales}</span></li>
                               <li>Base Porta Urna: <span className="text-white ml-1">{paqueteMampara.materialOpl.basesPortaUrna}</span></li>
                               <li>Cancel IEEM: <span className="text-white ml-1">{paqueteMampara.materialOpl.cancelPorCasilla}</span></li>
-                              {equipConfig.totalElecciones >= 5 && (<>
-                                  <li>Mampara Adicional: <span className="text-white ml-1">{paqueteMampara.materialOpl.mamparaOpcional}</span></li>
-                                  <li>Marc. Boleta Adic.: <span className="text-white ml-1">{paqueteMampara.materialOpl.marcadoresBoletas}</span></li>
-                              </>)}
                           </ul>
                       </div>
                   </div>
               </div>
-              </SeccionColapsable>
-
-              {/* REQUERIMIENTOS ESPECIALES: ACCESIBILIDAD */}
-              <SeccionColapsable title="Requerimientos Especiales (Accesibilidad)" icon={<ShieldAlert className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.especiales} onToggle={() => toggleEquipSeccion('especiales')}>
-                  {/* ACCESIBILIDAD: MAMPARA ESPECIAL POR DOMICILIO */}
-                  <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300">
-                      <div className="flex flex-wrap justify-between items-start gap-3 mb-2">
-                          <h3 className="text-base font-black uppercase text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-pink-600" /> Accesibilidad: Mampara Especial por Domicilio</h3>
-                          <button onClick={exportarReporteDomicilios} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-2 shadow-sm active:scale-95 transition-all"><FileDown className="w-4 h-4" /> Reporte de Domicilios</button>
-                      </div>
-                      <p className="text-xs text-slate-500 mb-4">Regla independiente del cancel/mampara de cada casilla: 1 mampara especial de accesibilidad por cada 4 casillas que compartan domicilio (básica + contiguas, o extraordinaria + sus contiguas). Cada casilla especial cuenta como un domicilio adicional. Es un requisito obligatorio, no depende de si el domicilio ya es accesible.</p>
-                      <p className="text-[11px] text-pink-600 font-bold mb-4 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> Se conecta con el Módulo de Ubicación: si una casilla ya tiene domicilio real capturado, se agrupa por ese domicilio (por si en la práctica se dividió o unificó distinto a lo asumido); las casillas aún sin capturar se siguen contando con la regla de arriba, nunca se excluyen.</p>
-                      <div className="flex gap-6">
-                          <div className="bg-slate-50 border-2 border-slate-200 p-5 rounded-2xl text-center flex-1">
-                              <p className="text-[10px] font-bold text-pink-600 uppercase tracking-widest mb-1">Mamparas de Accesibilidad</p>
-                              <p className="text-3xl font-black text-slate-800">{mamparasAccesibilidadPorDomicilio.total}</p>
-                          </div>
-                          <div className="bg-white border-2 border-slate-200 p-5 rounded-2xl text-center shadow-sm flex-1">
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Domicilios Detectados</p>
-                              <p className="text-3xl font-black text-slate-700">{mamparasAccesibilidadPorDomicilio.totalDomicilios}</p>
-                          </div>
-                      </div>
-                  </div>
               </SeccionColapsable>
 
               {/* ASIGNACIÓN MODULAR (CANCEL VS MAMPARA POR CASILLA) */}
@@ -2792,10 +2794,14 @@ export default function App() {
                           <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
 
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-slate-800 pb-2">Accesibilidad</p>
-                          <div className="grid grid-cols-1 gap-4">
+                          <div className="grid grid-cols-2 gap-4">
                               <div className="bg-slate-800 p-5 rounded-2xl border-2 border-slate-700 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
                                   <span className="text-2xl font-black text-pink-400">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
+                              </div>
+                              <div className="bg-slate-800 p-5 rounded-2xl border-2 border-slate-700 flex flex-col justify-center items-center shadow-sm">
+                                  <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
+                                  <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
                               </div>
                           </div>
                       </div>
@@ -2843,20 +2849,6 @@ export default function App() {
                                   <span className="text-[11px] font-bold text-pink-200 uppercase">Cancel IEEM</span>
                                   <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
                               </div>
-                              {equipConfig.totalElecciones >= 5 && (<>
-                                  <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
-                                      <span className="text-[11px] font-bold text-pink-200 uppercase">Cancel Adic.</span>
-                                      <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.cancelOpcional.toLocaleString()}</span>
-                                  </div>
-                                  <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
-                                      <span className="text-[11px] font-bold text-pink-200 uppercase">Mampara Adic.</span>
-                                      <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.mamparaOpcional.toLocaleString()}</span>
-                                  </div>
-                                  <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
-                                      <span className="text-[11px] font-bold text-pink-200 uppercase">Marc. Boleta</span>
-                                      <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.marcadoresBoletas.toLocaleString()}</span>
-                                  </div>
-                              </>)}
                           </div>
                       </div>
                   </div>
@@ -2864,140 +2856,6 @@ export default function App() {
                 </div>
                 )}
               </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* --- VISTA: UBICACIÓN DE CASILLAS --- */}
-        {view === 'ubicacion' && (
-          <div className="lg:col-span-12 overflow-y-auto p-10 text-left">
-            <div className="max-w-7xl mx-auto space-y-8 pb-24">
-
-              <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-6">
-                          <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
-                          <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
-                              <h2 className="text-2xl font-black italic">Módulo de Ubicación de Casillas</h2>
-                          </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                          <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
-                          <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Exportar Plantilla</button>
-                      </div>
-                  </div>
-                  <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
-              </div>
-
-              {Object.keys(conteoTiposDomicilio).length > 0 && (
-                  <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
-                      <div className="flex flex-wrap gap-2">
-                          {Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
-                              <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo}</button>
-                          ))}
-                      </div>
-                  </div>
-              )}
-
-              {importUbicacionAviso && (
-                  <div className={`rounded-2xl px-6 py-4 border-2 ${importUbicacionAviso.sinPareja.length > 0 ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'}`}>
-                      <div className="flex items-start gap-4">
-                          {importUbicacionAviso.sinPareja.length > 0 ? <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" /> : <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />}
-                          <div className="flex-1">
-                              <p className={`text-sm font-black uppercase tracking-wide ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>Importación de ubicación completada</p>
-                              <p className={`text-xs mt-1 font-bold ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                  {importUbicacionAviso.asignadas} de {importUbicacionAviso.totalFilas} filas del archivo se asignaron a casillas de tu proyección actual.
-                                  {importUbicacionAviso.sinPareja.length > 0 && ` ${importUbicacionAviso.sinPareja.length} fila(s) no encontraron una casilla equivalente (sección eliminada, renombrada o casilla no proyectada) y se omitieron.`}
-                              </p>
-                              {importUbicacionAviso.sinPareja.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 mt-3">
-                                      {importUbicacionAviso.sinPareja.slice(0, 40).map((s, i) => (
-                                          <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-700 px-2 py-1 rounded-lg">Sec {f4(s.seccion)} · {s.casilla}</span>
-                                      ))}
-                                      {importUbicacionAviso.sinPareja.length > 40 && <span className="text-[10px] font-bold text-amber-600">+{importUbicacionAviso.sinPareja.length - 40} más</span>}
-                                  </div>
-                              )}
-                          </div>
-                          <button onClick={() => setImportUbicacionAviso(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                      </div>
-                  </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="relative max-w-xs w-full">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2.5 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaUbicacion} onChange={e => setBusquedaUbicacion(e.target.value)} />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                      <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'completo' ? 'todas' : 'completo')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'completo' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} Completas</button>
-                      <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'parcial' ? 'todas' : 'parcial')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'parcial' ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>{seccionesUbicacion.filter(s => s.estado === 'parcial').length} Parciales</button>
-                      <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'sin_asignar' ? 'todas' : 'sin_asignar')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'sin_asignar' ? 'bg-slate-700 text-white shadow-md ring-2 ring-slate-400' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} Sin Asignar</button>
-                  </div>
-              </div>
-
-              <div className="space-y-4">
-                  {seccionesUbicacion.filter(g => !busquedaUbicacion.trim() || f4(g.seccion).includes(busquedaUbicacion.trim())).filter(g => filtroEstadoUbicacion === 'todas' || (filtroEstadoUbicacion === 'completo' ? g.estado.startsWith('completo') : g.estado === filtroEstadoUbicacion)).filter(g => filtroTipoUbicacion === 'todos' || g.casillas.some(c => (c.dom?.tipoDomicilio || (c.dom ? 'SIN TIPO' : null)) === filtroTipoUbicacion)).map(grupo => {
-                      const isOpen = !!seccionesUbicacionExpandidas[grupo.seccion];
-                      const estiloEstado = grupo.estado === 'completo_unico' ? 'bg-emerald-100 text-emerald-700' : grupo.estado === 'completo_multiple' ? 'bg-sky-100 text-sky-700' : grupo.estado === 'parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600';
-                      const textoEstado = grupo.estado === 'completo_unico' ? 'Un domicilio para toda la sección' : grupo.estado === 'completo_multiple' ? `${grupo.domiciliosUnicos} domicilios distintos` : grupo.estado === 'parcial' ? `${grupo.asignadas}/${grupo.total} asignadas` : 'Sin asignar';
-                      return (
-                          <div key={grupo.seccion} className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                              <button onClick={() => setSeccionesUbicacionExpandidas(prev => ({ ...prev, [grupo.seccion]: !prev[grupo.seccion] }))} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
-                                  <div className="flex items-center gap-3">
-                                      {isOpen ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                                      <span className="text-base font-black uppercase text-slate-800">Sec {f4(grupo.seccion)}</span>
-                                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${estiloEstado}`}>{textoEstado}</span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{grupo.total} casilla{grupo.total !== 1 ? 's' : ''}</span>
-                              </button>
-                              {isOpen && (
-                                  <div className="px-6 pb-6 space-y-3">
-                                      <div className="flex justify-end gap-2">
-                                          {grupo.totalFaltantesCompletables > 0 && (
-                                              <button onClick={() => completarClustersAutomaticamente(grupo.clustersCompletables)} title="Copia el domicilio ya asignado a las casillas faltantes, sólo dentro del mismo grupo físico (básica+contiguas, cada extraordinaria o cada especial por separado)" className="text-[10px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Completar automáticamente ({grupo.totalFaltantesCompletables})</button>
-                                          )}
-                                          <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
-                                      </div>
-                                      {grupo.casillas.map(c => (
-                                          <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-pink-50' : 'border-slate-200 bg-slate-50'}`}>
-                                              <input type="checkbox" className="w-4 h-4 accent-pink-600" checked={seleccionUbicacion.includes(c.clave)} onChange={() => setSeleccionUbicacion(prev => prev.includes(c.clave) ? prev.filter(x => x !== c.clave) : [...prev, c.clave])} />
-                                              <span className="bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
-                                              <div className="flex-1 min-w-[200px]">
-                                                  {c.dom ? (
-                                                      <div className="text-xs">
-                                                          <span className="font-black text-slate-800">{c.dom.tipoDomicilio || 'SIN TIPO'}</span>
-                                                          <span className="text-slate-500"> — {c.dom.domicilio || 'sin dirección'}</span>
-                                                          {c.dom.ubicacion && <p className="text-slate-400 text-[11px]">{c.dom.ubicacion}</p>}
-                                                      </div>
-                                                  ) : (
-                                                      <span className="text-xs font-bold text-slate-400 italic">Sin asignar</span>
-                                                  )}
-                                              </div>
-                                              <div className="flex gap-2">
-                                                  <button onClick={() => { setSeleccionUbicacion([c.clave]); setModalUbicacionConfig({ isOpen: true, claves: [c.clave], prefill: c.dom }); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Editar"><Pencil className="w-4 h-4" /></button>
-                                                  {grupo.casillas.some(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign) && (
-                                                      <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
-                                                  )}
-                                              </div>
-                                          </div>
-                                      ))}
-                                  </div>
-                              )}
-                          </div>
-                      );
-                  })}
-              </div>
-
-              {seleccionUbicacion.length > 0 && !modalUbicacionConfig.isOpen && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
-                      <span className="text-xs font-black uppercase">{seleccionUbicacion.length} casilla(s) seleccionada(s)</span>
-                      <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
-                      <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
-                  </div>
-              )}
 
             </div>
           </div>
@@ -3015,37 +2873,41 @@ export default function App() {
                             <span className="text-sm font-black uppercase tracking-widest text-slate-800">Resumen Distrital</span>
                         </div>
                         {!resumenExpandido && (
-                            <span className={`text-lg font-black italic ${totalCasillasDistrito.variacion ? 'text-red-600' : 'text-pink-600'}`}>
+                            <span className="text-lg font-black italic text-pink-600">
                                 P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas
                             </span>
                         )}
                     </button>
                     {resumenExpandido && (
                         <div className="px-8 pb-8 space-y-6">
-                            <div className={`p-8 rounded-[2.5rem] bg-slate-900 text-white shadow-xl border-b-8 ${totalCasillasDistrito.variacion ? 'border-red-500' : 'border-pink-600'}`}>
-                                <div className="flex items-center gap-6 text-left">
-                                    <div className={`p-5 rounded-2xl shadow-inner text-left ${totalCasillasDistrito.variacion ? 'bg-red-500/20 text-red-400' : 'bg-pink-500/20 text-pink-400'}`}>
-                                        {totalCasillasDistrito.variacion ? <AlertTriangle className="w-10 h-10" /> : <Calculator className="w-10 h-10" />}
+                            <div className="p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-r from-pink-600 to-pink-800">
+                                <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white">
+                                            <Calculator className="w-8 h-8" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-pink-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
+                                            <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
+                                        </div>
                                     </div>
-                                    <div className="text-left">
-                                        <p className={`text-xs font-black uppercase tracking-[0.4em] text-left ${totalCasillasDistrito.variacion ? 'text-red-400' : 'text-pink-400'}`}>
-                                            Resumen Distrito {f4(distritoInfo.numero)}
-                                        </p>
-                                        <h4 className="text-4xl font-black italic tracking-tighter mt-1 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
+                                    <div className="text-center bg-white/15 rounded-2xl px-5 py-2.5 shrink-0">
+                                        <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Municipios</p>
+                                        <p className="text-2xl font-black text-white mt-0.5">{totalMunicipios}</p>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6 pt-6 border-t border-slate-700">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
                                     <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Básicas / Contiguas</p>
-                                        <p className="text-2xl font-black text-white mt-1">P: {totalCasillasDistrito.bcPadron} | L: {totalCasillasDistrito.bcLista}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Básicas / Contiguas</p>
+                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.bcPadron} | L: {totalCasillasDistrito.bcLista}</p>
                                     </div>
                                     <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Extraordinarias</p>
-                                        <p className="text-2xl font-black text-pink-400 mt-1">P: {totalCasillasDistrito.exPadron} | L: {totalCasillasDistrito.exLista}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Extraordinarias</p>
+                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.exPadron} | L: {totalCasillasDistrito.exLista}</p>
                                     </div>
                                     <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Especiales</p>
-                                        <p className="text-2xl font-black text-white mt-1">P: {totalCasillasDistrito.espPadron} | L: {totalCasillasDistrito.espLista}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Especiales</p>
+                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.espPadron} | L: {totalCasillasDistrito.espLista}</p>
                                     </div>
                                 </div>
                             </div>
@@ -3063,22 +2925,26 @@ export default function App() {
                                     <h5 className="text-4xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Básicas</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Contiguas</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias</p>
-                                    <h5 className="text-4xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
+                                    <h5 className="text-3xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
+                                </div>
+                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
+                                    <h5 className="text-3xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
                                 </div>
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Especiales</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
                                 </div>
                             </div>
                         </div>
@@ -3357,6 +3223,150 @@ export default function App() {
                         </div>
                     )}
                 </div>
+
+                <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+                    <button onClick={() => setUbicacionExpandido(!ubicacionExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                            {ubicacionExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Ubicación de Casillas</span>
+                        </div>
+                        {!ubicacionExpandido && (
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">
+                                <span className="text-emerald-600">{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} completas</span> · <span className="text-amber-600">{seccionesUbicacion.filter(s => s.estado === 'parcial').length} parciales</span> · <span className="text-slate-500">{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} sin asignar</span>
+                            </span>
+                        )}
+                    </button>
+                    {ubicacionExpandido && (
+                        <div className="px-4 sm:px-8 pb-8 space-y-6">
+
+                            <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
+                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <div className="flex items-center gap-6">
+                                        <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
+                                            <h2 className="text-2xl font-black italic">Módulo de Ubicación de Casillas</h2>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
+                                        <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Exportar Plantilla</button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
+                            </div>
+
+                            {Object.keys(conteoTiposDomicilio).length > 0 && (
+                                <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
+                                            <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {importUbicacionAviso && (
+                                <div className={`rounded-2xl px-6 py-4 border-2 ${importUbicacionAviso.sinPareja.length > 0 ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'}`}>
+                                    <div className="flex items-start gap-4">
+                                        {importUbicacionAviso.sinPareja.length > 0 ? <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" /> : <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />}
+                                        <div className="flex-1">
+                                            <p className={`text-sm font-black uppercase tracking-wide ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>Importación de ubicación completada</p>
+                                            <p className={`text-xs mt-1 font-bold ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                {importUbicacionAviso.asignadas} de {importUbicacionAviso.totalFilas} filas del archivo se asignaron a casillas de tu proyección actual.
+                                                {importUbicacionAviso.sinPareja.length > 0 && ` ${importUbicacionAviso.sinPareja.length} fila(s) no encontraron una casilla equivalente (sección eliminada, renombrada o casilla no proyectada) y se omitieron.`}
+                                            </p>
+                                            {importUbicacionAviso.sinPareja.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mt-3">
+                                                    {importUbicacionAviso.sinPareja.slice(0, 40).map((s, i) => (
+                                                        <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-700 px-2 py-1 rounded-lg">Sec {f4(s.seccion)} · {s.casilla}</span>
+                                                    ))}
+                                                    {importUbicacionAviso.sinPareja.length > 40 && <span className="text-[10px] font-bold text-amber-600">+{importUbicacionAviso.sinPareja.length - 40} más</span>}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button onClick={() => setImportUbicacionAviso(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="relative max-w-xs w-full">
+                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2.5 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaUbicacion} onChange={e => setBusquedaUbicacion(e.target.value)} />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'completo' ? 'todas' : 'completo')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'completo' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} Completas</button>
+                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'parcial' ? 'todas' : 'parcial')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'parcial' ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>{seccionesUbicacion.filter(s => s.estado === 'parcial').length} Parciales</button>
+                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'sin_asignar' ? 'todas' : 'sin_asignar')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'sin_asignar' ? 'bg-slate-700 text-white shadow-md ring-2 ring-slate-400' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} Sin Asignar</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {seccionesUbicacion.filter(g => !busquedaUbicacion.trim() || f4(g.seccion).includes(busquedaUbicacion.trim())).filter(g => filtroEstadoUbicacion === 'todas' || (filtroEstadoUbicacion === 'completo' ? g.estado.startsWith('completo') : g.estado === filtroEstadoUbicacion)).filter(g => filtroTipoUbicacion === 'todos' || g.casillas.some(c => (c.dom?.tipoDomicilio || (c.dom ? 'SIN TIPO' : null)) === filtroTipoUbicacion)).map(grupo => {
+                                    const isOpen = !!seccionesUbicacionExpandidas[grupo.seccion];
+                                    const estiloEstado = grupo.estado === 'completo_unico' ? 'bg-emerald-100 text-emerald-700' : grupo.estado === 'completo_multiple' ? 'bg-sky-100 text-sky-700' : grupo.estado === 'parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600';
+                                    const textoEstado = grupo.estado === 'completo_unico' ? 'Un domicilio para toda la sección' : grupo.estado === 'completo_multiple' ? `${grupo.domiciliosUnicos} domicilios distintos` : grupo.estado === 'parcial' ? `${grupo.asignadas}/${grupo.total} asignadas` : 'Sin asignar';
+                                    return (
+                                        <div key={grupo.seccion} className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+                                            <button onClick={() => setSeccionesUbicacionExpandidas(prev => ({ ...prev, [grupo.seccion]: !prev[grupo.seccion] }))} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    {isOpen ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                                                    <span className="text-base font-black uppercase text-slate-800">Sec {f4(grupo.seccion)}</span>
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${estiloEstado}`}>{textoEstado}</span>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{grupo.total} casilla{grupo.total !== 1 ? 's' : ''}</span>
+                                            </button>
+                                            {isOpen && (
+                                                <div className="px-6 pb-6 space-y-3">
+                                                    <div className="flex justify-end gap-2">
+                                                        {grupo.totalFaltantesCompletables > 0 && (
+                                                            <button onClick={() => completarClustersAutomaticamente(grupo.clustersCompletables)} title="Copia el domicilio ya asignado a las casillas faltantes, sólo dentro del mismo grupo físico (básica+contiguas, cada extraordinaria o cada especial por separado)" className="text-[10px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Completar automáticamente ({grupo.totalFaltantesCompletables})</button>
+                                                        )}
+                                                        <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
+                                                    </div>
+                                                    {grupo.casillas.map(c => (
+                                                        <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-pink-50' : 'border-slate-200 bg-slate-50'}`}>
+                                                            <input type="checkbox" className="w-4 h-4 accent-pink-600" checked={seleccionUbicacion.includes(c.clave)} onChange={() => setSeleccionUbicacion(prev => prev.includes(c.clave) ? prev.filter(x => x !== c.clave) : [...prev, c.clave])} />
+                                                            <span className="bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
+                                                            <div className="flex-1 min-w-[200px]">
+                                                                {c.dom ? (
+                                                                    <div className="text-xs">
+                                                                        <span className="font-black text-slate-800">{c.dom.tipoDomicilio || 'SIN TIPO'}</span>
+                                                                        <span className="text-slate-500"> — {c.dom.domicilio || 'sin dirección'}</span>
+                                                                        {c.dom.ubicacion && <p className="text-slate-400 text-[11px]">{c.dom.ubicacion}</p>}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-xs font-bold text-slate-400 italic">Sin asignar</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => { setSeleccionUbicacion([c.clave]); setModalUbicacionConfig({ isOpen: true, claves: [c.clave], prefill: c.dom }); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Editar"><Pencil className="w-4 h-4" /></button>
+                                                                {grupo.casillas.some(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign) && (
+                                                                    <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {seleccionUbicacion.length > 0 && !modalUbicacionConfig.isOpen && (
+                                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+                                    <span className="text-xs font-black uppercase">{seleccionUbicacion.length} casilla(s) seleccionada(s)</span>
+                                    <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
+                                    <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+                                </div>
+                            )}
+
+                        </div>
+                    )}
+                </div>
             </div>
           </div>
         )}
@@ -3447,7 +3457,7 @@ export default function App() {
                   <div className={`text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600' : 'bg-slate-800'}`}>
                     <Hash className="w-4 h-4 text-left" />
                     <span className="text-xs font-black uppercase text-left tracking-wider">
-                      Sedes: {sedesActivas.length} | Casillas: P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
+                      Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
                     </span>
                   </div>
                   <div className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
