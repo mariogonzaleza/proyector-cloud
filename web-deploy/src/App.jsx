@@ -32,7 +32,113 @@ try {
 }
 
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const BOOTH_LIMIT = 750; 
+const BOOTH_LIMIT = 750;
+const MARGEN_CORTE_750 = 15; // Electores de margen para alertar cercanía al corte de 750 (posible cambio en el número de casillas)
+const estaCercaDelCorte750 = (valor) => {
+  const v = Number(valor) || 0;
+  if (v <= 0) return false;
+  const resto = v % BOOTH_LIMIT;
+  const cercaPorArriba = (BOOTH_LIMIT - resto) <= MARGEN_CORTE_750; // a punto de sumar una casilla más (ej. 740, 748...)
+  const cercaPorAbajo = v >= BOOTH_LIMIT && resto <= MARGEN_CORTE_750; // recién cruzó un múltiplo real (ej. 751, 755...); no aplica cerca de 0
+  return cercaPorArriba || cercaPorAbajo;
+};
+// Electores que faltan (o sobran) para cruzar el múltiplo de 750 más cercano; null si no aplica (v<=0).
+const distanciaAlCorte750 = (valor) => {
+  const v = Number(valor) || 0;
+  if (v <= 0) return null;
+  const resto = v % BOOTH_LIMIT;
+  if (resto === 0) return 0;
+  const distArriba = BOOTH_LIMIT - resto;
+  const distAbajo = v >= BOOTH_LIMIT ? resto : Infinity;
+  return Math.min(distArriba, distAbajo);
+};
+const nivelRiesgoCorte750 = (distancia) => {
+  if (distancia === null || distancia === undefined) return '';
+  if (distancia <= 5) return 'ALTO';
+  if (distancia <= 10) return 'MEDIO';
+  return 'BAJO';
+};
+
+// Catálogo oficial INE (Catálogo de Distritos Electorales Federales con Cabeceras Distritales - CDEFCD,
+// corte ene 2026): distrito federal del Estado de México -> cabecera distrital (columna NOMBRE LOCALIDAD).
+const CABECERAS_DISTRITALES_MEXICO = {
+  '1': 'JILOTEPEC DE MOLINA ENRIQUEZ',
+  '2': 'SANTA MARIA TULTEPEC',
+  '3': 'ATLACOMULCO DE FABELA',
+  '4': 'CIUDAD NICOLAS ROMERO Y/O CENTRO HISTORICO SAN PEDRO AZCAPOTZALTONGO',
+  '5': 'TEOTIHUACAN DE ARISTA',
+  '6': 'COACALCO DE BERRIOZABAL',
+  '7': 'CUAUTITLAN IZCALLI',
+  '8': 'TULTITLAN DE MARIANO ESCOBEDO',
+  '9': 'SAN FELIPE DEL PROGRESO',
+  '10': 'ECATEPEC DE MORELOS',
+  '11': 'ECATEPEC DE MORELOS',
+  '12': 'IXTAPALUCA',
+  '13': 'ECATEPEC DE MORELOS',
+  '14': 'TEPEXPAN',
+  '15': 'CIUDAD ADOLFO LOPEZ MATEOS',
+  '16': 'ECATEPEC DE MORELOS',
+  '17': 'ECATEPEC DE MORELOS',
+  '18': 'HUIXQUILUCAN DE DEGOLLADO',
+  '19': 'TLALNEPANTLA DE BAZ',
+  '20': 'OJO DE AGUA',
+  '21': 'AMECAMECA DE JUAREZ',
+  '22': 'NAUCALPAN DE JUAREZ',
+  '23': 'LERMA DE VILLADA',
+  '24': 'NAUCALPAN DE JUAREZ',
+  '25': 'CHIMALHUACAN',
+  '26': 'TOLUCA DE LERDO',
+  '27': 'METEPEC',
+  '28': 'ZUMPANGO DE OCAMPO',
+  '29': 'CD. NEZAHUALCOYOTL',
+  '30': 'CHIMALHUACAN',
+  '31': 'CD. NEZAHUALCOYOTL',
+  '32': 'VALLE DE CHALCO SOLIDARIDAD',
+  '33': 'CHALCO DE DIAZ COVARRUBIAS',
+  '34': 'TOLUCA DE LERDO',
+  '35': 'TENANCINGO DE DEGOLLADO',
+  '36': 'TEJUPILCO DE HIDALGO',
+  '37': 'TEOLOYUCAN',
+  '38': 'TEXCOCO DE MORA',
+  '39': 'LOS REYES ACAQUILPAN',
+  '40': 'SAN MIGUEL ZINACANTEPEC',
+};
+
+// Catálogo oficial INE (Catálogo de Municipios - CM): código de municipio -> nombre, Estado de México (125 municipios).
+const MUNICIPIOS_MEXICO = {
+  '1': 'ACAMBAY DE RUIZ CASTAÑEDA', '2': 'ACOLMAN', '3': 'ACULCO', '4': 'ALMOLOYA DE ALQUISIRAS',
+  '5': 'ALMOLOYA DE JUAREZ', '6': 'ALMOLOYA DEL RIO', '7': 'AMANALCO', '8': 'AMATEPEC',
+  '9': 'AMECAMECA', '10': 'APAXCO', '11': 'ATENCO', '12': 'ATIZAPAN',
+  '13': 'ATIZAPAN DE ZARAGOZA', '14': 'ATLACOMULCO', '15': 'ATLAUTLA', '16': 'AXAPUSCO',
+  '17': 'AYAPANGO', '18': 'CALIMAYA', '19': 'CAPULHUAC', '20': 'COACALCO DE BERRIOZABAL',
+  '21': 'COATEPEC HARINAS', '22': 'COCOTITLAN', '23': 'COYOTEPEC', '24': 'CUAUTITLAN',
+  '25': 'CUAUTITLAN IZCALLI', '26': 'CHALCO', '27': 'CHAPA DE MOTA', '28': 'CHAPULTEPEC',
+  '29': 'CHIAUTLA', '30': 'CHICOLOAPAN', '31': 'CHICONCUAC', '32': 'CHIMALHUACAN',
+  '33': 'DONATO GUERRA', '34': 'ECATEPEC DE MORELOS', '35': 'ECATZINGO', '36': 'HUEHUETOCA',
+  '37': 'HUEYPOXTLA', '38': 'HUIXQUILUCAN', '39': 'ISIDRO FABELA', '40': 'IXTAPALUCA',
+  '41': 'IXTAPAN DE LA SAL', '42': 'IXTAPAN DEL ORO', '43': 'IXTLAHUACA', '44': 'XALATLACO',
+  '45': 'JALTENCO', '46': 'JILOTEPEC', '47': 'JILOTZINGO', '48': 'JIQUIPILCO',
+  '49': 'JOCOTITLAN', '50': 'JOQUICINGO', '51': 'JUCHITEPEC', '52': 'LERMA',
+  '53': 'MALINALCO', '54': 'MELCHOR OCAMPO', '55': 'METEPEC', '56': 'MEXICALTZINGO',
+  '57': 'MORELOS', '58': 'NAUCALPAN DE JUAREZ', '59': 'NEXTLALPAN', '60': 'NEZAHUALCOYOTL',
+  '61': 'NICOLAS ROMERO', '62': 'NOPALTEPEC', '63': 'OCOYOACAC', '64': 'OCUILAN',
+  '65': 'EL ORO', '66': 'OTUMBA', '67': 'OTZOLOAPAN', '68': 'OTZOLOTEPEC',
+  '69': 'OZUMBA', '70': 'PAPALOTLA', '71': 'LA PAZ', '72': 'POLOTITLAN',
+  '73': 'RAYON', '74': 'SAN ANTONIO LA ISLA', '75': 'SAN FELIPE DEL PROGRESO', '76': 'SAN MARTIN DE LAS PIRAMIDES',
+  '77': 'SAN MATEO ATENCO', '78': 'SAN SIMON DE GUERRERO', '79': 'SANTO TOMAS', '80': 'SOYANIQUILPAN DE JUAREZ',
+  '81': 'SULTEPEC', '82': 'TECAMAC', '83': 'TEJUPILCO', '84': 'TEMAMATLA',
+  '85': 'TEMASCALAPA', '86': 'TEMASCALCINGO', '87': 'TEMASCALTEPEC', '88': 'TEMOAYA',
+  '89': 'TENANCINGO', '90': 'TENANGO DEL AIRE', '91': 'TENANGO DEL VALLE', '92': 'TEOLOYUCAN',
+  '93': 'TEOTIHUACAN', '94': 'TEPETLAOXTOC', '95': 'TEPETLIXPA', '96': 'TEPOTZOTLAN',
+  '97': 'TEQUIXQUIAC', '98': 'TEXCALTITLAN', '99': 'TEXCALYACAC', '100': 'TEXCOCO',
+  '101': 'TEZOYUCA', '102': 'TIANGUISTENCO', '103': 'TIMILPAN', '104': 'TLALMANALCO',
+  '105': 'TLALNEPANTLA DE BAZ', '106': 'TLATLAYA', '107': 'TOLUCA', '108': 'TONATICO',
+  '109': 'TULTEPEC', '110': 'TULTITLAN', '111': 'VALLE DE BRAVO', '112': 'VILLA DE ALLENDE',
+  '113': 'VILLA DEL CARBON', '114': 'VILLA GUERRERO', '115': 'VILLA VICTORIA', '116': 'XONACATLAN',
+  '117': 'ZACAZONAPAN', '118': 'ZACUALPAN', '119': 'ZINACANTEPEC', '120': 'ZUMPAHUACAN',
+  '121': 'ZUMPANGO', '122': 'VALLE DE CHALCO SOLIDARIDAD', '123': 'LUVIANOS', '124': 'SAN JOSE DEL RINCON',
+  '125': 'TONANITLA',
+};
 
 // --- FUNCIÓN AUXILIAR PARA DESCARGAS ---
 const downloadBlob = (blob, filename) => {
@@ -223,6 +329,8 @@ export default function App() {
   
   const [rawElectoralData, setRawElectoralData] = useState([]);
   const [isXlsxLibLoading, setIsXlsxLibLoading] = useState(true);
+  const [isPdfLibLoading, setIsPdfLibLoading] = useState(true);
+  const [catalogoLocalidades, setCatalogoLocalidades] = useState({});
   
   // Antes era un useRef: al volverse true dentro del listener de Firestore no disparaba un
   // nuevo render, así que si el guardado a la nube corría ANTES de que el ref cambiara (carrera
@@ -283,7 +391,7 @@ export default function App() {
       anuencia: 'SÍ', notificacion: 'SÍ', reconocimiento: 'SÍ', domicilioAccesible: 'SÍ', casillaAccesible: 'SÍ', urnaElectronica: 'NO'
   });
 
-  const CATALOGO_TIPO_DOMICILIO = ['ESCUELA', 'DOMICILIO PARTICULAR', 'LOCAL COMERCIAL', 'OFICINA PÚBLICA', 'EDIFICIO PÚBLICO', 'OTRO'];
+  const CATALOGO_TIPO_DOMICILIO = ['ESCUELA', 'PARTICULAR', 'OFICINA PÚBLICA', 'LUGAR PÚBLICO'];
 
   const NAV_SECCIONES = [
       { key: 'extraordinary', label: 'Extraordinarias', icon: LayoutGrid },
@@ -358,7 +466,8 @@ export default function App() {
     const localidadesMap = new Map();
     todasMzs.forEach(m => {
       const locId = String(m.localidad);
-      if (!localidadesMap.has(locId)) localidadesMap.set(locId, m.nombreLocalidad ? `${locId} (${m.nombreLocalidad})` : locId);
+      const nombreLoc = m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || '';
+      if (!localidadesMap.has(locId)) localidadesMap.set(locId, nombreLoc ? `${locId} (${nombreLoc})` : locId);
     });
     
     return { 
@@ -385,7 +494,7 @@ export default function App() {
     setIsInitialLoadFinished(false);
     setDistritoInfo({ numero: numStr, estado: "MÉXICO" });
     localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
-    setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${numStr}`) || "");
+    setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${numStr}`) || CABECERAS_DISTRITALES_MEXICO[numStr] || "");
     cargarUbicacionDeDistrito(numStr);
 
     const savedExcelStr = localStorage.getItem(`proyector_excel_D${numStr}`);
@@ -1423,6 +1532,228 @@ export default function App() {
     window.XLSX.writeFile(wb, `Proyeccion_corte_D${distritoInfo.numero}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
+  const exportarReporteObservaciones = () => {
+    if (!window.XLSX) return;
+
+    const wb = window.XLSX.utils.book_new();
+    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const dataCellStyle = { alignment: { horizontal: 'center' } };
+    const estiloVariacion = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloMenos100 = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloCerca750 = { fill: { patternType: 'solid', fgColor: { rgb: 'D9D2E9' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoAlto = { fill: { patternType: 'solid', fgColor: { rgb: 'FF8080' } }, font: { bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoMedio = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC28A' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoBajo = { fill: { patternType: 'solid', fgColor: { rgb: 'E4DFEC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+
+    // --- HOJA 1: RESUMEN ---
+    const cercaCorte750 = filasObservadas.filter(f => f.esCercaCorte750);
+    const wsResumen_data = [
+      [`Reporte de Observaciones — Distrito ${distritoInfo.numero}`],
+      [`Corte de padrón: ${fechaCorte || 'N/A'}`],
+      [],
+      ['Observación', 'Registros detectados'],
+      ['Variación Padrón/Lista', filasObservadas.filter(f => f.esVariacion).length],
+      ['Menos de 100 electores', filasObservadas.filter(f => f.esMenos100).length],
+      [`Cerca del corte de 750 (±${MARGEN_CORTE_750})`, cercaCorte750.length],
+      [`   · Riesgo ALTO (a 5 electores o menos)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'ALTO').length],
+      [`   · Riesgo MEDIO (a 6-10 electores)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'MEDIO').length],
+      [`   · Riesgo BAJO (a 11-15 electores)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'BAJO').length],
+      [],
+      ['Total de registros con al menos una observación', filasObservadas.length],
+    ];
+    const wsResumen = window.XLSX.utils.aoa_to_sheet(wsResumen_data);
+    wsResumen['!cols'] = [{ wch: 46 }, { wch: 18 }];
+    if (wsResumen['A1']) wsResumen['A1'].s = { font: { bold: true, sz: 14 } };
+    ['A4', 'B4'].forEach(addr => { if (wsResumen[addr]) wsResumen[addr].s = headerStyle; });
+    window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+    // --- HOJA 2: DETALLE ---
+    const headers = ['Distrito Federal', 'Distrito Local', 'Municipio', 'Sección', 'Categoría', 'Nomenclatura Padrón', 'Nomenclatura Lista', 'Padrón', 'Lista Nominal', 'Variación P/L', 'Menos de 100', 'Cerca del Corte 750', 'Electores al Corte', 'Nivel de Riesgo', 'Observaciones'];
+    const rows = [headers, ...filasObservadas.map(f => [
+      f.fed, f.loc, f.mun, f4(f.seccion), f.categoria, f.nomenclaturaPadron || '', f.nomenclaturaLista || '',
+      Number(f.padronRef) || 0, Number(f.listaRef) || 0,
+      f.esVariacion ? 'SÍ' : '', f.esMenos100 ? 'SÍ' : '', f.esCercaCorte750 ? 'SÍ' : '',
+      f.distanciaCorte750 !== null ? f.distanciaCorte750 : '', f.nivelRiesgo750 || '', f.observaciones
+    ])];
+
+    const wsDetalle = window.XLSX.utils.aoa_to_sheet(rows);
+    wsDetalle['!cols'] = headers.map(h => ({ wch: Math.max(14, Math.min(h.length + 4, 26)) }));
+    headers.forEach((_, i) => { const addr = window.XLSX.utils.encode_cell({ r: 0, c: i }); if (wsDetalle[addr]) wsDetalle[addr].s = headerStyle; });
+    filasObservadas.forEach((f, idx) => {
+      const excelRow = idx + 2; // fila 1 = encabezados
+      ['A','B','C','D','E','F','G','H','I','M'].forEach(col => { const addr = `${col}${excelRow}`; if (wsDetalle[addr]) wsDetalle[addr].s = dataCellStyle; });
+      if (f.esVariacion) { const addr = `J${excelRow}`; if (wsDetalle[addr]) wsDetalle[addr].s = estiloVariacion; }
+      if (f.esMenos100) { const addr = `K${excelRow}`; if (wsDetalle[addr]) wsDetalle[addr].s = estiloMenos100; }
+      if (f.esCercaCorte750) { const addr = `L${excelRow}`; if (wsDetalle[addr]) wsDetalle[addr].s = estiloCerca750; }
+      if (f.nivelRiesgo750) {
+        const addr = `N${excelRow}`;
+        const estilo = f.nivelRiesgo750 === 'ALTO' ? estiloRiesgoAlto : f.nivelRiesgo750 === 'MEDIO' ? estiloRiesgoMedio : estiloRiesgoBajo;
+        if (wsDetalle[addr]) wsDetalle[addr].s = estilo;
+      }
+    });
+    wsDetalle['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
+    window.XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
+
+    window.XLSX.writeFile(wb, `Reporte_Observaciones_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
+
+  const exportarInformeEjecutivoPDF = () => {
+    if (!window.jspdf || isPdfLibLoading) { setErrorMessage("La librería de PDF aún está cargando. Intenta de nuevo."); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    let y;
+
+    doc.setFillColor(204, 0, 153);
+    doc.rect(0, 0, pageWidth, 90, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('RESUMEN DISTRITAL', margin, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    const cabeceraTxt = cabeceraDistrital ? ` — ${cabeceraDistrital}` : '';
+    doc.text(`Distrito ${f4(distritoInfo.numero)}${cabeceraTxt} · Estado de México`, margin, 62);
+    doc.setFontSize(9);
+    doc.text(`Corte de padrón: ${fechaCorte || 'N/A'}  ·  Generado: ${new Date().toLocaleString('es-MX')}`, margin, 78);
+
+    doc.setTextColor(20, 20, 20);
+    y = 115;
+
+    // --- 1. Resumen General ---
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('1. Resumen General del Distrito', margin, y);
+    y += 8;
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [204, 0, 153], textColor: 255, fontStyle: 'bold' },
+      head: [['Tipo de Casilla', 'Padrón', 'Lista Nominal']],
+      body: [
+        ['Total de Casillas', totalCasillasDistrito.totalPadron, totalCasillasDistrito.totalLista],
+        ['Básicas / Contiguas', totalCasillasDistrito.bcPadron, totalCasillasDistrito.bcLista],
+        ['Extraordinarias', totalCasillasDistrito.exPadron, totalCasillasDistrito.exLista],
+        ['Especiales', totalCasillasDistrito.espPadron, totalCasillasDistrito.espLista],
+      ],
+    });
+    y = doc.lastAutoTable.finalY + 12;
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 5 },
+      body: [
+        ['Total de Secciones', String(sections.length), 'Padrón Electoral', totalesPadronLista.padron.toLocaleString('es-MX')],
+        ['Municipios', String(totalMunicipios), 'Lista Nominal', totalesPadronLista.lista.toLocaleString('es-MX')],
+        ['Básicas', String(desgloseTiposCasilla.basicas), 'Contiguas', String(desgloseTiposCasilla.contiguas)],
+        ['Extraordinarias', String(desgloseTiposCasilla.extraordinarias), 'Extraordinarias Contiguas', String(desgloseTiposCasilla.extraordinariasContiguas)],
+        ['Especiales', String(desgloseTiposCasilla.especiales), '', ''],
+      ],
+    });
+    y = doc.lastAutoTable.finalY + 24;
+
+    // --- 2. Desglose por Municipio ---
+    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('2. Desglose por Municipio', margin, y);
+    y += 8;
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'striped',
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [204, 0, 153], textColor: 255, fontStyle: 'bold' },
+      head: [['Municipio', 'Casillas', '% del Distrito']],
+      body: municipiosDelDistrito.map(m => [m.nombre, String(m.casillas), `${m.porcentaje.toFixed(1)}%`]),
+    });
+    y = doc.lastAutoTable.finalY + 24;
+
+    // --- 3. Alertas y Observaciones ---
+    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('3. Alertas y Observaciones', margin, y);
+    y += 8;
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold' },
+      head: [['Observación', 'Secciones Detectadas']],
+      body: [
+        ['Variación Padrón/Lista', String(countVariacion)],
+        ['Menos de 100 electores', String(countMenos100)],
+        [`Cerca del corte de 750 (±${MARGEN_CORTE_750})`, String(countCercaCorte750)],
+      ],
+    });
+    y = doc.lastAutoTable.finalY + 18;
+
+    const filasVariacion = filasObservadas.filter(f => f.esVariacion);
+    const filasMenos100 = filasObservadas.filter(f => f.esMenos100);
+    const filasCerca750 = filasObservadas.filter(f => f.esCercaCorte750);
+
+    const tablaDetalleAlerta = (titulo, color, filas, colExtraHead, colExtraBody) => {
+      if (filas.length === 0) return;
+      if (y > pageHeight - 100) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.text(titulo, margin, y);
+      doc.setTextColor(20, 20, 20);
+      y += 6;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 4 }, headStyles: { fillColor: color, textColor: 255, fontStyle: 'bold' },
+        head: [['Sección', 'Categoría', 'Padrón', 'Lista', ...colExtraHead]],
+        body: filas.map(f => [f4(f.seccion), f.categoria, String(f.padronRef), String(f.listaRef), ...colExtraBody(f)]),
+      });
+      y = doc.lastAutoTable.finalY + 16;
+    };
+
+    tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [239, 68, 68], filasVariacion, [], () => []);
+    tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [217, 119, 6], filasMenos100, [], () => []);
+    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [124, 58, 237], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
+
+    // --- 4. Estado de Ubicación de Casillas ---
+    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('4. Estado de Ubicación de Casillas (Domicilios)', margin, y);
+    y += 8;
+    const completas = seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length;
+    const parciales = seccionesUbicacion.filter(s => s.estado === 'parcial').length;
+    const sinAsignar = seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length;
+    const totalSeccionesUbicacion = completas + parciales + sinAsignar;
+    const pct = (n) => totalSeccionesUbicacion > 0 ? `${(n / totalSeccionesUbicacion * 100).toFixed(1)}%` : '0.0%';
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      head: [['Estado del Domicilio', 'Secciones', '% del Distrito']],
+      body: [
+        ['Completo', String(completas), pct(completas)],
+        ['Parcial', String(parciales), pct(parciales)],
+        ['Sin Asignar', String(sinAsignar), pct(sinAsignar)],
+      ],
+    });
+    y = doc.lastAutoTable.finalY + 24;
+
+    // --- 5. Tipos de Domicilio ---
+    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+    doc.text('5. Tipos de Domicilio', margin, y);
+    y += 8;
+    const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin }, theme: 'striped',
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      head: [['Tipo de Domicilio', 'Domicilios', '% del Total', 'Secciones']],
+      body: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => [
+        tipo, String(count), totalDomicilios > 0 ? `${(count / totalDomicilios * 100).toFixed(1)}%` : '0.0%', String(seccionesPorTipoDomicilio[tipo] || 0)
+      ]),
+    });
+
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Proyector Cloud · Distrito ${f4(distritoInfo.numero)} · Página ${i} de ${totalPages}`, margin, pageHeight - 20);
+    }
+
+    doc.save(`Resumen_Distrital_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.pdf`);
+  };
+
   const exportarRespaldoEquipamiento = () => {
       const data = { mamparasPorCasilla: mamparasPorCasilla, equipConfig: equipConfig };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -1563,6 +1894,14 @@ export default function App() {
   const localidadesDisp = useMemo(() => {
     if (!form.seccionOrigen) return [];
     return [...new Set(rawElectoralData.filter(d => String(d.seccion) === String(form.seccionOrigen)).map(d => String(d.localidad)))].sort();
+  }, [rawElectoralData, form.seccionOrigen]);
+
+  // Municipio de la sección sede activa en la Mesa de Armado, para resolver nombres de localidad
+  // contra el catálogo fijo (los códigos de localidad se numeran dentro de cada municipio).
+  const municipioSeccionOrigen = useMemo(() => {
+    if (!form.seccionOrigen) return '';
+    const mz = rawElectoralData.find(d => String(d.seccion) === String(form.seccionOrigen));
+    return mz ? mz.municipio : '';
   }, [rawElectoralData, form.seccionOrigen]);
 
   const manzanasTablero = useMemo(() => {
@@ -1743,6 +2082,30 @@ export default function App() {
     });
     return res;
   }, [consolidadoB_C, sortedCasillasGlobales, rawElectoralData]);
+
+  const municipiosDelDistrito = useMemo(() => {
+    const codigos = [...new Set(rawElectoralData.map(m => String(m.municipio).trim()).filter(Boolean))];
+    const casillasPorMunicipio = {};
+    filasConsolidadoFinal.forEach(row => {
+      const numCasillas = Math.max(Number(row.countPadron) || 0, Number(row.countLista) || 0);
+      if (numCasillas <= 0) return;
+      const codigoNorm = String(Number(row.mun));
+      casillasPorMunicipio[codigoNorm] = (casillasPorMunicipio[codigoNorm] || 0) + numCasillas;
+    });
+    const totalCasillas = Object.values(casillasPorMunicipio).reduce((s, n) => s + n, 0);
+    return codigos
+      .map(cod => {
+        const codigoNorm = String(Number(cod));
+        const casillas = casillasPorMunicipio[codigoNorm] || 0;
+        return {
+          codigo: codigoNorm,
+          nombre: MUNICIPIOS_MEXICO[codigoNorm] || `MUNICIPIO ${cod}`,
+          casillas,
+          porcentaje: totalCasillas > 0 ? (casillas / totalCasillas) * 100 : 0,
+        };
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [rawElectoralData, filasConsolidadoFinal]);
 
   // Padrón/Lista por casilla individual (para la plantilla de Ubicación), usando la misma
   // distribución por mesa (distPadron/distLista) que ya calcula el consolidado de Proyección.
@@ -1926,7 +2289,14 @@ export default function App() {
         totalLista: rows.reduce((sum, r) => sum + Number(r.countLista), 0),
         tieneVariacion: rows.some(r => r.variacion),
         tieneNoInstala: rows.some(r => r.distPadron.some(d => d.nombre === 'NO INSTALA') || r.distLista.some(d => d.nombre === 'NO INSTALA')),
-        tieneMenos100: rows.some(r => Number(r.padronRef) < 100 || Number(r.listaRef) < 100),
+        tieneMenos100: rows.some(r => r.categoria !== 'ESPECIAL' && (Number(r.padronRef) < 100 || Number(r.listaRef) < 100)),
+        tieneCercaCorte750: rows.some(r => r.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(r.padronRef) || estaCercaDelCorte750(r.listaRef))),
+        distanciaMinCorte750: Math.min(Infinity, ...rows.filter(r => r.categoria !== 'ESPECIAL').flatMap(r => {
+            const d = [];
+            if (estaCercaDelCorte750(r.padronRef)) d.push(distanciaAlCorte750(r.padronRef));
+            if (estaCercaDelCorte750(r.listaRef)) d.push(distanciaAlCorte750(r.listaRef));
+            return d;
+        })),
         categorias: [...new Set(rows.map(r => r.categoria))],
     }));
   }, [filasConsolidadoFinal]);
@@ -1950,10 +2320,48 @@ export default function App() {
 
   const countVariacion = useMemo(() => seccionesAgrupadas.filter(g => g.tieneVariacion).length, [seccionesAgrupadas]);
   const countMenos100 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneMenos100).length, [seccionesAgrupadas]);
+  const countCercaCorte750 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneCercaCorte750).length, [seccionesAgrupadas]);
+
+  // Filas individuales (una por casilla/categoría) con al menos una observación: Variación, Menos de 100 o Cerca del Corte de 750.
+  // Se reutiliza tanto en el Reporte de Observaciones (Excel) como en el Informe Ejecutivo (PDF).
+  const filasObservadas = useMemo(() => {
+    const filas = [];
+    seccionesAgrupadas.forEach(grupo => {
+      grupo.rows.forEach(row => {
+        const esVariacion = !!row.variacion;
+        const esMenos100 = row.categoria !== 'ESPECIAL' && (Number(row.padronRef) < 100 || Number(row.listaRef) < 100);
+        const esCercaCorte750 = row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef));
+        if (!esVariacion && !esMenos100 && !esCercaCorte750) return;
+        let distanciaCorte750 = null;
+        if (esCercaCorte750) {
+          const candidatos = [];
+          if (estaCercaDelCorte750(row.padronRef)) candidatos.push(distanciaAlCorte750(row.padronRef));
+          if (estaCercaDelCorte750(row.listaRef)) candidatos.push(distanciaAlCorte750(row.listaRef));
+          distanciaCorte750 = Math.min(...candidatos);
+        }
+        const nivelRiesgo750 = nivelRiesgoCorte750(distanciaCorte750);
+        const observaciones = [];
+        if (esVariacion) observaciones.push('VARIACIÓN PADRÓN/LISTA');
+        if (esMenos100) observaciones.push('MENOS DE 100');
+        if (esCercaCorte750) observaciones.push(`CERCA DEL CORTE DE 750 (a ${distanciaCorte750}, riesgo ${nivelRiesgo750})`);
+        filas.push({
+          seccion: row.seccion, fed: row.fed, loc: row.loc, mun: row.mun, categoria: row.categoria,
+          nomenclaturaPadron: row.nomenclaturaPadron, nomenclaturaLista: row.nomenclaturaLista,
+          padronRef: row.padronRef, listaRef: row.listaRef,
+          esVariacion, esMenos100, esCercaCorte750, distanciaCorte750, nivelRiesgo750,
+          observaciones: observaciones.join(' · ')
+        });
+      });
+    });
+    filas.sort((a, b) => Number(a.seccion) - Number(b.seccion));
+    return filas;
+  }, [seccionesAgrupadas]);
+
   const seccionesMostradas = useMemo(() => {
       if (!filtroAlerta) return seccionesFiltradas;
       if (filtroAlerta === 'variacion') return seccionesFiltradas.filter(g => g.tieneVariacion);
       if (filtroAlerta === 'menos100') return seccionesFiltradas.filter(g => g.tieneMenos100);
+      if (filtroAlerta === 'cerca750') return seccionesFiltradas.filter(g => g.tieneCercaCorte750);
       return seccionesFiltradas;
   }, [seccionesFiltradas, filtroAlerta]);
 
@@ -2057,6 +2465,19 @@ export default function App() {
       return counts;
   }, [domicilios]);
 
+  // Número de secciones distintas que tienen al menos una casilla con domicilio de cada tipo
+  // (una misma sección puede sumar a más de un tipo si tiene domicilios mixtos).
+  const seccionesPorTipoDomicilio = useMemo(() => {
+      const counts = {};
+      seccionesUbicacion.forEach(g => {
+          const tiposEnSeccion = new Set(
+              g.casillas.filter(c => c.dom?.tipoDomicilio).map(c => (c.dom.tipoDomicilio || '').trim() || 'SIN TIPO')
+          );
+          tiposEnSeccion.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+      });
+      return counts;
+  }, [seccionesUbicacion]);
+
   const statsEquipamiento = useMemo(() => {
      let b_c = 0, extra = 0, esp = 0;
      todasLasCasillasEquipamiento.forEach(c => {
@@ -2143,7 +2564,7 @@ export default function App() {
     if (lastDistrictStr) {
         try {
             const parsedDistrict = JSON.parse(lastDistrictStr); setDistritoInfo(parsedDistrict);
-            setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${parsedDistrict.numero}`) || "");
+            setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${parsedDistrict.numero}`) || CABECERAS_DISTRITALES_MEXICO[parsedDistrict.numero] || "");
             cargarUbicacionDeDistrito(parsedDistrict.numero);
             const savedExcelStr = localStorage.getItem(`proyector_excel_D${parsedDistrict.numero}`);
             if (savedExcelStr) {
@@ -2170,6 +2591,38 @@ export default function App() {
       setIsXlsxLibLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const cargarAutoTable = () => {
+      const script2 = document.createElement('script');
+      script2.src = "https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.js";
+      script2.async = true;
+      script2.onload = () => setIsPdfLibLoading(false);
+      document.head.appendChild(script2);
+    };
+    if (typeof window !== 'undefined' && !window.jspdf) {
+      const script1 = document.createElement('script');
+      script1.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js";
+      script1.async = true;
+      script1.onload = cargarAutoTable;
+      document.head.appendChild(script1);
+    } else if (window.jspdf) {
+      cargarAutoTable();
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch('./src/data/localidades.json')
+      .then(r => r.ok ? r.json() : {})
+      .then(data => setCatalogoLocalidades(data))
+      .catch(() => setCatalogoLocalidades({}));
+  }, []);
+
+  // Nombre oficial de la localidad (catálogo INE fijo, Estado de México) para un municipio+localidad dados.
+  const nombreLocalidad = (municipio, localidad) => {
+    const key = `${Number(municipio)}-${Number(localidad)}`;
+    return catalogoLocalidades[key] || '';
+  };
 
   useEffect(() => {
     if (form.rol === 'alimentadora') {
@@ -2894,6 +3347,7 @@ export default function App() {
                                     <div className="text-center bg-white/15 rounded-2xl px-5 py-2.5 shrink-0">
                                         <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Municipios</p>
                                         <p className="text-2xl font-black text-white mt-0.5">{totalMunicipios}</p>
+                                        <button onClick={exportarInformeEjecutivoPDF} className="mt-2 w-full flex items-center justify-center gap-1.5 bg-pink-700/40 hover:bg-pink-700/70 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border border-white/25 transition-all"><FileText className="w-3 h-3" /> Resumen Distrital</button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
@@ -2911,40 +3365,53 @@ export default function App() {
                                     </div>
                                 </div>
                             </div>
+                            {municipiosDelDistrito.length > 0 && (
+                                <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Municipios que conforman el distrito ({municipiosDelDistrito.length})</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {municipiosDelDistrito.map(m => (
+                                            <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-pink-50 text-pink-700">
+                                                <span className="text-[10px] font-black uppercase">{m.nombre}</span>
+                                                <span className="text-[9px] font-bold text-pink-500 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Total de Secciones</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{sections.length}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{sections.length}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Padrón Electoral</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-violet-600 uppercase tracking-widest mb-1">Lista Nominal</p>
-                                    <h5 className="text-4xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
+                                    <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Básicas</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
+                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Contiguas</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
+                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias</p>
-                                    <h5 className="text-3xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
+                                    <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
-                                    <h5 className="text-3xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
+                                    <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
                                     <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Especiales</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
+                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
                                 </div>
                             </div>
                         </div>
@@ -3069,7 +3536,7 @@ export default function App() {
                         </div>
                         {!listadoExpandido && (
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                {seccionesAgrupadas.length} secciones · <span className="text-red-600">{countVariacion} con variación</span> · <span className="text-amber-600">{countMenos100} con menos de 100</span>
+                                {seccionesAgrupadas.length} secciones · <span className="text-red-600">{countVariacion} con variación</span> · <span className="text-amber-600">{countMenos100} con menos de 100</span> · <span className="text-violet-600">{countCercaCorte750} cerca del corte de 750</span>
                             </span>
                         )}
                     </button>
@@ -3090,6 +3557,9 @@ export default function App() {
                                        <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
                                            <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
                                        </button>
+                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
+                                           <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
+                                       </button>
                                        {filtroAlerta && (
                                            <button onClick={() => setFiltroAlerta(null)} className="px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
                                                <X className="w-3.5 h-3.5" /> Quitar filtro
@@ -3104,6 +3574,7 @@ export default function App() {
                                    </div>
                                    <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Star className="w-5 h-5 text-pink-500" /> Agregar Casillas Especiales</button>
                                    <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Bookmark className="w-5 h-5 text-pink-200" /> Proyección Oficial INE</button>
+                                   <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><AlertTriangle className="w-5 h-5 text-violet-200" /> Reporte de Observaciones</button>
                                    <button onClick={exportarQGIS} className="bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Download className="w-5 h-5" /> QGIS</button>
                                </div>
                             </div>
@@ -3139,6 +3610,7 @@ export default function App() {
                                                                         ))}
                                                                         {grupo.tieneNoInstala && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
                                                                         {grupo.tieneVariacion && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
+                                                                        {grupo.tieneCercaCorte750 && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
                                                                     </div>
                                                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
                                                                 </div>
@@ -3167,6 +3639,17 @@ export default function App() {
                                                                         <div className="flex flex-col gap-1">
                                                                             <span className="text-slate-900 font-black text-base">P: {Number(row.padronRef).toLocaleString()}</span>
                                                                             <span className="text-slate-500 text-xs font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
+                                                                            {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
+                                                                                const dist = Math.min(
+                                                                                    estaCercaDelCorte750(row.padronRef) ? distanciaAlCorte750(row.padronRef) : Infinity,
+                                                                                    estaCercaDelCorte750(row.listaRef) ? distanciaAlCorte750(row.listaRef) : Infinity
+                                                                                );
+                                                                                const nivel = nivelRiesgoCorte750(dist);
+                                                                                const colorNivel = nivel === 'ALTO' ? 'bg-red-100 text-red-700' : nivel === 'MEDIO' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
+                                                                                return (
+                                                                                    <span className={`mt-1 inline-flex items-center gap-1 px-2 py-1 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
+                                                                                );
+                                                                            })()}
                                                                         </div>
                                                                     </td>
                                                                     <td className="p-6 text-left">
@@ -3228,7 +3711,7 @@ export default function App() {
                     <button onClick={() => setUbicacionExpandido(!ubicacionExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center gap-4">
                             {ubicacionExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Ubicación de Casillas</span>
+                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Tipos de Domicilios de Casillas</span>
                         </div>
                         {!ubicacionExpandido && (
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -3245,7 +3728,7 @@ export default function App() {
                                         <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
                                         <div>
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
-                                            <h2 className="text-2xl font-black italic">Módulo de Ubicación de Casillas</h2>
+                                            <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -3260,9 +3743,12 @@ export default function App() {
                                 <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
-                                            <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo}</button>
-                                        ))}
+                                        {(() => {
+                                            const totalTipos = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
+                                            return Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
+                                                <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo} ({totalTipos > 0 ? (count / totalTipos * 100).toFixed(1) : '0.0'}%) · {seccionesPorTipoDomicilio[tipo] || 0} {(seccionesPorTipoDomicilio[tipo] || 0) === 1 ? 'sección' : 'secciones'}</button>
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
                             )}
@@ -3403,7 +3889,10 @@ export default function App() {
                         <label className="text-[10px] font-black uppercase text-slate-500 ml-1 text-left">Localidad</label>
                         <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
                             <option value="">-- LOC --</option>
-                            {localidadesDisp.map(l => <option key={l} value={l}>{l}</option>)}
+                            {localidadesDisp.map(l => {
+                                const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
+                                return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
+                            })}
                         </select>
                     </div>
                   </div>
@@ -3411,10 +3900,10 @@ export default function App() {
                   {form.localidad && (
                     <div className="space-y-5 text-left">
                       <div className="space-y-2.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block ml-1 text-left">Manzanas en {form.localidad}</label>
+                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block ml-1 text-left">Manzanas en {f4(form.localidad)}{catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`] ? ` — ${catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`]}` : ''}</label>
                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
                             const assign = getMzAssignment(m.id); const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
-                            return (<button key={m.id} title={m.nombreLocalidad} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${isSelected ? 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white'} ${assign?.type === 'sede' ? 'text-slate-800 bg-slate-200 border-slate-300 shadow-inner font-black' : ''} ${assign?.type === 'alimentadora' ? 'text-pink-700 bg-pink-100 border-pink-300 shadow-inner' : ''}`}><span className="opacity-50 mb-1 font-mono text-[8px] text-left">MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
+                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${isSelected ? 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white'} ${assign?.type === 'sede' ? 'text-slate-800 bg-slate-200 border-slate-300 shadow-inner font-black' : ''} ${assign?.type === 'alimentadora' ? 'text-pink-700 bg-pink-100 border-pink-300 shadow-inner' : ''}`}><span className="opacity-50 mb-1 font-mono text-[8px] text-left">MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
                         })}</div>
                       </div>
                       
