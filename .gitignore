@@ -1,0 +1,24 @@
+# Datos electorales reales / archivos de prueba (nunca deben subirse al repo)
+*.xlsx
+*.xlsm
+*.csv
+*.b64.txt
+*.json
+!.firebaserc
+!.claude/*.json
+
+# Scripts de verificación / basura de scratch
+verify_*.py
+inspect_*.py
+check_*.py
+compare_*.py
+prep_*.py
+make_test_*.py
+resolve_*.py
+simulate_*.py
+apply_*.py
+
+# Sistema
+node_modules/
+.DS_Store
+Thumbs.db

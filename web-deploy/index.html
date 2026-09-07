@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proyector Cloud v18.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.3.1",
+          "react-dom": "https://esm.sh/react-dom@18.3.1",
+          "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+          "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+          "lucide-react": "https://esm.sh/lucide-react@0.469.0?external=react,react-dom",
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+    <script>
+      // Configuración de Firebase (proyecto "proyector-voe") — activa el Modo Nube de la app.
+      window.__firebase_config = {
+        apiKey: "AIzaSyAJNS-49Ivxvfa0t_qxPEfQIW0B686OpZA",
+        authDomain: "proyector-voe.firebaseapp.com",
+        databaseURL: "https://proyector-voe-default-rtdb.firebaseio.com",
+        projectId: "proyector-voe",
+        storageBucket: "proyector-voe.firebasestorage.app",
+        messagingSenderId: "136362621065",
+        appId: "1:136362621065:web:28b4728bc9110063d56e58"
+      };
+      window.__app_id = "proyector-cloud-v18";
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react" data-type="module" src="./src/App.jsx"></script>
+  </body>
+</html>
