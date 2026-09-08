@@ -390,6 +390,7 @@ export default function App() {
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
   const [seccionesVisiblesUbicacion, setSeccionesVisiblesUbicacion] = useState([]);
   const [limpiezaDomiciliosBloqueada, setLimpiezaDomiciliosBloqueada] = useState(true);
+  const [diferenciaProyeccionExpandido, setDiferenciaProyeccionExpandido] = useState(false);
   const [formUbicacionDraft, setFormUbicacionDraft] = useState({
       tipoDomicilio: '', domicilio: '', ubicacion: '', referencia: '', nombrePropietario: ''
   });
@@ -626,6 +627,10 @@ export default function App() {
           setFolioConfig(f ? { ...DEFAULT_FOLIO_CONFIG, ...JSON.parse(f) } : DEFAULT_FOLIO_CONFIG);
       } catch (e) { setFolioConfig(DEFAULT_FOLIO_CONFIG); }
       setFechaCorte(localStorage.getItem(`proyector_fechaCorte_D${numStr}`) || "");
+      try {
+          const r = localStorage.getItem(`proyector_reporteDiferenciaProyeccion_D${numStr}`);
+          setReporteDiferenciaProyeccion(r ? JSON.parse(r) : null);
+      } catch (e) { setReporteDiferenciaProyeccion(null); }
   };
 
   useEffect(() => {
@@ -657,6 +662,14 @@ export default function App() {
       if (!distritoInfo.numero) return;
       try { localStorage.setItem(`proyector_fechaCorte_D${distritoInfo.numero}`, fechaCorte); } catch (e) {}
   }, [fechaCorte, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try {
+          if (reporteDiferenciaProyeccion) localStorage.setItem(`proyector_reporteDiferenciaProyeccion_D${distritoInfo.numero}`, JSON.stringify(reporteDiferenciaProyeccion));
+          else localStorage.removeItem(`proyector_reporteDiferenciaProyeccion_D${distritoInfo.numero}`);
+      } catch (e) {}
+  }, [reporteDiferenciaProyeccion, distritoInfo.numero]);
 
   // ===================== PERSISTENCIA LOCAL DEL DISEÑO (EXTRAORDINARIAS) =====================
   // Antes esta configuración sólo se guardaba en Firestore (nube); en Modo Local nunca se
@@ -806,7 +819,8 @@ export default function App() {
 
   const exportarPlantillaUbicacion = () => {
       if (!window.XLSX) return;
-      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Tipo Domicilio', 'Ubicación', 'Domicilio', 'Referencia', 'Nombre propietario'];
+      const diferenciaPorSeccion = new Map((reporteDiferenciaProyeccion?.filas || []).map(r => [r.seccion, r]));
+      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Tipo Domicilio', 'Ubicación', 'Domicilio', 'Referencia', 'Nombre propietario', 'Casillas Reales (Doc. Importado)', 'Proyección Sistema (Padrón)', 'Proyección Sistema (Lista)', 'Diferencia (Padrón)', 'Diferencia (Lista)'];
       const rows = [headers];
       const tipoSeccionLabel = { BASICA: 'BÁSICA', EXTRAORDINARIA: 'EXTRAORDINARIA', ESPECIAL: 'ESPECIAL' };
       todasLasCasillasEquipamiento.forEach(c => {
@@ -816,9 +830,11 @@ export default function App() {
           const codigoIne = c.nombre === 'B' ? 'B1' : c.nombre;
           const padronVal = datosMesaPorClave.mapaPadron.get(clave);
           const listaVal = datosMesaPorClave.mapaLista.get(clave);
+          const dif = diferenciaPorSeccion.get(f4(c.seccion));
           rows.push([
               distritoInfo.numero, c.municipio || '', f4(c.seccion), tipoSeccionLabel[c.categoria] || '', padronVal ?? '', listaVal ?? '', codigoIne, codigoIne,
-              dom?.tipoDomicilio || '', dom?.ubicacion || '', dom?.domicilio || '', dom?.referencia || '', dom?.nombrePropietario || ''
+              dom?.tipoDomicilio || '', dom?.ubicacion || '', dom?.domicilio || '', dom?.referencia || '', dom?.nombrePropietario || '',
+              dif?.real ?? '', dif?.proyectadoPadron ?? '', dif?.proyectadoLista ?? '', dif?.difPadron ?? '', dif?.difLista ?? ''
           ]);
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -2750,6 +2766,7 @@ export default function App() {
             folioConfig: data.folioConfig || DEFAULT_FOLIO_CONFIG,
             fechaCorte: data.fechaCorte || "",
             cabeceraDistrital: data.cabeceraDistrital || "",
+            reporteDiferenciaProyeccion: data.reporteDiferenciaProyeccion || null,
           };
           const cloudJson = JSON.stringify(remoto);
 
@@ -2773,6 +2790,7 @@ export default function App() {
             setFolioConfig({ ...DEFAULT_FOLIO_CONFIG, ...remoto.folioConfig });
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
+            setReporteDiferenciaProyeccion(remoto.reporteDiferenciaProyeccion);
           }
         } catch (err) { console.error("Error leyendo de Firestore", err); }
       }
@@ -2804,6 +2822,7 @@ export default function App() {
       folioConfig,
       fechaCorte,
       cabeceraDistrital,
+      reporteDiferenciaProyeccion,
     };
     const currentJson = JSON.stringify(payload);
     if (currentJson === lastSavedJson.current) return;
@@ -2823,7 +2842,7 @@ export default function App() {
     }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
-  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, folioConfig, fechaCorte, cabeceraDistrital, distritoInfo.numero, user, isInitialLoadFinished]);
+  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, distritoInfo.numero, user, isInitialLoadFinished]);
 
   useEffect(() => {
     if (view === 'welcome') {
@@ -2898,7 +2917,7 @@ export default function App() {
                               }
                               const numStr = String(distritoInfo.numero);
                               localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
-                              setCasillasGlobales([]); setDomicilios({}); setUbicacionCasillas({});
+                              setCasillasGlobales([]); setDomicilios({}); setUbicacionCasillas({}); setReporteDiferenciaProyeccion(null);
                               setView('upload');
                           }
                       }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
@@ -3908,25 +3927,33 @@ export default function App() {
                             )}
 
                             {reporteDiferenciaProyeccion && (
-                                <div className="rounded-2xl px-6 py-5 border-2 border-violet-300 bg-violet-50">
-                                    <div className="flex items-start gap-4">
-                                        <BarChart3 className="w-6 h-6 text-violet-600 flex-shrink-0 mt-0.5" />
-                                        <div className="flex-1">
+                                <div className="rounded-2xl border-2 border-violet-300 bg-violet-50 overflow-hidden">
+                                    <button onClick={() => setDiferenciaProyeccionExpandido(v => !v)} className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-violet-100/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            {diferenciaProyeccionExpandido ? <ChevronUp className="w-5 h-5 text-violet-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-violet-400 flex-shrink-0" />}
+                                            <BarChart3 className="w-5 h-5 text-violet-600 flex-shrink-0" />
+                                            <span className="text-sm font-black uppercase tracking-wide text-violet-700">Diferencia de Proyección (última importación)</span>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>
+                                            {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'Sin diferencias' : `${reporteDiferenciaProyeccion.seccionesConDiferencia} sección(es) con diferencia`}
+                                        </span>
+                                    </button>
+                                    {diferenciaProyeccionExpandido && (
+                                        <div className="px-6 pb-6">
                                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <p className="text-sm font-black uppercase tracking-wide text-violet-700">Reporte Rápido: Diferencia de Proyección</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Real (Documento): {reporteDiferenciaProyeccion.totales.real}</span>
+                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
+                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                                </div>
                                                 <button onClick={exportarReporteDiferenciaProyeccion} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase"><FileDown className="w-3.5 h-3.5" /> Exportar</button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-3">
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Real (Documento): {reporteDiferenciaProyeccion.totales.real}</span>
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
-                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
                                             </div>
                                             {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? (
                                                 <p className="text-xs mt-3 font-bold text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Todas las secciones coinciden con la proyección del sistema.</p>
                                             ) : (
                                                 <>
-                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema:</p>
+                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Este mismo detalle (por Tipo de Domicilio) se incluye en el "Listado Tipos de Domicilio":</p>
                                                     <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
                                                         <table className="w-full text-left border-collapse min-w-[500px]">
                                                             <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
@@ -3949,8 +3976,7 @@ export default function App() {
                                                 </>
                                             )}
                                         </div>
-                                        <button onClick={() => setReporteDiferenciaProyeccion(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                                    </div>
+                                    )}
                                 </div>
                             )}
 
