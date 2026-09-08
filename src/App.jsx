@@ -3746,7 +3746,7 @@ export default function App() {
                     <button onClick={() => setUbicacionExpandido(!ubicacionExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center gap-4">
                             {ubicacionExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Exportar Plantilla</span>
+                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Tipos de Domicilios de Casillas</span>
                         </div>
                         {!ubicacionExpandido && (
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -3763,12 +3763,12 @@ export default function App() {
                                         <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
                                         <div>
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
-                                            <h2 className="text-2xl font-black italic">Exportar Plantilla</h2>
+                                            <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
-                                        <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Exportar Plantilla</button>
+                                        <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
                                     </div>
                                 </div>
                                 <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
