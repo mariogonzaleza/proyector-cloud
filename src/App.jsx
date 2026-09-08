@@ -3640,42 +3640,42 @@ export default function App() {
                             ) : (
                                 <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-200 overflow-hidden overflow-x-auto text-left">
                                     <table className="w-full text-left border-collapse min-w-[1000px] text-left">
-                                        <thead className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest border-b-8 border-pink-600 text-left">
+                                        <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-pink-600 text-left">
                                             <tr>
-                                                <th className="p-6 text-left">Sección</th>
-                                                <th className="p-6 text-left">Grupo</th>
-                                                <th className="p-6 text-left">Nomenclatura</th>
-                                                <th className="p-6 text-left">Padrón / Lista</th>
-                                                <th className="p-6 text-left">Proyección Detallada</th>
-                                                <th className="p-6 text-center text-left">Total Casillas</th>
+                                                <th className="p-3 text-left">Sección</th>
+                                                <th className="p-3 text-left">Grupo</th>
+                                                <th className="p-3 text-left">Nomenclatura</th>
+                                                <th className="p-3 text-left">Padrón / Lista</th>
+                                                <th className="p-3 text-left">Proyección Detallada</th>
+                                                <th className="p-3 text-center text-left">Total Casillas</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-xs font-bold divide-y-2 divide-slate-100 text-left">
+                                        <tbody className="text-xs font-bold divide-y divide-slate-100 text-left">
                                             {seccionesMostradas.map((grupo) => {
                                                 const isExpanded = !!seccionesExpandidas[grupo.seccion] || busquedaProyeccion.trim() !== '' || !!filtroAlerta;
                                                 return (
                                                     <React.Fragment key={grupo.seccion}>
                                                         <tr onClick={() => toggleSeccion(grupo.seccion)} className={`cursor-pointer transition-colors ${isExpanded ? 'bg-pink-50' : 'hover:bg-slate-50'} ${grupo.tieneVariacion ? 'bg-red-50/50' : ''}`}>
-                                                            <td className="p-6" colSpan={4}>
-                                                                <div className="flex items-center gap-4 flex-wrap">
-                                                                    {isExpanded ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                                                                    <span className="font-black text-slate-900 text-lg">Sec {f4(grupo.seccion)}</span>
-                                                                    <div className="flex flex-wrap gap-1.5">
+                                                            <td className="p-2.5" colSpan={4}>
+                                                                <div className="flex items-center gap-3 flex-wrap">
+                                                                    {isExpanded ? <ChevronUp className="w-4 h-4 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
+                                                                    <span className="font-black text-slate-900 text-sm">Sec {f4(grupo.seccion)}</span>
+                                                                    <div className="flex flex-wrap gap-1">
                                                                         {grupo.categorias.map(cat => (
-                                                                            <span key={cat} className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-pink-100 text-pink-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
+                                                                            <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-pink-100 text-pink-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
                                                                         ))}
-                                                                        {grupo.tieneNoInstala && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
-                                                                        {grupo.tieneVariacion && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
-                                                                        {grupo.tieneCercaCorte750 && <span className="px-2 py-1 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
+                                                                        {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
+                                                                        {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
+                                                                        {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
                                                                     </div>
-                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="p-6"></td>
-                                                            <td className="p-6 text-center">
+                                                            <td className="p-2.5"></td>
+                                                            <td className="p-2.5 text-center">
                                                                 <div className="flex flex-col items-center justify-center">
-                                                                    <span className="text-xl font-black text-pink-700">P: {grupo.totalPadron}</span>
-                                                                    <span className="text-sm font-bold text-slate-600 mt-1">L: {grupo.totalLista}</span>
+                                                                    <span className="text-base font-black text-pink-700">P: {grupo.totalPadron}</span>
+                                                                    <span className="text-xs font-bold text-slate-600 mt-0.5">L: {grupo.totalLista}</span>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -3683,18 +3683,18 @@ export default function App() {
                                                             const noInstala = row.distPadron.some(d => d.nombre === 'NO INSTALA') || row.distLista.some(d => d.nombre === 'NO INSTALA');
                                                             return (
                                                                 <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-50/40' : row.categoria === 'ESPECIAL' ? 'bg-slate-50' : ''}`}>
-                                                                    <td className="p-6"></td>
-                                                                    <td className="p-6"><span className={`text-[10px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
-                                                                    <td className="p-6">
-                                                                        <div className="flex flex-col gap-1.5">
-                                                                            {row.nomenclaturaPadron && <span className={`px-3 py-1 rounded-lg text-[10px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
-                                                                            {row.nomenclaturaLista && <span className={`px-3 py-1 rounded-lg text-[10px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
+                                                                    <td className="p-2.5"></td>
+                                                                    <td className="p-2.5"><span className={`text-[9px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
+                                                                    <td className="p-2.5">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
+                                                                            {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="p-6 text-slate-500 font-mono text-left">
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <span className="text-slate-900 font-black text-base">P: {Number(row.padronRef).toLocaleString()}</span>
-                                                                            <span className="text-slate-500 text-xs font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
+                                                                    <td className="p-2.5 text-slate-500 font-mono text-left">
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <span className="text-slate-900 font-black text-sm">P: {Number(row.padronRef).toLocaleString()}</span>
+                                                                            <span className="text-slate-500 text-[11px] font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
                                                                             {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
                                                                                 const dist = Math.min(
                                                                                     estaCercaDelCorte750(row.padronRef) ? distanciaAlCorte750(row.padronRef) : Infinity,
@@ -3703,47 +3703,47 @@ export default function App() {
                                                                                 const nivel = nivelRiesgoCorte750(dist);
                                                                                 const colorNivel = nivel === 'ALTO' ? 'bg-red-100 text-red-700' : nivel === 'MEDIO' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
                                                                                 return (
-                                                                                    <span className={`mt-1 inline-flex items-center gap-1 px-2 py-1 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
+                                                                                    <span className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
                                                                                 );
                                                                             })()}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="p-6 text-left">
-                                                                        <div className="flex flex-col gap-1.5">
-                                                                            <div className="flex flex-wrap gap-1.5 text-left">
+                                                                    <td className="p-2.5 text-left">
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex flex-wrap gap-1 text-left">
                                                                                 {row.distPadron.map((item, i) => {
                                                                                     const isNoInstala = item.nombre === 'NO INSTALA';
                                                                                     return (
-                                                                                        <span key={`p-${i}`} className={`border px-2 py-1 rounded text-[10px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-pink-50 border-pink-300 text-pink-700 font-bold'}`}>
+                                                                                        <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-pink-50 border-pink-300 text-pink-700 font-bold'}`}>
                                                                                             <span className="font-black text-[9px] opacity-50">P:</span>
                                                                                             <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
-                                                                                            {isNoInstala && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />}
+                                                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
                                                                                         </span>
                                                                                     );
                                                                                 })}
                                                                             </div>
-                                                                            <div className="flex flex-wrap gap-1.5 text-left">
+                                                                            <div className="flex flex-wrap gap-1 text-left">
                                                                                 {row.distLista.map((item, i) => {
                                                                                     const isNoInstala = item.nombre === 'NO INSTALA';
                                                                                     return (
-                                                                                        <span key={`l-${i}`} className={`border px-2 py-1 rounded text-[10px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
+                                                                                        <span key={`l-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
                                                                                             <span className="font-black text-[9px] opacity-50">L:</span>
                                                                                             <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
-                                                                                            {isNoInstala && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />}
+                                                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
                                                                                         </span>
                                                                                     );
                                                                                 })}
                                                                             </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td className="p-6 text-center">
-                                                                        <div className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 ${row.variacion ? 'bg-red-50 border-red-200' : noInstala ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                                                            <span className={`text-xl font-black ${noInstala ? 'text-amber-800' : 'text-pink-700'}`}>P: {Number(row.countPadron)}</span>
-                                                                            <span className={`text-sm font-bold mt-1 ${noInstala ? 'text-amber-600' : 'text-slate-600'}`}>L: {Number(row.countLista)}</span>
-                                                                            {row.variacion && <AlertTriangle className="w-5 h-5 text-red-500 mt-2" title="Variación detectada entre Padrón y Lista" />}
+                                                                    <td className="p-2.5 text-center">
+                                                                        <div className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 ${row.variacion ? 'bg-red-50 border-red-200' : noInstala ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                                            <span className={`text-sm font-black ${noInstala ? 'text-amber-800' : 'text-pink-700'}`}>P: {Number(row.countPadron)}</span>
+                                                                            <span className={`text-xs font-bold mt-0.5 ${noInstala ? 'text-amber-600' : 'text-slate-600'}`}>L: {Number(row.countLista)}</span>
+                                                                            {row.variacion && <AlertTriangle className="w-4 h-4 text-red-500 mt-1" title="Variación detectada entre Padrón y Lista" />}
                                                                             {!row.variacion && noInstala && (
-                                                                                <div className="mt-2 flex items-center gap-1 px-3 py-1.5 rounded shadow-sm bg-amber-100 border border-amber-400 text-amber-900">
-                                                                                    <AlertTriangle className="w-4 h-4 text-amber-700" />
+                                                                                <div className="mt-1 flex items-center gap-1 px-2 py-1 rounded shadow-sm bg-amber-100 border border-amber-400 text-amber-900">
+                                                                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
                                                                                     <span className="text-[9px] font-black uppercase leading-none text-center">No Instala</span>
                                                                                 </div>
                                                                             )}
