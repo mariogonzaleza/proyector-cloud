@@ -385,6 +385,7 @@ export default function App() {
   const [modalUbicacionConfig, setModalUbicacionConfig] = useState({ isOpen: false });
   const [busquedaUbicacion, setBusquedaUbicacion] = useState('');
   const [importUbicacionAviso, setImportUbicacionAviso] = useState(null);
+  const [reporteDiferenciaProyeccion, setReporteDiferenciaProyeccion] = useState(null);
   const [filtroEstadoUbicacion, setFiltroEstadoUbicacion] = useState('todas'); // 'todas' | 'completo' | 'parcial' | 'sin_asignar'
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
   const [seccionesVisiblesUbicacion, setSeccionesVisiblesUbicacion] = useState([]);
@@ -772,6 +773,7 @@ export default function App() {
               setDomicilios(nuevosDomicilios);
               setUbicacionCasillas(nuevasAsignaciones);
               setImportUbicacionAviso({ totalFilas: filas.length, asignadas, sinPareja });
+              setReporteDiferenciaProyeccion(generarReporteDiferenciaProyeccion(filas));
               setErrorMessage(null);
           } catch (err) { setErrorMessage(err.message || "El archivo no tiene un formato de ubicación de casillas válido."); }
           finally { inputElement.value = null; }
@@ -2310,6 +2312,50 @@ export default function App() {
         categorias: [...new Set(rows.map(r => r.categoria))],
     }));
   }, [filasConsolidadoFinal]);
+
+  // Compara, sección por sección, cuántas casillas trae un listado importado (el número real
+  // de filas/mesas del documento) contra cuántas calcula el sistema con su propia proyección
+  // (Padrón y Lista). Se calcula una sola vez al momento de importar, como foto de esa carga.
+  const generarReporteDiferenciaProyeccion = (filasImportadas) => {
+      const realPorSeccion = {};
+      filasImportadas.forEach(f => {
+          const sec = f4(f.seccion);
+          realPorSeccion[sec] = (realPorSeccion[sec] || 0) + 1;
+      });
+      const proyectadoPorSeccion = {};
+      seccionesAgrupadas.forEach(g => {
+          proyectadoPorSeccion[f4(g.seccion)] = { padron: g.totalPadron, lista: g.totalLista };
+      });
+      const todasLasSecciones = new Set([...Object.keys(realPorSeccion), ...Object.keys(proyectadoPorSeccion)]);
+      const filas = [...todasLasSecciones].sort().map(sec => {
+          const real = realPorSeccion[sec] || 0;
+          const proy = proyectadoPorSeccion[sec] || { padron: 0, lista: 0 };
+          return { seccion: sec, real, proyectadoPadron: proy.padron, proyectadoLista: proy.lista, difPadron: real - proy.padron, difLista: real - proy.lista };
+      });
+      const totales = filas.reduce((acc, r) => ({
+          real: acc.real + r.real,
+          proyectadoPadron: acc.proyectadoPadron + r.proyectadoPadron,
+          proyectadoLista: acc.proyectadoLista + r.proyectadoLista,
+      }), { real: 0, proyectadoPadron: 0, proyectadoLista: 0 });
+      return { filas, totales, seccionesConDiferencia: filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).length };
+  };
+
+  const exportarReporteDiferenciaProyeccion = () => {
+      if (!window.XLSX || !reporteDiferenciaProyeccion) return;
+      const headers = ['Sección', 'Casillas Reales (Documento)', 'Proyectado (Padrón)', 'Proyectado (Lista)', 'Diferencia (Padrón)', 'Diferencia (Lista)'];
+      const rows = [headers];
+      reporteDiferenciaProyeccion.filas.forEach(r => {
+          rows.push([r.seccion, r.real, r.proyectadoPadron, r.proyectadoLista, r.difPadron, r.difLista]);
+      });
+      rows.push(['TOTAL', reporteDiferenciaProyeccion.totales.real, reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.proyectadoLista, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoLista]);
+      const ws = window.XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = headers.map(h => ({ wch: h.length > 20 ? 28 : 16 }));
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '7C3AED' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Diferencia de Proyección');
+      window.XLSX.writeFile(wb, `Reporte_Diferencia_Proyeccion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
 
   const seccionesFiltradas = useMemo(() => {
     const q = busquedaProyeccion.trim().toLowerCase();
@@ -3857,6 +3903,53 @@ export default function App() {
                                             )}
                                         </div>
                                         <button onClick={() => setImportUbicacionAviso(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {reporteDiferenciaProyeccion && (
+                                <div className="rounded-2xl px-6 py-5 border-2 border-violet-300 bg-violet-50">
+                                    <div className="flex items-start gap-4">
+                                        <BarChart3 className="w-6 h-6 text-violet-600 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <p className="text-sm font-black uppercase tracking-wide text-violet-700">Reporte Rápido: Diferencia de Proyección</p>
+                                                <button onClick={exportarReporteDiferenciaProyeccion} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase"><FileDown className="w-3.5 h-3.5" /> Exportar</button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-3">
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Real (Documento): {reporteDiferenciaProyeccion.totales.real}</span>
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
+                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                            </div>
+                                            {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? (
+                                                <p className="text-xs mt-3 font-bold text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Todas las secciones coinciden con la proyección del sistema.</p>
+                                            ) : (
+                                                <>
+                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema:</p>
+                                                    <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
+                                                        <table className="w-full text-left border-collapse min-w-[500px]">
+                                                            <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
+                                                                <tr><th className="p-2">Sección</th><th className="p-2 text-center">Real</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
+                                                            </thead>
+                                                            <tbody className="text-xs font-bold divide-y divide-violet-100 bg-white">
+                                                                {reporteDiferenciaProyeccion.filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).map(r => (
+                                                                    <tr key={r.seccion}>
+                                                                        <td className="p-2 text-slate-800">Sec {r.seccion}</td>
+                                                                        <td className="p-2 text-center text-slate-600">{r.real}</td>
+                                                                        <td className="p-2 text-center text-slate-600">{r.proyectadoPadron}</td>
+                                                                        <td className="p-2 text-center text-slate-600">{r.proyectadoLista}</td>
+                                                                        <td className={`p-2 text-center ${r.difPadron === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difPadron > 0 ? '+' : ''}{r.difPadron}</td>
+                                                                        <td className={`p-2 text-center ${r.difLista === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difLista > 0 ? '+' : ''}{r.difLista}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                        <button onClick={() => setReporteDiferenciaProyeccion(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                                     </div>
                                 </div>
                             )}
