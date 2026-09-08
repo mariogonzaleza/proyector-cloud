@@ -3279,16 +3279,7 @@ export default function App() {
                               <p className="text-3xl font-black text-slate-900">{paqueteMampara.sillas.total}</p>
                           </div>
                       </div>
-                      <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200">
-                          <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Desglose de Sillas</p>
-                          <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                              <li>FMDCU: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.fmdcu}</span></li>
-                              <li>RPP Nacionales: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.nacionales}</span></li>
-                              <li>RPP Locales: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.locales}</span></li>
-                              <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.mamparas}</span></li>
-                              {equipConfig.sillasParaUrna && <li>Urna: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.urna}</span></li>}
-                          </ul>
-                      </div>
+                      <p className="text-[10px] text-pink-600 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
                   </div>
 
                   {/* MATERIAL ELECTORAL */}
