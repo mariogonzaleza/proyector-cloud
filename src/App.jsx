@@ -3084,7 +3084,7 @@ export default function App() {
               setModalConfig({ 
               isOpen: true, 
               message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.', 
-              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); setIsDistrictValidated(false); }
+              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); }
           })}} className="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 transition-all text-left cursor-pointer ml-1 shadow-sm"><RotateCcw className="w-4 h-4 text-left" /></button>
         </div>
       </div>
@@ -4297,7 +4297,7 @@ export default function App() {
             <div className="flex gap-3 justify-center">
               <button onClick={() => setModalConfig({ isOpen: false, message: '', onConfirm: null })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">Cancelar</button>
               {modalConfig.onConfirm && (
-                <button onClick={() => { modalConfig.onConfirm(); setModalConfig({ isOpen: false, message: '', onConfirm: null }); }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs">Confirmar</button>
+                <button onClick={() => { try { modalConfig.onConfirm(); } finally { setModalConfig({ isOpen: false, message: '', onConfirm: null }); } }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs">Confirmar</button>
               )}
             </div>
           </div>
