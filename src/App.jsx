@@ -2648,6 +2648,7 @@ export default function App() {
   }, [todasLasCasillasEquipamiento, mamparasPorCasilla, equipConfig]);
 
   const paqueteMampara = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, true, equipConfig), [equipConfig]);
+  const paqueteCancel = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, false, equipConfig), [equipConfig]);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -3269,13 +3270,28 @@ export default function App() {
 
                       <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
                           <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
-                          <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                              <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
-                              <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
-                              <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
-                              <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
-                              <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
-                          </ul>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Mampara</p>
+                                  <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                                      <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
+                                      <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
+                                      <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
+                                      <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
+                                      <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
+                                  </ul>
+                              </div>
+                              <div className="border-l-2 border-pink-200 pl-4">
+                                  <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Cancel</p>
+                                  <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                                      <li>Cancel: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.canceles}</span></li>
+                                      <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.urnasFederales}</span></li>
+                                      <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.liquidosIndelebles}</span></li>
+                                      <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadoresBoletas}</span></li>
+                                      <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadorasCredenciales}</span></li>
+                                  </ul>
+                              </div>
+                          </div>
                       </div>
                       <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-900">
                           <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-slate-700 pb-1">Aporta OPL / IEEM</p>
