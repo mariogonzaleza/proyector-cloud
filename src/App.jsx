@@ -358,6 +358,8 @@ export default function App() {
 
   const [equipConfig, setEquipConfig] = useState(DEFAULT_EQUIP_CONFIG);
   const [mamparasPorCasilla, setMamparasPorCasilla] = useState({});
+  const [busquedaAsignacion, setBusquedaAsignacion] = useState('');
+  const [seleccionAsignacion, setSeleccionAsignacion] = useState([]);
 
   const [equipExpandido, setEquipExpandido] = useState({ config: false, paquetes: false, asignacion: false, volumen: false });
   const [configEquipoBloqueada, setConfigEquipoBloqueada] = useState(true);
@@ -1818,6 +1820,15 @@ export default function App() {
       setMamparasPorCasilla(nuevoEstado);
   };
 
+  const marcarSeleccionAsignacion = (tipo) => {
+      setMamparasPorCasilla(prev => {
+          const next = { ...prev };
+          seleccionAsignacion.forEach(id => { next[id] = tipo; });
+          return next;
+      });
+      setSeleccionAsignacion([]);
+  };
+
   const exportarReporteEquipamientoMCU = () => {
     if (!window.XLSX) return;
     const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
@@ -2475,6 +2486,12 @@ export default function App() {
      return lista;
   }, [filasConsolidadoFinal, equipConfig.modoProyeccion]);
 
+  const casillasAsignacionFiltradas = useMemo(() => {
+      const q = busquedaAsignacion.trim().toLowerCase();
+      if (!q) return todasLasCasillasEquipamiento;
+      return todasLasCasillasEquipamiento.filter(c => f4(c.seccion).includes(q) || String(c.seccion).includes(q) || String(c.nombre).toLowerCase().includes(q));
+  }, [todasLasCasillasEquipamiento, busquedaAsignacion]);
+
   const seccionesUbicacion = useMemo(() => {
       const grupos = {};
       todasLasCasillasEquipamiento.forEach(c => {
@@ -2930,6 +2947,19 @@ export default function App() {
                               <button onClick={() => { loadDistrictFromDashboard(distritoInfo.numero, 'extraordinary'); }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-md transition-all">Extraordinarias <ArrowRight className="w-4 h-4 inline ml-1" /></button>
                               <button onClick={() => { loadDistrictFromDashboard(distritoInfo.numero, 'final'); }} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-md transition-all">Proyección <ChevronRight className="w-4 h-4 inline ml-1" /></button>
                           </div>
+                          <button onClick={() => {
+                              setModalConfig({
+                                  isOpen: true,
+                                  message: `Esto borra el padrón guardado en este equipo para el Distrito ${distritoInfo.numero} y te lleva a cargar uno nuevo. No afecta lo que ya está guardado en la nube (diseño, ubicación, equipamiento). ¿Continuar?`,
+                                  onConfirm: () => {
+                                      localStorage.removeItem(`proyector_excel_D${distritoInfo.numero}`);
+                                      setRawElectoralData([]);
+                                      setCasillasGlobales([]); setDomicilios({}); setUbicacionCasillas({}); setReporteDiferenciaProyeccion(null);
+                                      setIsDistrictValidated(false);
+                                      setView('upload');
+                                  }
+                              });
+                          }} className="w-full text-pink-200 hover:text-white text-[10px] font-bold uppercase tracking-widest underline underline-offset-2 transition-colors">Borrar Padrón y Cargar Otro</button>
                       </div>
                   )}
               </div>
@@ -3347,12 +3377,23 @@ export default function App() {
                         <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
                     </div>
                 </div>
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <div className="relative max-w-xs w-full">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" placeholder="Buscar por sección o casilla..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaAsignacion} onChange={e => setBusquedaAsignacion(e.target.value)} />
+                    </div>
+                    <button onClick={() => setSeleccionAsignacion(prev => (casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => prev.includes(c.id))) ? [] : casillasAsignacionFiltradas.map(c => c.id))} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl transition-colors shadow-sm">
+                        {casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => seleccionAsignacion.includes(c.id)) ? 'Deseleccionar visibles' : `Seleccionar visibles (${casillasAsignacionFiltradas.length})`}
+                    </button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
-                    {todasLasCasillasEquipamiento.map((c, i) => {
+                    {casillasAsignacionFiltradas.map((c) => {
                         const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
                         const isMampara = tipoActual === 'mampara';
+                        const isSeleccionada = seleccionAsignacion.includes(c.id);
                         return (
-                            <div key={i} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
+                            <div key={c.id} className={`relative p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-4 ring-pink-300' : ''}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
+                                <input type="checkbox" className="absolute top-2 left-2 w-4 h-4 accent-pink-600 cursor-pointer" checked={isSeleccionada} onClick={e => e.stopPropagation()} onChange={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} />
                                 <span className={`${isMampara ? 'bg-pink-800 text-pink-400' : 'bg-pink-600 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
                                 <span className={`text-base font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
                                 <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara Especial' : 'Cancel'}</span>
@@ -3360,6 +3401,14 @@ export default function App() {
                         );
                     })}
                 </div>
+                {seleccionAsignacion.length > 0 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+                        <span className="text-xs font-black uppercase">{seleccionAsignacion.length} casilla(s) seleccionada(s)</span>
+                        <button onClick={() => marcarSeleccionAsignacion('cancel')} className="bg-white text-slate-800 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Cancel</button>
+                        <button onClick={() => marcarSeleccionAsignacion('mampara')} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Mampara</button>
+                        <button onClick={() => setSeleccionAsignacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+                    </div>
+                )}
                 </div>
                 )}
               </div>
@@ -3374,19 +3423,19 @@ export default function App() {
                 </button>
                 {equipExpandido.volumen && (
                 <div className="px-4 sm:px-8 pb-8">
-              <div className="bg-pink-800 p-8 rounded-3xl shadow-xl border-b-8 border-pink-600 text-white">
+              <div className="bg-pink-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-800 text-white">
                   <div className="flex justify-end mb-6">
-                      <button onClick={exportarReporteEquipamientoMCU} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
+                      <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-pink-50 text-pink-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div>
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Mobiliario y Sillas</p>
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-pink-600 p-5 rounded-2xl text-center border-2 border-pink-800 shadow-sm">
+                              <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
                                   <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Tablones/Mesas</p>
                                   <p className="text-3xl font-black text-white">{equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()}</p>
                               </div>
-                              <div className="bg-pink-600 p-5 rounded-2xl text-center border-2 border-pink-800 shadow-sm">
+                              <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
                                   <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Sillas</p>
                                   <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
                               </div>
@@ -3395,11 +3444,11 @@ export default function App() {
 
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-pink-600 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
+                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
                                   <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
+                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
                                   <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
                               </div>
@@ -3409,27 +3458,27 @@ export default function App() {
                       <div>
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta INE</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Canceles</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.canceles.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Mamparas</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.mamparas.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Urnas Fed</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.urnasFederales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Boletas</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadoresBoletas.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Cred</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadorasCredenciales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Líq. Indeleble</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.liquidosIndelebles.toLocaleString()}</span>
                               </div>
