@@ -802,7 +802,7 @@ export default function App() {
 
   const exportarPlantillaUbicacion = () => {
       if (!window.XLSX) return;
-      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Domicilio', 'Ubicación', 'Referencia', 'Tipo Domicilio', 'Nombre propietario'];
+      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Tipo Domicilio', 'Ubicación', 'Domicilio', 'Referencia', 'Nombre propietario'];
       const rows = [headers];
       const tipoSeccionLabel = { BASICA: 'BÁSICA', EXTRAORDINARIA: 'EXTRAORDINARIA', ESPECIAL: 'ESPECIAL' };
       todasLasCasillasEquipamiento.forEach(c => {
@@ -814,7 +814,7 @@ export default function App() {
           const listaVal = datosMesaPorClave.mapaLista.get(clave);
           rows.push([
               distritoInfo.numero, c.municipio || '', f4(c.seccion), tipoSeccionLabel[c.categoria] || '', padronVal ?? '', listaVal ?? '', codigoIne, codigoIne,
-              dom?.domicilio || '', dom?.ubicacion || '', dom?.referencia || '', dom?.tipoDomicilio || '', dom?.nombrePropietario || ''
+              dom?.tipoDomicilio || '', dom?.ubicacion || '', dom?.domicilio || '', dom?.referencia || '', dom?.nombrePropietario || ''
           ]);
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
