@@ -384,7 +384,6 @@ export default function App() {
   const [seleccionUbicacion, setSeleccionUbicacion] = useState([]);
   const [modalUbicacionConfig, setModalUbicacionConfig] = useState({ isOpen: false });
   const [busquedaUbicacion, setBusquedaUbicacion] = useState('');
-  const [importUbicacionAviso, setImportUbicacionAviso] = useState(null);
   const [reporteDiferenciaProyeccion, setReporteDiferenciaProyeccion] = useState(null);
   const [filtroEstadoUbicacion, setFiltroEstadoUbicacion] = useState('todas'); // 'todas' | 'completo' | 'parcial' | 'sin_asignar'
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
@@ -762,12 +761,10 @@ export default function App() {
 
               const nuevosDomicilios = { ...domicilios };
               const nuevasAsignaciones = { ...ubicacionCasillas };
-              let asignadas = 0;
-              const sinPareja = [];
 
               filas.forEach(f => {
                   const clave = claveCasillaUbicacion(f.seccion, f.casillaCodigo);
-                  if (!clavesValidas.has(clave)) { sinPareja.push({ seccion: f.seccion, casilla: f.casillaCodigo }); return; }
+                  if (!clavesValidas.has(clave)) return;
 
                   const firma = firmaDomicilio(f);
                   let domicilioId = domiciliosExistentesPorFirma.get(firma);
@@ -780,12 +777,10 @@ export default function App() {
                       domiciliosExistentesPorFirma.set(firma, domicilioId);
                   }
                   nuevasAsignaciones[clave] = { domicilioId };
-                  asignadas++;
               });
 
               setDomicilios(nuevosDomicilios);
               setUbicacionCasillas(nuevasAsignaciones);
-              setImportUbicacionAviso({ totalFilas: filas.length, asignadas, sinPareja });
               setReporteDiferenciaProyeccion(generarReporteDiferenciaProyeccion(filas));
               setErrorMessage(null);
           } catch (err) { setErrorMessage(err.message || "El archivo no tiene un formato de ubicación de casillas válido."); }
@@ -819,8 +814,7 @@ export default function App() {
 
   const exportarPlantillaUbicacion = () => {
       if (!window.XLSX) return;
-      const diferenciaPorSeccion = new Map((reporteDiferenciaProyeccion?.filas || []).map(r => [r.seccion, r]));
-      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Tipo Domicilio', 'Ubicación', 'Domicilio', 'Referencia', 'Nombre propietario', 'Casillas Reales (Doc. Importado)', 'Proyección Sistema (Padrón)', 'Proyección Sistema (Lista)', 'Diferencia (Padrón)', 'Diferencia (Lista)'];
+      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Tipo Domicilio', 'Ubicación', 'Domicilio', 'Referencia', 'Nombre propietario'];
       const rows = [headers];
       const tipoSeccionLabel = { BASICA: 'BÁSICA', EXTRAORDINARIA: 'EXTRAORDINARIA', ESPECIAL: 'ESPECIAL' };
       todasLasCasillasEquipamiento.forEach(c => {
@@ -830,11 +824,9 @@ export default function App() {
           const codigoIne = c.nombre === 'B' ? 'B1' : c.nombre;
           const padronVal = datosMesaPorClave.mapaPadron.get(clave);
           const listaVal = datosMesaPorClave.mapaLista.get(clave);
-          const dif = diferenciaPorSeccion.get(f4(c.seccion));
           rows.push([
               distritoInfo.numero, c.municipio || '', f4(c.seccion), tipoSeccionLabel[c.categoria] || '', padronVal ?? '', listaVal ?? '', codigoIne, codigoIne,
-              dom?.tipoDomicilio || '', dom?.ubicacion || '', dom?.domicilio || '', dom?.referencia || '', dom?.nombrePropietario || '',
-              dif?.real ?? '', dif?.proyectadoPadron ?? '', dif?.proyectadoLista ?? '', dif?.difPadron ?? '', dif?.difLista ?? ''
+              dom?.tipoDomicilio || '', dom?.ubicacion || '', dom?.domicilio || '', dom?.referencia || '', dom?.nombrePropietario || ''
           ]);
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -844,6 +836,21 @@ export default function App() {
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(wb, ws, 'Ubicación de Casillas');
+
+      if (reporteDiferenciaProyeccion) {
+          const headersDif = ['Sección', 'Casillas Instaladas', 'Proyección Sistema (Padrón)', 'Proyección Sistema (Lista)', 'Diferencia (Padrón)', 'Diferencia (Lista)'];
+          const rowsDif = [headersDif];
+          reporteDiferenciaProyeccion.filas.forEach(r => {
+              rowsDif.push([r.seccion, r.real, r.proyectadoPadron, r.proyectadoLista, r.difPadron, r.difLista]);
+          });
+          rowsDif.push(['TOTAL', reporteDiferenciaProyeccion.totales.real, reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.proyectadoLista, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoLista]);
+          const wsDif = window.XLSX.utils.aoa_to_sheet(rowsDif);
+          wsDif['!cols'] = headersDif.map(h => ({ wch: h.length > 20 ? 30 : 16 }));
+          const estiloHeaderDif = { fill: { patternType: 'solid', fgColor: { rgb: '7C3AED' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          for (let c = 0; c < headersDif.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDif[addr]) wsDif[addr].s = estiloHeaderDif; }
+          window.XLSX.utils.book_append_sheet(wb, wsDif, 'Diferencia de Proyección');
+      }
+
       window.XLSX.writeFile(wb, `Plantilla_Ubicacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
@@ -2354,23 +2361,6 @@ export default function App() {
           proyectadoLista: acc.proyectadoLista + r.proyectadoLista,
       }), { real: 0, proyectadoPadron: 0, proyectadoLista: 0 });
       return { filas, totales, seccionesConDiferencia: filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).length };
-  };
-
-  const exportarReporteDiferenciaProyeccion = () => {
-      if (!window.XLSX || !reporteDiferenciaProyeccion) return;
-      const headers = ['Sección', 'Casillas Reales (Documento)', 'Proyectado (Padrón)', 'Proyectado (Lista)', 'Diferencia (Padrón)', 'Diferencia (Lista)'];
-      const rows = [headers];
-      reporteDiferenciaProyeccion.filas.forEach(r => {
-          rows.push([r.seccion, r.real, r.proyectadoPadron, r.proyectadoLista, r.difPadron, r.difLista]);
-      });
-      rows.push(['TOTAL', reporteDiferenciaProyeccion.totales.real, reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.proyectadoLista, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoLista]);
-      const ws = window.XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = headers.map(h => ({ wch: h.length > 20 ? 28 : 16 }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '7C3AED' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
-      const wb = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(wb, ws, 'Diferencia de Proyección');
-      window.XLSX.writeFile(wb, `Reporte_Diferencia_Proyeccion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const seccionesFiltradas = useMemo(() => {
@@ -3902,30 +3892,6 @@ export default function App() {
                                 </div>
                             )}
 
-                            {importUbicacionAviso && (
-                                <div className={`rounded-2xl px-6 py-4 border-2 ${importUbicacionAviso.sinPareja.length > 0 ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'}`}>
-                                    <div className="flex items-start gap-4">
-                                        {importUbicacionAviso.sinPareja.length > 0 ? <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" /> : <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />}
-                                        <div className="flex-1">
-                                            <p className={`text-sm font-black uppercase tracking-wide ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>Importación de ubicación completada</p>
-                                            <p className={`text-xs mt-1 font-bold ${importUbicacionAviso.sinPareja.length > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                                {importUbicacionAviso.asignadas} de {importUbicacionAviso.totalFilas} filas del archivo se asignaron a casillas de tu proyección actual.
-                                                {importUbicacionAviso.sinPareja.length > 0 && ` ${importUbicacionAviso.sinPareja.length} fila(s) no encontraron una casilla equivalente (sección eliminada, renombrada o casilla no proyectada) y se omitieron.`}
-                                            </p>
-                                            {importUbicacionAviso.sinPareja.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 mt-3">
-                                                    {importUbicacionAviso.sinPareja.slice(0, 40).map((s, i) => (
-                                                        <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-700 px-2 py-1 rounded-lg">Sec {f4(s.seccion)} · {s.casilla}</span>
-                                                    ))}
-                                                    {importUbicacionAviso.sinPareja.length > 40 && <span className="text-[10px] font-bold text-amber-600">+{importUbicacionAviso.sinPareja.length - 40} más</span>}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <button onClick={() => setImportUbicacionAviso(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                            )}
-
                             {reporteDiferenciaProyeccion && (
                                 <div className="rounded-2xl border-2 border-violet-300 bg-violet-50 overflow-hidden">
                                     <button onClick={() => setDiferenciaProyeccionExpandido(v => !v)} className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-violet-100/50 transition-colors">
@@ -3940,24 +3906,21 @@ export default function App() {
                                     </button>
                                     {diferenciaProyeccionExpandido && (
                                         <div className="px-6 pb-6">
-                                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                                <div className="flex flex-wrap gap-2">
-                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Real (Documento): {reporteDiferenciaProyeccion.totales.real}</span>
-                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
-                                                    <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
-                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
-                                                </div>
-                                                <button onClick={exportarReporteDiferenciaProyeccion} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase"><FileDown className="w-3.5 h-3.5" /> Exportar</button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Instalado: {reporteDiferenciaProyeccion.totales.real}</span>
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
+                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
                                             </div>
                                             {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? (
                                                 <p className="text-xs mt-3 font-bold text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Todas las secciones coinciden con la proyección del sistema.</p>
                                             ) : (
                                                 <>
-                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Este mismo detalle (por Tipo de Domicilio) se incluye en el "Listado Tipos de Domicilio":</p>
+                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Esta misma tabla se incluye como segunda hoja al exportar el "Listado Tipos de Domicilio":</p>
                                                     <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
                                                         <table className="w-full text-left border-collapse min-w-[500px]">
                                                             <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
-                                                                <tr><th className="p-2">Sección</th><th className="p-2 text-center">Real</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
+                                                                <tr><th className="p-2">Sección</th><th className="p-2 text-center">Instalado</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
                                                             </thead>
                                                             <tbody className="text-xs font-bold divide-y divide-violet-100 bg-white">
                                                                 {reporteDiferenciaProyeccion.filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).map(r => (
