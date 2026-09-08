@@ -2790,7 +2790,7 @@ export default function App() {
             setFolioConfig({ ...DEFAULT_FOLIO_CONFIG, ...remoto.folioConfig });
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
-            setReporteDiferenciaProyeccion(remoto.reporteDiferenciaProyeccion);
+            if (remoto.reporteDiferenciaProyeccion) setReporteDiferenciaProyeccion(remoto.reporteDiferenciaProyeccion);
           }
         } catch (err) { console.error("Error leyendo de Firestore", err); }
       }
