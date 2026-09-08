@@ -387,6 +387,8 @@ export default function App() {
   const [importUbicacionAviso, setImportUbicacionAviso] = useState(null);
   const [filtroEstadoUbicacion, setFiltroEstadoUbicacion] = useState('todas'); // 'todas' | 'completo' | 'parcial' | 'sin_asignar'
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
+  const [seccionesVisiblesUbicacion, setSeccionesVisiblesUbicacion] = useState([]);
+  const [limpiezaDomiciliosBloqueada, setLimpiezaDomiciliosBloqueada] = useState(true);
   const [formUbicacionDraft, setFormUbicacionDraft] = useState({
       tipoDomicilio: '', domicilio: '', ubicacion: '', referencia: '', nombrePropietario: ''
   });
@@ -2464,6 +2466,47 @@ export default function App() {
       clustersCompletables.forEach(cluster => copiarDomicilioDeCasilla(cluster.claveOrigen, cluster.faltantes));
   };
 
+  const borrarDomicilioDeCasilla = (clave) => {
+      setUbicacionCasillas(prev => {
+          const next = { ...prev };
+          delete next[clave];
+          return next;
+      });
+  };
+
+  const limpiarTodosLosDomicilios = () => {
+      setModalConfig({
+          isOpen: true,
+          message: 'Esto borrará TODOS los domicilios y ubicaciones asignadas del distrito (todas las secciones). No se puede deshacer. ¿Continuar?',
+          onConfirm: () => {
+              isLocalActionActive.current = true;
+              setDomicilios({});
+              setUbicacionCasillas({});
+              setLimpiezaDomiciliosBloqueada(true);
+          }
+      });
+  };
+
+  // Congela qué secciones se muestran según los filtros/búsqueda actuales, para que al
+  // editar un domicilio la fila no desaparezca de golpe si su nuevo estado ya no encaja
+  // en el filtro activo. Solo se vuelve a calcular cuando el usuario toca un filtro,
+  // la búsqueda, o cambia el conjunto de secciones (nuevo distrito/padrón).
+  const firmaSeccionesUbicacion = useMemo(() => seccionesUbicacion.map(g => String(g.seccion)).join('|'), [seccionesUbicacion]);
+
+  useEffect(() => {
+      const filtrado = seccionesUbicacion
+          .filter(g => !busquedaUbicacion.trim() || f4(g.seccion).includes(busquedaUbicacion.trim()))
+          .filter(g => filtroEstadoUbicacion === 'todas' || (filtroEstadoUbicacion === 'completo' ? g.estado.startsWith('completo') : g.estado === filtroEstadoUbicacion))
+          .filter(g => filtroTipoUbicacion === 'todos' || g.casillas.some(c => (c.dom?.tipoDomicilio || (c.dom ? 'SIN TIPO' : null)) === filtroTipoUbicacion));
+      setSeccionesVisiblesUbicacion(filtrado.map(g => g.seccion));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaUbicacion, filtroEstadoUbicacion, filtroTipoUbicacion, firmaSeccionesUbicacion]);
+
+  const gruposUbicacionMostrados = useMemo(() => {
+      const idsVisibles = new Set(seccionesVisiblesUbicacion);
+      return seccionesUbicacion.filter(g => idsVisibles.has(g.seccion));
+  }, [seccionesUbicacion, seccionesVisiblesUbicacion]);
+
   const conteoTiposDomicilio = useMemo(() => {
       const counts = {};
       Object.values(domicilios).forEach(d => {
@@ -3769,6 +3812,12 @@ export default function App() {
                                     <div className="flex flex-wrap gap-2">
                                         <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
                                         <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
+                                        <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
+                                            {limpiezaDomiciliosBloqueada ? <><Lock className="w-4 h-4" /> Limpieza Total</> : <><Unlock className="w-4 h-4" /> Limpieza Desbloqueada</>}
+                                        </button>
+                                        {!limpiezaDomiciliosBloqueada && (
+                                            <button onClick={limpiarTodosLosDomicilios} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><Trash2 className="w-4 h-4" /> Borrar Todos los Domicilios</button>
+                                        )}
                                     </div>
                                 </div>
                                 <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
@@ -3825,7 +3874,7 @@ export default function App() {
                             </div>
 
                             <div className="space-y-4">
-                                {seccionesUbicacion.filter(g => !busquedaUbicacion.trim() || f4(g.seccion).includes(busquedaUbicacion.trim())).filter(g => filtroEstadoUbicacion === 'todas' || (filtroEstadoUbicacion === 'completo' ? g.estado.startsWith('completo') : g.estado === filtroEstadoUbicacion)).filter(g => filtroTipoUbicacion === 'todos' || g.casillas.some(c => (c.dom?.tipoDomicilio || (c.dom ? 'SIN TIPO' : null)) === filtroTipoUbicacion)).map(grupo => {
+                                {gruposUbicacionMostrados.map(grupo => {
                                     const isOpen = !!seccionesUbicacionExpandidas[grupo.seccion];
                                     const estiloEstado = grupo.estado === 'completo_unico' ? 'bg-emerald-100 text-emerald-700' : grupo.estado === 'completo_multiple' ? 'bg-sky-100 text-sky-700' : grupo.estado === 'parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600';
                                     const textoEstado = grupo.estado === 'completo_unico' ? 'Un domicilio para toda la sección' : grupo.estado === 'completo_multiple' ? `${grupo.domiciliosUnicos} domicilios distintos` : grupo.estado === 'parcial' ? `${grupo.asignadas}/${grupo.total} asignadas` : 'Sin asignar';
@@ -3866,6 +3915,9 @@ export default function App() {
                                                                 <button onClick={() => { setSeleccionUbicacion([c.clave]); setModalUbicacionConfig({ isOpen: true, claves: [c.clave], prefill: c.dom }); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Editar"><Pencil className="w-4 h-4" /></button>
                                                                 {grupo.casillas.some(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign) && (
                                                                     <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
+                                                                )}
+                                                                {c.asign && (
+                                                                    <button onClick={() => borrarDomicilioDeCasilla(c.clave)} className="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-white transition-all" title="Borrar domicilio de esta casilla"><Trash2 className="w-4 h-4" /></button>
                                                                 )}
                                                             </div>
                                                         </div>
