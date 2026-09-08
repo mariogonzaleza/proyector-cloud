@@ -304,6 +304,8 @@ const DEFAULT_EQUIP_CONFIG = {
   numPartidosLocales: 2,
   sillasPorPartidoLocal: 1,
   numEleccionesLocales: 2,
+  precioMesa: '',
+  precioSilla: '',
 };
 
 const DEFAULT_FOLIO_CONFIG = {
@@ -355,6 +357,9 @@ export default function App() {
 
   const [equipExpandido, setEquipExpandido] = useState({ config: false, paquetes: false, asignacion: false, volumen: false });
   const [configEquipoBloqueada, setConfigEquipoBloqueada] = useState(true);
+  // Candado de precios de renta: siempre inicia bloqueado/oculto (no se persiste), por seguridad
+  // — cada vez que se abre la app hay que dar click para volver a mostrar los precios.
+  const [preciosRentaDesbloqueado, setPreciosRentaDesbloqueado] = useState(false);
   const toggleEquipSeccion = (key) => setEquipExpandido(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [seccionesExpandidas, setSeccionesExpandidas] = useState({});
@@ -1845,10 +1850,17 @@ export default function App() {
 
     const wb = window.XLSX.utils.book_new();
 
+    // Precios de renta (mobiliario): solo se agrega la columna de costo si se configuró algún
+    // precio — si nunca se desbloqueó el candado, el reporte sale igual que antes.
+    const precioMesaNum = parseFloat(equipConfig.precioMesa) || 0;
+    const precioSillaNum = parseFloat(equipConfig.precioSilla) || 0;
+    const incluirCostoRenta = precioMesaNum > 0 || precioSillaNum > 0;
+
     // --- HOJA 1: EQUIPAMIENTO MCU ---
     const headers = [
       "Municipio", "Sección", "Casilla", "Tipo Espacio", "Tipo de Domicilio",
       "Tablones/Mesas", "Sillas FMDCU", "Sillas RPP Nacionales", "Sillas RPP Locales", "Sillas Urna", "Sillas Total",
+      ...(incluirCostoRenta ? ["Costo Mobiliario (Renta)"] : []),
       "Canceles (INE)", "Mamparas (INE)", "Urna Federal (INE)", "Marcadora Credenciales (INE)",
       "Líquido Indeleble (INE)", "Marcadores Boletas (INE)",
       "Urnas Locales (OPL)", "Base Porta Urna (OPL)", "Cancel IEEM (OPL)"
@@ -1861,9 +1873,11 @@ export default function App() {
       const req = calcularEquipamientoCasilla(equipConfig.totalElecciones, tipo === 'mampara', equipConfig);
       const asign = ubicacionCasillas[claveCasillaUbicacion(c.seccion, c.nombre)];
       const tipoDomicilio = asign ? (domicilios[asign.domicilioId]?.tipoDomicilio || 'SIN TIPO') : 'SIN ASIGNAR';
+      const costoFila = incluirCostoRenta ? [Math.round((req.mobiliario.tablonesMesas * precioMesaNum + req.sillas.total * precioSillaNum) * 100) / 100] : [];
       const fila = [
         c.municipio, f4(c.seccion), c.nombre, tipo === 'mampara' ? 'Mampara Especial' : 'Cancel', tipoDomicilio,
         req.mobiliario.tablonesMesas, req.sillas.fmdcu, req.sillas.nacionales, req.sillas.locales, req.sillas.urna, req.sillas.total,
+        ...costoFila,
         req.materialIne.canceles, req.materialIne.mamparas, req.materialIne.urnasFederales, req.materialIne.marcadorasCredenciales,
         req.materialIne.liquidosIndelebles, req.materialIne.marcadoresBoletas,
         req.materialOpl.urnasLocales, req.materialOpl.basesPortaUrna, req.materialOpl.cancelPorCasilla
@@ -2656,6 +2670,17 @@ export default function App() {
   const paqueteMampara = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, true, equipConfig), [equipConfig]);
   const paqueteCancel = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, false, equipConfig), [equipConfig]);
 
+  const costoRentaMobiliario = useMemo(() => {
+      const precioMesa = parseFloat(equipConfig.precioMesa) || 0;
+      const precioSilla = parseFloat(equipConfig.precioSilla) || 0;
+      return {
+          precioMesa, precioSilla,
+          totalMesas: equipamientoDistrital.mobiliario.tablonesMesas * precioMesa,
+          totalSillas: equipamientoDistrital.sillas.total * precioSilla,
+          total: (equipamientoDistrital.mobiliario.tablonesMesas * precioMesa) + (equipamientoDistrital.sillas.total * precioSilla),
+      };
+  }, [equipamientoDistrital, equipConfig.precioMesa, equipConfig.precioSilla]);
+
   useEffect(() => {
     let unsubscribe = () => {};
     if (isCloudEnabled && auth) {
@@ -3219,6 +3244,33 @@ export default function App() {
                           </div>
                       </div>
                       <p className="text-[10px] text-pink-600 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
+
+                      {/* PRECIOS DE RENTA — oculto por default, solo se muestra tras dar click al candado */}
+                      <div className="mt-4 pt-4 border-t-2 border-slate-100">
+                          <button onClick={() => setPreciosRentaDesbloqueado(v => !v)} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${preciosRentaDesbloqueado ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-pink-600'}`}>
+                              {preciosRentaDesbloqueado ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                              Precios de Renta {preciosRentaDesbloqueado ? '· click para ocultar' : '· click para mostrar'}
+                          </button>
+                          {preciosRentaDesbloqueado && (
+                              <div className="grid grid-cols-2 gap-4 mt-3">
+                                  <div>
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Mesa</label>
+                                      <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
+                                          <span className="text-slate-400 font-black text-sm">$</span>
+                                          <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioMesa} onChange={e => setEquipConfig({...equipConfig, precioMesa: e.target.value})} />
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Silla</label>
+                                      <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
+                                          <span className="text-slate-400 font-black text-sm">$</span>
+                                          <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioSilla} onChange={e => setEquipConfig({...equipConfig, precioSilla: e.target.value})} />
+                                      </div>
+                                  </div>
+                                  <p className="col-span-2 text-[10px] text-slate-400 italic">Se usan para calcular el costo total de renta de mobiliario en "Volumen Total Requerido" y en el Excel exportado.</p>
+                              </div>
+                          )}
+                      </div>
                   </div>
 
                   {/* MATERIAL ELECTORAL */}
@@ -3374,6 +3426,14 @@ export default function App() {
                               </div>
                           </div>
                           <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
+
+                          {preciosRentaDesbloqueado && (
+                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 shadow-sm mt-4">
+                                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Unlock className="w-3 h-3" /> Costo Total de Renta (Mobiliario)</p>
+                                  <p className="text-2xl font-black text-white">${costoRentaMobiliario.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                  <p className="text-[10px] text-slate-400 mt-1">Mesas: {equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()} × ${costoRentaMobiliario.precioMesa.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalMesas.toLocaleString(undefined, { minimumFractionDigits: 2 })} · Sillas: {equipamientoDistrital.sillas.total.toLocaleString()} × ${costoRentaMobiliario.precioSilla.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalSillas.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                              </div>
+                          )}
 
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
                           <div className="grid grid-cols-2 gap-4">
