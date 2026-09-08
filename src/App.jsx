@@ -338,8 +338,9 @@ export default function App() {
   // reintentaba hasta la siguiente edición manual del usuario. Con useState sí dispara el efecto.
   const [isInitialLoadFinished, setIsInitialLoadFinished] = useState(false);
   const lastSavedJson = useRef(""); 
-  const isLocalActionActive = useRef(false); 
+  const isLocalActionActive = useRef(false);
   const unlockTimerRef = useRef(null);
+  const saveGenerationRef = useRef(0);
 
   const [distritoInfo, setDistritoInfo] = useState({ numero: "", estado: "MÉXICO" });
   const [casillasGlobales, setCasillasGlobales] = useState([]); 
@@ -2819,6 +2820,7 @@ export default function App() {
 
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
+    const miGeneracion = ++saveGenerationRef.current;
 
     unlockTimerRef.current = setTimeout(async () => {
       setSyncStatus('saving');
@@ -2828,7 +2830,9 @@ export default function App() {
         lastSavedJson.current = currentJson;
         setSyncStatus('synced');
       } catch (err) { setSyncStatus('error'); }
-      finally { setTimeout(() => { isLocalActionActive.current = false; }, 300); }
+      // Solo libera el seguro si ninguna edición más nueva ya inició su propio guardado;
+      // si no, sería esa edición más nueva la que quedara "vulnerable" a un eco viejo de Firestore.
+      finally { setTimeout(() => { if (saveGenerationRef.current === miGeneracion) isLocalActionActive.current = false; }, 300); }
     }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
@@ -3218,7 +3222,7 @@ export default function App() {
                   <div className="mt-8 pt-6 border-t-2 border-slate-100">
                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-pink-500" /> Equipamiento Mobiliario</h3>
                       <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
-                          <p className="text-xs text-slate-500 mb-3">Tablones/mesas grandes + mesa pequeña para urna(s) o mamparas. Requisito obligatorio de la casilla (haya o no que gestionarlo con un proveedor externo).</p>
+                          <p className="text-[11px] text-slate-500 mb-3">Check para cambiar mesa para urna(s) por silla. Requisito obligatorio de la casilla (haya o no que gestionarlo con un proveedor externo).</p>
                           <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
                               <label className="flex items-center gap-2 cursor-pointer">
                                   <input type="checkbox" checked={equipConfig.sillasParaUrna} onChange={(e) => setEquipConfig({...equipConfig, sillasParaUrna: e.target.checked})} className="w-5 h-5 text-pink-600 rounded border-slate-300 focus:ring-pink-500 cursor-pointer" />
@@ -3293,8 +3297,8 @@ export default function App() {
                               </div>
                           </div>
                       </div>
-                      <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-900">
-                          <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-slate-700 pb-1">Aporta OPL / IEEM</p>
+                      <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-950">
+                          <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-pink-800 pb-1">Aporta OPL / IEEM</p>
                           <ul className="text-sm text-slate-300 font-bold space-y-1.5 grid grid-cols-2">
                               <li>Urnas Locales: <span className="text-white ml-1">{paqueteMampara.materialOpl.urnasLocales}</span></li>
                               <li>Base Porta Urna: <span className="text-white ml-1">{paqueteMampara.materialOpl.basesPortaUrna}</span></li>
@@ -3320,12 +3324,12 @@ export default function App() {
                     <div className="flex flex-wrap gap-2">
                         {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
                         <div className="flex gap-2 mr-2 pr-2 border-r border-slate-200">
-                             <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
+                             <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-pink-900 hover:bg-pink-950 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
                              <label className="text-xs font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer border-2 border-slate-200"><FileUp className="w-4 h-4" /> Cargar<input type="file" className="hidden" accept=".json" onChange={importarRespaldoEquipamiento} /></label>
                         </div>
                         {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
                         <button onClick={() => marcarTodasMamparas('cancel')} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm">Todas con Cancel</button>
-                        <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
+                        <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-pink-900 hover:bg-pink-950 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
@@ -3333,10 +3337,10 @@ export default function App() {
                         const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
                         const isMampara = tipoActual === 'mampara';
                         return (
-                            <div key={i} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-slate-800 border-slate-900 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
-                                <span className={`${isMampara ? 'bg-slate-900 text-pink-400' : 'bg-slate-800 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
+                            <div key={i} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-pink-900 border-pink-950 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
+                                <span className={`${isMampara ? 'bg-pink-950 text-pink-400' : 'bg-pink-900 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
                                 <span className={`text-base font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
-                                <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-full ${isMampara ? 'bg-slate-700 text-pink-200' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara Especial' : 'Cancel'}</span>
+                                <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara Especial' : 'Cancel'}</span>
                             </div>
                         );
                     })}
@@ -3355,32 +3359,32 @@ export default function App() {
                 </button>
                 {equipExpandido.volumen && (
                 <div className="px-4 sm:px-8 pb-8">
-              <div className="bg-slate-900 p-8 rounded-3xl shadow-xl border-b-8 border-pink-600 text-white">
+              <div className="bg-pink-950 p-8 rounded-3xl shadow-xl border-b-8 border-pink-600 text-white">
                   <div className="flex justify-end mb-6">
                       <button onClick={exportarReporteEquipamientoMCU} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-slate-800 pb-2">Mobiliario y Sillas</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Mobiliario y Sillas</p>
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-slate-800 p-5 rounded-2xl text-center border-2 border-slate-700 shadow-sm">
+                              <div className="bg-pink-900 p-5 rounded-2xl text-center border-2 border-pink-800 shadow-sm">
                                   <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Tablones/Mesas</p>
                                   <p className="text-3xl font-black text-white">{equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()}</p>
                               </div>
-                              <div className="bg-slate-800 p-5 rounded-2xl text-center border-2 border-slate-700 shadow-sm">
+                              <div className="bg-pink-900 p-5 rounded-2xl text-center border-2 border-pink-800 shadow-sm">
                                   <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Sillas</p>
                                   <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
                               </div>
                           </div>
                           <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
 
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-slate-800 pb-2">Accesibilidad</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-slate-800 p-5 rounded-2xl border-2 border-slate-700 flex flex-col justify-center items-center shadow-sm">
+                              <div className="bg-pink-900 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
                                   <span className="text-2xl font-black text-pink-400">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-5 rounded-2xl border-2 border-slate-700 flex flex-col justify-center items-center shadow-sm">
+                              <div className="bg-pink-900 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
                                   <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
                               </div>
@@ -3388,45 +3392,45 @@ export default function App() {
                       </div>
 
                       <div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-slate-800 pb-2">Material Electoral — Aporta INE</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta INE</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Canceles</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.canceles.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Mamparas</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.mamparas.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Urnas Fed</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.urnasFederales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Boletas</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadoresBoletas.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Cred</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadorasCredenciales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-slate-300 uppercase">Líq. Indeleble</span>
                                   <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.liquidosIndelebles.toLocaleString()}</span>
                               </div>
                           </div>
 
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-slate-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
+                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-pink-200 uppercase">Urnas Locales</span>
                                   <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-pink-200 uppercase">Base P/Urna</span>
                                   <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
                               </div>
-                              <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700 flex justify-between items-center shadow-sm">
+                              <div className="bg-pink-900 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
                                   <span className="text-[11px] font-bold text-pink-200 uppercase">Cancel IEEM</span>
                                   <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
                               </div>
