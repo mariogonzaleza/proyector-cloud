@@ -2967,17 +2967,13 @@ export default function App() {
                               <button onClick={() => { loadDistrictFromDashboard(distritoInfo.numero, 'final'); }} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-md transition-all">Proyección <ChevronRight className="w-4 h-4 inline ml-1" /></button>
                           </div>
                           <button onClick={() => {
-                              setModalConfig({
-                                  isOpen: true,
-                                  message: `Esto borra el padrón guardado en este equipo para el Distrito ${distritoInfo.numero} y te lleva a cargar uno nuevo. No afecta lo que ya está guardado en la nube (diseño, ubicación, equipamiento). ¿Continuar?`,
-                                  onConfirm: () => {
-                                      localStorage.removeItem(`proyector_excel_D${distritoInfo.numero}`);
-                                      setRawElectoralData([]);
-                                      setCasillasGlobales([]); setDomicilios({}); setUbicacionCasillas({}); setReporteDiferenciaProyeccion(null);
-                                      setIsDistrictValidated(false);
-                                      setView('upload');
-                                  }
-                              });
+                              // Solo borra el padrón guardado en este equipo; NO toca casillas, domicilios,
+                              // ubicación ni equipamiento (esos siguen intactos en la nube y se re-vinculan
+                              // solos contra el padrón nuevo en cuanto lo subas).
+                              localStorage.removeItem(`proyector_excel_D${distritoInfo.numero}`);
+                              setRawElectoralData([]);
+                              setIsDistrictValidated(false);
+                              setView('upload');
                           }} className="w-full text-pink-200 hover:text-white text-[10px] font-bold uppercase tracking-widest underline underline-offset-2 transition-colors">Borrar Padrón y Cargar Otro</button>
                       </div>
                   )}

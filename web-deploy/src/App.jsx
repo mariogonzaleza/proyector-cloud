@@ -2919,6 +2919,7 @@ export default function App() {
 
   if (view === 'welcome') {
     return (
+      <>
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
         {localStorage.getItem('proyector_last_district') && (
              <button onClick={limpiarCaché} className="absolute top-6 right-6 text-xs text-slate-500 hover:text-red-500 flex items-center gap-2 transition-all z-20"><Trash2 className="w-4 h-4"/> Limpiar Caché Local</button>
@@ -3027,6 +3028,22 @@ export default function App() {
             </div>
         </div>
       </div>
+      {modalConfig.isOpen && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center border-2 border-slate-200">
+            <AlertTriangle className="w-14 h-14 text-pink-600 mx-auto mb-4" />
+            <h3 className="text-xl font-black text-slate-900 mb-2">Confirmar Acción</h3>
+            <p className="text-sm text-slate-600 mb-8 font-bold">{modalConfig.message}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setModalConfig({ isOpen: false, message: '', onConfirm: null })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">Cancelar</button>
+              {modalConfig.onConfirm && (
+                <button onClick={() => { modalConfig.onConfirm(); setModalConfig({ isOpen: false, message: '', onConfirm: null }); }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs">Confirmar</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
