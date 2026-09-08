@@ -388,8 +388,7 @@ export default function App() {
   const [filtroEstadoUbicacion, setFiltroEstadoUbicacion] = useState('todas'); // 'todas' | 'completo' | 'parcial' | 'sin_asignar'
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
   const [formUbicacionDraft, setFormUbicacionDraft] = useState({
-      tipoDomicilio: '', domicilio: '', ubicacion: '', referencia: '', nombrePropietario: '',
-      anuencia: 'SÍ', notificacion: 'SÍ', reconocimiento: 'SÍ', domicilioAccesible: 'SÍ', casillaAccesible: 'SÍ', urnaElectronica: 'NO'
+      tipoDomicilio: '', domicilio: '', ubicacion: '', referencia: '', nombrePropietario: ''
   });
 
   const CATALOGO_TIPO_DOMICILIO = ['ESCUELA', 'PARTICULAR', 'OFICINA PÚBLICA', 'LUGAR PÚBLICO'];
@@ -405,9 +404,7 @@ export default function App() {
           const p = modalUbicacionConfig.prefill;
           setFormUbicacionDraft({
               tipoDomicilio: p?.tipoDomicilio || '', domicilio: p?.domicilio || '', ubicacion: p?.ubicacion || '',
-              referencia: p?.referencia || '', nombrePropietario: p?.nombrePropietario || '',
-              anuencia: p?.anuencia || 'SÍ', notificacion: p?.notificacion || 'SÍ', reconocimiento: p?.reconocimiento || 'SÍ',
-              domicilioAccesible: p?.domicilioAccesible || 'SÍ', casillaAccesible: 'SÍ', urnaElectronica: 'NO'
+              referencia: p?.referencia || '', nombrePropietario: p?.nombrePropietario || ''
           });
       }
   }, [modalUbicacionConfig]);
@@ -710,17 +707,11 @@ export default function App() {
       const idx = {
           sec: findCol('SECCIÓN', 'SECCION'),
           casilla: findCol('TIPO CASILLA'),
-          urna: findCol('CASILLA CON URNA ELECTRÓNICA', 'CASILLA CON URNA ELECTRONICA'),
           domicilio: findCol('DOMICILIO'),
-          casillaAccesible: findCol('LA CASILLA ASEGURA LA ACCESIBILIDAD'),
-          domicilioAccesible: findCol('EL DOMICILIO ASEGURA LA ACCESIBILIDAD'),
           ubicacion: findCol('UBICACIÓN', 'UBICACION'),
           referencia: findCol('REFERENCIA'),
           tipoDomicilio: findCol('TIPO DOMICILIO'),
           propietario: findCol('NOMBRE PROPIETARIO'),
-          anuencia: findCol('ANUENCIA'),
-          notificacion: findCol('NOTIFICACIÓN', 'NOTIFICACION'),
-          reconocimiento: findCol('RECONOCIMIENTO'),
       };
       if (idx.sec === -1 || idx.casilla === -1) throw new Error('No se detectó el formato del listado de ubicación de casillas.');
 
@@ -730,17 +721,11 @@ export default function App() {
           .map(row => ({
               seccion: g(row, idx.sec),
               casillaCodigo: normalizarCodigoCasillaINE(g(row, idx.casilla)),
-              urnaElectronica: g(row, idx.urna),
               domicilio: g(row, idx.domicilio),
-              casillaAccesible: g(row, idx.casillaAccesible),
-              domicilioAccesible: g(row, idx.domicilioAccesible),
               ubicacion: g(row, idx.ubicacion),
               referencia: g(row, idx.referencia),
               tipoDomicilio: g(row, idx.tipoDomicilio),
               nombrePropietario: g(row, idx.propietario),
-              anuencia: g(row, idx.anuencia),
-              notificacion: g(row, idx.notificacion),
-              reconocimiento: g(row, idx.reconocimiento),
           }));
   };
 
@@ -774,12 +759,11 @@ export default function App() {
                       domicilioId = `dom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                       nuevosDomicilios[domicilioId] = {
                           tipoDomicilio: f.tipoDomicilio, domicilio: f.domicilio, ubicacion: f.ubicacion, referencia: f.referencia,
-                          nombrePropietario: f.nombrePropietario, anuencia: f.anuencia, notificacion: f.notificacion,
-                          reconocimiento: f.reconocimiento, domicilioAccesible: f.domicilioAccesible,
+                          nombrePropietario: f.nombrePropietario,
                       };
                       domiciliosExistentesPorFirma.set(firma, domicilioId);
                   }
-                  nuevasAsignaciones[clave] = { domicilioId, urnaElectronica: f.urnaElectronica, casillaAccesible: f.casillaAccesible };
+                  nuevasAsignaciones[clave] = { domicilioId };
                   asignadas++;
               });
 
@@ -797,14 +781,11 @@ export default function App() {
       const domicilioId = `dom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       setDomicilios(prev => ({ ...prev, [domicilioId]: {
           tipoDomicilio: datosDomicilio.tipoDomicilio, domicilio: datosDomicilio.domicilio, ubicacion: datosDomicilio.ubicacion,
-          referencia: datosDomicilio.referencia, nombrePropietario: datosDomicilio.nombrePropietario, anuencia: datosDomicilio.anuencia,
-          notificacion: datosDomicilio.notificacion, reconocimiento: datosDomicilio.reconocimiento, domicilioAccesible: datosDomicilio.domicilioAccesible,
+          referencia: datosDomicilio.referencia, nombrePropietario: datosDomicilio.nombrePropietario,
       } }));
       setUbicacionCasillas(prev => {
           const next = { ...prev };
-          claves.forEach(clave => {
-              next[clave] = { domicilioId, urnaElectronica: next[clave]?.urnaElectronica || 'NO', casillaAccesible: datosDomicilio.casillaAccesible ?? next[clave]?.casillaAccesible ?? 'NO' };
-          });
+          claves.forEach(clave => { next[clave] = { domicilioId }; });
           return next;
       });
   };
@@ -821,7 +802,7 @@ export default function App() {
 
   const exportarPlantillaUbicacion = () => {
       if (!window.XLSX) return;
-      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Casilla con urna electrónica', 'Domicilio', 'La casilla asegura la accesibilidad', 'El domicilio asegura la accesibilidad', 'Ubicación', 'Referencia', 'Tipo Domicilio', 'Nombre propietario', 'Anuencia', 'Notificación', 'Reconocimiento'];
+      const headers = ['Distrito Local', 'Municipio', 'Sección', 'Tipo Sección', 'Padrón Electoral', 'Listado Nominal', 'Casilla', 'Tipo Casilla', 'Domicilio', 'Ubicación', 'Referencia', 'Tipo Domicilio', 'Nombre propietario'];
       const rows = [headers];
       const tipoSeccionLabel = { BASICA: 'BÁSICA', EXTRAORDINARIA: 'EXTRAORDINARIA', ESPECIAL: 'ESPECIAL' };
       todasLasCasillasEquipamiento.forEach(c => {
@@ -833,9 +814,7 @@ export default function App() {
           const listaVal = datosMesaPorClave.mapaLista.get(clave);
           rows.push([
               distritoInfo.numero, c.municipio || '', f4(c.seccion), tipoSeccionLabel[c.categoria] || '', padronVal ?? '', listaVal ?? '', codigoIne, codigoIne,
-              asign?.urnaElectronica || '', dom?.domicilio || '', asign?.casillaAccesible || '', dom?.domicilioAccesible || '',
-              dom?.ubicacion || '', dom?.referencia || '', dom?.tipoDomicilio || '', dom?.nombrePropietario || '',
-              dom?.anuencia || '', dom?.notificacion || '', dom?.reconocimiento || ''
+              dom?.domicilio || '', dom?.ubicacion || '', dom?.referencia || '', dom?.tipoDomicilio || '', dom?.nombrePropietario || ''
           ]);
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
@@ -3767,7 +3746,7 @@ export default function App() {
                     <button onClick={() => setUbicacionExpandido(!ubicacionExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center gap-4">
                             {ubicacionExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Tipos de Domicilios de Casillas</span>
+                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Exportar Plantilla</span>
                         </div>
                         {!ubicacionExpandido && (
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -3784,7 +3763,7 @@ export default function App() {
                                         <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
                                         <div>
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
-                                            <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
+                                            <h2 className="text-2xl font-black italic">Exportar Plantilla</h2>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -4208,18 +4187,6 @@ export default function App() {
                 <div>
                     <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nombre Propietario</label>
                     <input type="text" className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={formUbicacionDraft.nombrePropietario} onChange={e => setFormUbicacionDraft({ ...formUbicacionDraft, nombrePropietario: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t-2 border-slate-100">
-                    {[
-                        { key: 'anuencia', label: 'Anuencia' }, { key: 'notificacion', label: 'Notificación' },
-                        { key: 'reconocimiento', label: 'Reconocimiento' }, { key: 'domicilioAccesible', label: 'Domicilio Accesible' },
-                        { key: 'casillaAccesible', label: 'Casilla Accesible' }, { key: 'urnaElectronica', label: 'Urna Electrónica' },
-                    ].map(({ key, label }) => (
-                        <div key={key} className="flex items-center justify-between bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2">
-                            <span className="text-[10px] font-black uppercase text-slate-600">{label}</span>
-                            <button onClick={() => setFormUbicacionDraft({ ...formUbicacionDraft, [key]: formUbicacionDraft[key] === 'SÍ' ? 'NO' : 'SÍ' })} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${formUbicacionDraft[key] === 'SÍ' ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'}`}>{formUbicacionDraft[key]}</button>
-                        </div>
-                    ))}
                 </div>
             </div>
 
