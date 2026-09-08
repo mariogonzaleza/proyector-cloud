@@ -2893,7 +2893,12 @@ export default function App() {
               
               <div className="space-y-4">
                   <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
-                  <input type="text" placeholder="Número de Distrito (Ej. 12)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => { setDistritoInfo({...distritoInfo, numero: e.target.value}); setIsDistrictValidated(false); }}/>
+                  <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      if (v !== '' && parseInt(v, 10) > 40) v = '40';
+                      setDistritoInfo({...distritoInfo, numero: v});
+                      setIsDistrictValidated(false);
+                  }}/>
                   
                   {!isDistrictValidated ? (
                       <button onClick={() => { 
