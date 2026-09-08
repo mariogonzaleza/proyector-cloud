@@ -1,12 +1,32 @@
-param([int]$Port = 5522)
+param([int]$Port = 5678, [int]$MaxIntentos = 15)
 
 Add-Type -AssemblyName System.Net.HttpListener -ErrorAction SilentlyContinue
 
 $root = $PSScriptRoot
 $startedAt = Get-Date
-$listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:$Port/")
-$listener.Start()
+
+# Windows a veces reserva puertos dinámicamente (excluded port ranges) y el bind falla
+# sin avisar por qué. En vez de morir, se prueban puertos siguientes automáticamente.
+$listener = $null
+$puertoFinal = $Port
+for ($intento = 0; $intento -lt $MaxIntentos; $intento++) {
+    $intentoPuerto = $Port + $intento
+    $candidato = New-Object System.Net.HttpListener
+    $candidato.Prefixes.Add("http://localhost:$intentoPuerto/")
+    try {
+        $candidato.Start()
+        $listener = $candidato
+        $puertoFinal = $intentoPuerto
+        break
+    } catch {
+        Write-Output "Puerto $intentoPuerto no disponible ($($_.Exception.Message)), probando siguiente..."
+    }
+}
+if (-not $listener) {
+    Write-Error "No se pudo iniciar el servidor tras $MaxIntentos intentos desde el puerto $Port."
+    exit 1
+}
+$Port = $puertoFinal
 Write-Output "Serving $root on http://localhost:$Port/ (iniciado $startedAt)"
 Write-Output "Verifica en cualquier momento: http://localhost:$Port/__status"
 
