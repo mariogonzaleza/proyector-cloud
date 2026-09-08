@@ -2487,9 +2487,11 @@ export default function App() {
   }, [filasConsolidadoFinal, equipConfig.modoProyeccion]);
 
   const casillasAsignacionFiltradas = useMemo(() => {
-      const q = busquedaAsignacion.trim().toLowerCase();
-      if (!q) return todasLasCasillasEquipamiento;
-      return todasLasCasillasEquipamiento.filter(c => f4(c.seccion).includes(q) || String(c.seccion).includes(q) || String(c.nombre).toLowerCase().includes(q));
+      // Admite varias secciones/casillas a la vez separadas por coma, espacio o punto y coma
+      // (ej. "33, 35 40") para poder seleccionarlas juntas de un solo golpe.
+      const terminos = busquedaAsignacion.split(/[,;\s]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+      if (terminos.length === 0) return todasLasCasillasEquipamiento;
+      return todasLasCasillasEquipamiento.filter(c => terminos.some(q => f4(c.seccion).includes(q) || String(c.seccion).includes(q) || String(c.nombre).toLowerCase().includes(q)));
   }, [todasLasCasillasEquipamiento, busquedaAsignacion]);
 
   const seccionesUbicacion = useMemo(() => {
@@ -3380,12 +3382,18 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     <div className="relative max-w-xs w-full">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Buscar por sección o casilla..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaAsignacion} onChange={e => setBusquedaAsignacion(e.target.value)} />
+                        <input type="text" placeholder="Buscar secciones (ej. 33, 35, 40)..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaAsignacion} onChange={e => setBusquedaAsignacion(e.target.value)} />
                     </div>
-                    <button onClick={() => setSeleccionAsignacion(prev => (casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => prev.includes(c.id))) ? [] : casillasAsignacionFiltradas.map(c => c.id))} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl transition-colors shadow-sm">
-                        {casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => seleccionAsignacion.includes(c.id)) ? 'Deseleccionar visibles' : `Seleccionar visibles (${casillasAsignacionFiltradas.length})`}
+                    <button onClick={() => {
+                        const idsVisibles = casillasAsignacionFiltradas.map(c => c.id);
+                        const todasYaSeleccionadas = idsVisibles.length > 0 && idsVisibles.every(id => seleccionAsignacion.includes(id));
+                        setSeleccionAsignacion(prev => todasYaSeleccionadas ? prev.filter(id => !idsVisibles.includes(id)) : [...new Set([...prev, ...idsVisibles])]);
+                    }} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl transition-colors shadow-sm">
+                        {casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => seleccionAsignacion.includes(c.id)) ? 'Quitar visibles de la selección' : `Sumar visibles a la selección (${casillasAsignacionFiltradas.length})`}
                     </button>
+                    {busquedaAsignacion.trim() !== '' && <button onClick={() => setBusquedaAsignacion('')} className="text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 px-2 py-2">Limpiar búsqueda</button>}
                 </div>
+                <p className="text-[10px] text-slate-400 -mt-2 mb-3 font-bold">Escribe varias secciones separadas por coma o espacio (ej. "33, 35 40") y usa "Sumar visibles" para juntarlas todas en tu selección antes de marcarlas.</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
                     {casillasAsignacionFiltradas.map((c) => {
                         const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
