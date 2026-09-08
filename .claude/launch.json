@@ -4,8 +4,9 @@
     {
       "name": "proyector-preview",
       "runtimeExecutable": "powershell.exe",
-      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "serve.ps1", "-Port", "5599"],
-      "port": 5599
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "serve.ps1", "-Port", "5678"],
+      "port": 5678,
+      "autoPort": true
     }
   ]
 }
