@@ -2494,6 +2494,18 @@ export default function App() {
       return todasLasCasillasEquipamiento.filter(c => terminos.some(q => f4(c.seccion).includes(q) || String(c.seccion).includes(q) || String(c.nombre).toLowerCase().includes(q)));
   }, [todasLasCasillasEquipamiento, busquedaAsignacion]);
 
+  // Agrupa por sección para poder seleccionar la sección completa de un solo clic
+  // (todas sus casillas) en vez de una por una.
+  const seccionesParaAsignacion = useMemo(() => {
+      const grupos = {};
+      todasLasCasillasEquipamiento.forEach(c => {
+          const sec = f4(c.seccion);
+          if (!grupos[sec]) grupos[sec] = { seccion: c.seccion, ids: [] };
+          grupos[sec].ids.push(c.id);
+      });
+      return Object.values(grupos).sort((a, b) => (parseInt(a.seccion) || 0) - (parseInt(b.seccion) || 0));
+  }, [todasLasCasillasEquipamiento]);
+
   const seccionesUbicacion = useMemo(() => {
       const grupos = {};
       todasLasCasillasEquipamiento.forEach(c => {
@@ -3377,6 +3389,23 @@ export default function App() {
                         {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
                         <button onClick={() => marcarTodasMamparas('cancel')} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm">Todas con Cancel</button>
                         <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
+                    </div>
+                </div>
+                <div className="mb-4">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Seleccionar por Sección (marca la sección completa, casilla por casilla se ajusta abajo)</p>
+                    <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
+                        {seccionesParaAsignacion.map(g => {
+                            const seleccionadas = g.ids.filter(id => seleccionAsignacion.includes(id)).length;
+                            const todasSeleccionadas = seleccionadas === g.ids.length;
+                            const algunaSeleccionada = seleccionadas > 0 && !todasSeleccionadas;
+                            return (
+                                <button key={g.seccion} onClick={() => {
+                                    setSeleccionAsignacion(prev => todasSeleccionadas ? prev.filter(id => !g.ids.includes(id)) : [...new Set([...prev, ...g.ids])]);
+                                }} className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase border-2 transition-colors ${todasSeleccionadas ? 'bg-pink-600 border-pink-700 text-white' : algunaSeleccionada ? 'bg-white border-pink-400 text-pink-600' : 'bg-white border-slate-200 text-slate-600 hover:border-pink-300'}`}>
+                                    SEC {f4(g.seccion)} ({g.ids.length}){algunaSeleccionada && ` · ${seleccionadas}/${g.ids.length}`}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mb-4">
