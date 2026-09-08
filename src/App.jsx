@@ -202,21 +202,26 @@ const calcularEquipamientoCasilla = (totalElecciones, usarMamparas = false, conf
 const p4 = (v) => String(v ?? '').trim().padStart(4, '0');
 
 const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar }) => {
-    if (!conflictos || conflictos.total === 0) return null;
+    if (!conflictos) return null;
+    const sinConflictos = conflictos.total === 0;
+    if (sinConflictos && !expandido) return null;
     return (
-        <div className="bg-red-50 border-2 border-red-300 rounded-2xl px-6 py-4 mb-6">
+        <div className={`border-2 rounded-2xl px-6 py-4 mb-6 ${sinConflictos ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300'}`}>
             <button onClick={onToggle} className="w-full flex items-start gap-4 text-left">
-                <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                {sinConflictos ? <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />}
                 <div className="flex-1">
-                    <p className="text-sm font-black text-red-700 uppercase tracking-wide">Diferencias entre tu diseño y el padrón cargado</p>
-                    <p className="text-xs text-red-600 mt-1 font-bold">
-                        {conflictos.desaparecidas.length > 0 && <>{conflictos.desaparecidas.length} manzana(s) de tu diseño ya no existen en el padrón actual. </>}
-                        {conflictos.desactualizadas.length > 0 && <>{conflictos.desactualizadas.length} manzana(s) cambiaron su padrón/lista desde que las asignaste.</>}
+                    <p className={`text-sm font-black uppercase tracking-wide ${sinConflictos ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu diseño que ya no están en el padrón'}
+                    </p>
+                    <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y alimentadoras) siguen existiendo en él.' : <>
+                            {conflictos.desaparecidas.length} manzana(s) que usa tu diseño ya no existen en el padrón que acabas de cargar. Esas casillas quedaron sin esa manzana — revísalas en la Mesa de Armado.
+                        </>}
                     </p>
                 </div>
-                {expandido ? <ChevronUp className="w-5 h-5 text-red-500 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-red-400 flex-shrink-0" />}
+                {expandido ? <ChevronUp className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-emerald-500' : 'text-red-500'}`} /> : <ChevronDown className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-emerald-400' : 'text-red-400'}`} />}
             </button>
-            {expandido && (
+            {expandido && !sinConflictos && (
                 <div className="mt-4 pt-4 border-t border-red-200 space-y-3">
                     {conflictos.desaparecidas.length > 0 && (
                         <div>
@@ -224,19 +229,7 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
                             <div className="flex flex-wrap gap-1.5">
                                 {conflictos.desaparecidas.map((m, i) => (
                                     <span key={i} className="text-[10px] font-bold bg-white border-2 border-red-200 text-red-700 px-2 py-1 rounded-lg">
-                                        {String(m.tipo)} · Sec {p4(m.seccion)} · Loc {p4(m.localidad)} · Mz {p4(m.manzana)}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {conflictos.desactualizadas.length > 0 && (
-                        <div>
-                            <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Manzanas con padrón/lista desactualizado</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {conflictos.desactualizadas.map((m, i) => (
-                                    <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-700 px-2 py-1 rounded-lg">
-                                        {String(m.tipo)} · Sec {p4(m.seccion)} · Loc {p4(m.localidad)} · Mz {p4(m.manzana)} · P: {m.padronAnterior}→{m.padronActual} · L: {m.listaAnterior}→{m.listaActual}
+                                        {String(m.tipo)} · {m.rol} · Sec {p4(m.seccion)} · Loc {p4(m.localidad)} · Mz {p4(m.manzana)}
                                     </span>
                                 ))}
                             </div>
@@ -378,6 +371,7 @@ export default function App() {
   const [comparandoPadron, setComparandoPadron] = useState(false);
   const [archivosComparacionLibre, setArchivosComparacionLibre] = useState({ anterior: null, actual: null });
   const [detalleConflictosAbierto, setDetalleConflictosAbierto] = useState(false);
+  const [conflictosDiseno, setConflictosDiseno] = useState({ desaparecidas: [], desactualizadas: [], total: 0 });
   const [importJsonAvisos, setImportJsonAvisos] = useState(null);
 
   const [domicilios, setDomicilios] = useState({});
@@ -569,9 +563,14 @@ export default function App() {
         setRawElectoralData(parsed);
         // El padrón en sí NUNCA se guarda en este equipo (siempre hay que volver a subirlo);
         // solo se recuerda qué distrito es, y se re-vincula el diseño ya guardado (Extraordinarias)
-        // contra este padrón recién cargado.
+        // contra este padrón recién cargado. cargarCasillasLocal reporta qué manzanas de ese
+        // diseño ya no existen en el padrón nuevo, que es la única comparación que se puede
+        // hacer de forma confiable (el padrón/lista de la versión anterior nunca se guarda).
         try { localStorage.setItem('proyector_last_district', JSON.stringify(distritoInfo)); } catch(err) {}
-        setCasillasGlobales(cargarCasillasLocal(distritoInfo.numero, parsed));
+        const { casillas, desaparecidas } = cargarCasillasLocal(distritoInfo.numero, parsed);
+        setCasillasGlobales(casillas);
+        setConflictosDiseno({ desaparecidas, desactualizadas: [], total: desaparecidas.length });
+        setDetalleConflictosAbierto(false);
 
         setErrorMessage(null);
       } catch (err) { setErrorMessage("Error en el formato del Excel o archivo no válido."); }
@@ -676,26 +675,42 @@ export default function App() {
       } catch (e) {}
   };
 
+  // Re-vincula el diseño guardado (Extraordinarias) contra un padrón recién cargado, y de paso
+  // reporta qué manzanas de ese diseño ya no existen en el padrón nuevo (se descartan igual,
+  // pero ahora queda registro de cuáles fueron para poder avisar en "Armado vs Padrón").
   const cargarCasillasLocal = (numero, padron) => {
+      const desaparecidas = [];
       try {
           const saved = localStorage.getItem(`proyector_casillas_D${numero}`);
-          if (!saved) return [];
+          if (!saved) return { casillas: [], desaparecidas: [] };
           const refs = JSON.parse(saved);
           const norm = (v) => String(v).trim().padStart(4, '0');
-          return refs.map(c => {
+          const casillas = refs.map(c => {
               if (String(c.tipo).startsWith('S')) return { uid: c.uid, tipo: c.tipo, sede: { seccion: c.sedeRef.s }, alimentadoras: [] };
               const sede = padron.find(m => norm(m.seccion) === norm(c.sedeRef.s) && norm(m.localidad) === norm(c.sedeRef.l) && norm(m.manzana) === norm(c.sedeRef.m));
-              if (!sede) return null;
-              const alimentadoras = (c.alimentadorasRefs || []).map(ref => padron.find(m => norm(m.seccion) === norm(ref.s) && norm(m.localidad) === norm(ref.l) && norm(m.manzana) === norm(ref.m))).filter(Boolean);
+              if (!sede) {
+                  desaparecidas.push({ tipo: c.tipo, rol: 'SEDE', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
+                  return null;
+              }
+              const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
+                  const mz = padron.find(m => norm(m.seccion) === norm(ref.s) && norm(m.localidad) === norm(ref.l) && norm(m.manzana) === norm(ref.m));
+                  if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'ALIMENTADORA', seccion: ref.s, localidad: ref.l, manzana: ref.m });
+                  return mz;
+              }).filter(Boolean);
               return { uid: c.uid, tipo: c.tipo, sede, alimentadoras };
           }).filter(Boolean);
-      } catch (e) { return []; }
+          return { casillas, desaparecidas };
+      } catch (e) { return { casillas: [], desaparecidas: [] }; }
   };
 
   useEffect(() => {
-      if (!distritoInfo.numero) return;
+      // rawElectoralData.length === 0 significa que el padrón de esta sesión todavía no se ha
+      // vuelto a cargar (p. ej. justo después de recargar la página, cuando distritoInfo.numero
+      // ya se restauró pero casillasGlobales todavía no se re-vincula contra ningún padrón).
+      // Sin este guard, ese momento se guardaba como "diseño vacío" y borraba el diseño real.
+      if (!distritoInfo.numero || rawElectoralData.length === 0) return;
       guardarCasillasLocal(distritoInfo.numero, casillasGlobales);
-  }, [casillasGlobales, distritoInfo.numero]);
+  }, [casillasGlobales, distritoInfo.numero, rawElectoralData.length]);
 
   const parsearUbicacionCasillas = (arrayBuffer) => {
       const data = new Uint8Array(arrayBuffer);
@@ -1957,31 +1972,6 @@ export default function App() {
 
   const sedesActivas = useMemo(() => sortedCasillasGlobales.filter(c => c.sede !== null && !String(c.tipo).startsWith('S')), [sortedCasillasGlobales]);
 
-  const rawPorClave = useMemo(() => {
-    const map = new Map();
-    rawElectoralData.forEach(m => map.set(claveManzana(m), m));
-    return map;
-  }, [rawElectoralData]);
-
-  const conflictosDiseno = useMemo(() => {
-    const desaparecidas = [];
-    const desactualizadas = [];
-    casillasGlobales.forEach(c => {
-        if (String(c.tipo).startsWith('S')) return;
-        const mzs = [c.sede, ...(c.alimentadoras || [])].filter(Boolean);
-        mzs.forEach(mz => {
-            if (!mz.seccion || !mz.manzana) return;
-            const actual = rawPorClave.get(claveManzana(mz));
-            if (!actual) {
-                desaparecidas.push({ tipo: c.tipo, seccion: mz.seccion, localidad: mz.localidad, manzana: mz.manzana, padron: mz.padron, lista: mz.lista });
-            } else if ((parseInt(mz.padron) || 0) !== (parseInt(actual.padron) || 0) || (parseInt(mz.lista) || 0) !== (parseInt(actual.lista) || 0)) {
-                desactualizadas.push({ tipo: c.tipo, seccion: mz.seccion, localidad: mz.localidad, manzana: mz.manzana, padronAnterior: mz.padron, listaAnterior: mz.lista, padronActual: actual.padron, listaActual: actual.lista });
-            }
-        });
-    });
-    return { desaparecidas, desactualizadas, total: desaparecidas.length + desactualizadas.length };
-  }, [casillasGlobales, rawPorClave]);
-
   const exportarReporteConflictosDiseno = () => {
     if (!window.XLSX || conflictosDiseno.total === 0) return;
     const wb = window.XLSX.utils.book_new();
@@ -1994,7 +1984,6 @@ export default function App() {
         [`Distrito ${f4(distritoInfo.numero)}`, ''],
         [],
         ['Manzanas usadas en el diseño que ya no existen', conflictosDiseno.desaparecidas.length],
-        ['Manzanas con padrón/lista desactualizado', conflictosDiseno.desactualizadas.length],
         ['Secciones con manzanas afectadas', seccionesAfectadas.length],
         ['Localidades con manzanas afectadas', localidadesAfectadas.length],
     ];
@@ -2003,21 +1992,13 @@ export default function App() {
     if (wsResumen['A1']) wsResumen['A1'].s = { font: { bold: true, sz: 14 } };
     window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
-    const hojaDesap = [['Tipo de Casilla', 'Sección', 'Localidad', 'Manzana', 'Padrón (en el diseño)', 'Lista (en el diseño)'],
-        ...conflictosDiseno.desaparecidas.map(m => [String(m.tipo), f4(m.seccion), f4(m.localidad), f4(m.manzana), m.padron, m.lista])];
+    const hojaDesap = [['Tipo de Casilla', 'Rol', 'Sección', 'Localidad', 'Manzana'],
+        ...conflictosDiseno.desaparecidas.map(m => [String(m.tipo), m.rol, f4(m.seccion), f4(m.localidad), f4(m.manzana)])];
     const wsDesap = window.XLSX.utils.aoa_to_sheet(hojaDesap);
-    wsDesap['!cols'] = [{ wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 18 }, { wch: 18 }];
-    for (let c = 0; c < 6; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDesap[addr]) wsDesap[addr].s = estiloHeaderConf; }
-    for (let r = 1; r < hojaDesap.length; r++) { for (let c = 0; c < 6; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesap[addr]) wsDesap[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, alignment: { horizontal: 'center' } }; } }
+    wsDesap['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+    for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDesap[addr]) wsDesap[addr].s = estiloHeaderConf; }
+    for (let r = 1; r < hojaDesap.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesap[addr]) wsDesap[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, alignment: { horizontal: 'center' } }; } }
     window.XLSX.utils.book_append_sheet(wb, wsDesap, 'Manzanas Desaparecidas');
-
-    const hojaDesact = [['Tipo de Casilla', 'Sección', 'Localidad', 'Manzana', 'Padrón Anterior', 'Padrón Actual', 'Δ Padrón', 'Lista Anterior', 'Lista Actual', 'Δ Lista'],
-        ...conflictosDiseno.desactualizadas.map(m => [String(m.tipo), f4(m.seccion), f4(m.localidad), f4(m.manzana), m.padronAnterior, m.padronActual, (parseInt(m.padronActual)||0) - (parseInt(m.padronAnterior)||0), m.listaAnterior, m.listaActual, (parseInt(m.listaActual)||0) - (parseInt(m.listaAnterior)||0)])];
-    const wsDesact = window.XLSX.utils.aoa_to_sheet(hojaDesact);
-    wsDesact['!cols'] = [{ wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }];
-    for (let c = 0; c < 10; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDesact[addr]) wsDesact[addr].s = estiloHeaderConf; }
-    for (let r = 1; r < hojaDesact.length; r++) { for (let c = 0; c < 10; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesact[addr]) wsDesact[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, alignment: { horizontal: 'center' } }; } }
-    window.XLSX.utils.book_append_sheet(wb, wsDesact, 'Padrón-Lista Desactualizado');
 
     window.XLSX.writeFile(wb, `Conflictos_Diseno_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
@@ -4044,7 +4025,7 @@ export default function App() {
         {/* --- VISTA: MESA DE DISEÑO (EXTRAORDINARIAS) --- */}
         {view === 'extraordinary' && (
           <>
-            {(conflictosDiseno.total > 0 || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
+            {(conflictosDiseno.total > 0 || detalleConflictosAbierto || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
               <div className="lg:col-span-12 p-4 pb-0 text-left">
                 <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
                 <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
@@ -4133,12 +4114,13 @@ export default function App() {
                       Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
                     </span>
                   </div>
-                  <div className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                  <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left active:scale-95 transition-all ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-red-600 text-white hover:bg-red-700'}`}>
                     {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-4 h-4 text-left" /> : <AlertTriangle className="w-4 h-4 text-left" />}
                     <span className="text-xs font-black uppercase text-left tracking-wider">
                       Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
                     </span>
-                  </div>
+                    {detalleConflictosAbierto ? <ChevronUp className="w-4 h-4 text-left" /> : <ChevronDown className="w-4 h-4 text-left opacity-70" />}
+                  </button>
                   <button onClick={exportarValidacionManzanas} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-md active:scale-95 transition-all text-left relative z-40"><FileDown className="w-4 h-4 text-left" /><span className="text-xs font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
                 </div>
               </div>
