@@ -4015,68 +4015,68 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-24 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-24 text-left">
                 {sortedCasillasGlobales.length === 0 ? ( <div className="lg:col-span-3 h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
                   sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
                       const stats = calcularProyeccion(c);
                       const isEspecial = String(c.tipo).startsWith('S');
 
                       return (
-                        <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-3xl overflow-hidden shadow-md hover:shadow-lg transition-all flex flex-col group text-left`}>
-                          <div className={`p-4 flex justify-between items-center text-left border-b-2 ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center gap-3 text-left">
-                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-3 py-1 rounded-lg font-black italic text-base text-left shadow-sm`}>{String(c.tipo)}</span>
-                                  <p className="text-lg font-black uppercase text-slate-700 text-left tracking-widest">SEC. {f4(c.sede?.seccion)}</p>
+                        <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
+                          <div className={`px-3 py-2 flex justify-between items-center text-left border-b-2 ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center gap-2 text-left">
+                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm`}>{String(c.tipo)}</span>
+                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest">SEC. {f4(c.sede?.seccion)}</p>
                               </div>
-                              <div className="flex items-center gap-3">
-                                  {stats.variacion && <AlertTriangle className="w-5 h-5 text-red-500" title="Variación Padrón/Lista" />}
-                                  <button onClick={() => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50 text-left"><X className="w-5 h-5 text-left" /></button>
+                              <div className="flex items-center gap-2">
+                                  {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
+                                  <button onClick={() => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
                               </div>
                           </div>
-                          
-                          <div className="p-5 space-y-4 flex-1 text-left">
-                            <div className="flex justify-between items-center border-b-2 border-slate-100 pb-3 text-left">
-                                <span className="text-[10px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
+
+                          <div className="p-3 space-y-2.5 flex-1 text-left">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
+                                <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
                                 <div className="text-right">
-                                    <span className="text-2xl font-black italic tracking-tighter text-pink-600 text-left mr-3">P:{Number(stats.total).toLocaleString()}</span>
-                                    <span className="text-base font-bold text-slate-500 text-left">L:{Number(stats.totalLista).toLocaleString()}</span>
+                                    <span className="text-lg font-black italic tracking-tighter text-pink-600 text-left mr-2">P:{Number(stats.total).toLocaleString()}</span>
+                                    <span className="text-sm font-bold text-slate-500 text-left">L:{Number(stats.totalLista).toLocaleString()}</span>
                                 </div>
                             </div>
 
                             {isEspecial ? (
-                                <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-slate-600">
-                                    <Star className="w-6 h-6 shrink-0 text-slate-400" />
-                                    <p className="text-[11px] font-black uppercase">Casilla Especial sin recuento de manzanas.</p>
+                                <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border-2 border-slate-200 text-slate-600">
+                                    <Star className="w-5 h-5 shrink-0 text-slate-400" />
+                                    <p className="text-[10px] font-black uppercase">Casilla Especial sin recuento de manzanas.</p>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-start gap-3 text-left"><MapPin className="w-4 h-4 text-pink-500 mt-1 shrink-0 text-left" /><div className="flex-1 text-left"><p className="text-[9px] font-black text-slate-400 uppercase leading-none text-left tracking-widest">Sede</p><p className="text-xs font-bold text-slate-800 mt-1.5 truncate uppercase text-left" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} • Loc {String(c.sede?.localidad)} {c.sede?.nombreLocalidad ? `- ${c.sede?.nombreLocalidad}` : ''}</p></div><span className="text-[10px] font-mono text-slate-500 font-bold bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg shadow-sm text-left text-center">P:{String(c.sede?.padron)}<br/>L:{String(c.sede?.lista)}</span></div>
-                                    <div className="pt-3 border-t-2 border-slate-100 text-left">
-                                      <div className="flex justify-between items-center mb-1.5">
+                                    <div className="flex items-start gap-2 text-left"><MapPin className="w-3.5 h-3.5 text-pink-500 mt-1 shrink-0 text-left" /><div className="flex-1 text-left"><p className="text-[9px] font-black text-slate-400 uppercase leading-none text-left tracking-widest">Sede</p><p className="text-xs font-bold text-slate-800 mt-1 truncate uppercase text-left" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} • Loc {String(c.sede?.localidad)} {c.sede?.nombreLocalidad ? `- ${c.sede?.nombreLocalidad}` : ''}</p></div><span className="text-[9px] font-mono text-slate-500 font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm text-left text-center">P:{String(c.sede?.padron)}<br/>L:{String(c.sede?.lista)}</span></div>
+                                    <div className="pt-2 border-t border-slate-100 text-left">
+                                      <div className="flex justify-between items-center mb-1">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Localidades del Polígono</p>
-                                        <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-black shadow-sm">Total MZ: {[c.sede, ...(c.alimentadoras || [])].length}</span>
+                                        <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md font-black shadow-sm">Total MZ: {[c.sede, ...(c.alimentadoras || [])].length}</span>
                                       </div>
-                                      <div className="flex flex-wrap gap-1.5">
+                                      <div className="flex flex-wrap gap-1">
                                           {(stats.localidadesInvolucradasArray || []).map((loc, i) => (
-                                              <span key={i} className="bg-pink-50 border-2 border-pink-200 text-pink-700 px-2.5 py-1 rounded-lg text-[11px] font-black shadow-sm">{loc}</span>
+                                              <span key={i} className="bg-pink-50 border-2 border-pink-200 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm">{loc}</span>
                                           ))}
                                       </div>
                                     </div>
 
-                                    <div className={`rounded-2xl p-4 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="flex justify-between items-center mb-3 text-left">
+                                    <div className={`rounded-xl p-2.5 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="flex justify-between items-center mb-1.5 text-left">
                                             <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución</span>
-                                            <div className="flex gap-2">
-                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2.5 py-1 rounded-md shadow-sm text-base font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-md shadow-sm text-base font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
+                                            <div className="flex gap-1.5">
+                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                            <div className="flex flex-wrap gap-1.5 text-left">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex flex-wrap gap-1 text-left">
                                                 {stats.distPadron.map((item, i) => {
                                                     const isNoInstala = item.nombre === 'NO INSTALA';
                                                     return (
-                                                        <div key={`dp-${i}`} className={`border-2 rounded-lg px-2 py-1 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
+                                                        <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
                                                             <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
                                                             {item.nombre} {(!isNoInstala) && `(${item.valor})`}
                                                             {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -4084,11 +4084,11 @@ export default function App() {
                                                     );
                                                 })}
                                             </div>
-                                            <div className="flex flex-wrap gap-1.5 text-left">
+                                            <div className="flex flex-wrap gap-1 text-left">
                                                 {stats.distLista.map((item, i) => {
                                                     const isNoInstala = item.nombre === 'NO INSTALA';
                                                     return (
-                                                        <div key={`dl-${i}`} className={`border-2 rounded-lg px-2 py-1 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                        <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
                                                             <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
                                                             {item.nombre} {(!isNoInstala) && `(${item.valor})`}
                                                             {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -4098,17 +4098,17 @@ export default function App() {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {c.alimentadoras && c.alimentadoras.length > 0 && (
-                                      <div className="pt-3 border-t-2 border-slate-100 text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 text-left">Cuerpo Alimentador ({c.alimentadoras.length})</p>
-                                        <div className="flex flex-col gap-2 max-h-32 overflow-y-auto custom-scrollbar text-left">
+                                      <div className="pt-2 border-t border-slate-100 text-left">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Cuerpo Alimentador ({c.alimentadoras.length})</p>
+                                        <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
                                             {c.alimentadoras.map((a, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-xl px-3 py-2 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
-                                                    <span title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1.5 italic text-left">(Sec {f4(a.seccion)})</span></span>
-                                                    <div className="flex gap-3 items-center">
+                                                <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
+                                                    <span title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic text-left">(Sec {f4(a.seccion)})</span></span>
+                                                    <div className="flex gap-2 items-center">
                                                         <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
-                                                        <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors text-left bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-4 h-4 text-left" /></button>
+                                                        <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors text-left bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5 text-left" /></button>
                                                     </div>
                                                 </div>
                                             ))}
