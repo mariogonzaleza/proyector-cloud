@@ -866,6 +866,22 @@ export default function App() {
       window.XLSX.writeFile(wb, `Plantilla_Ubicacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
+  // Plantilla vacía en el formato que el sistema espera para cargar el padrón de un distrito
+  // (a nivel manzana): PIVOTE, DISTRITO FEDERAL, DISTRITO LOCAL, MUNICIPIO, SECCION, LOCALIDAD,
+  // MANZANA, PADRON, LISTA, NOMBRE DE LOCALIDAD. No requiere un distrito cargado.
+  const exportarPlantillaPadron = () => {
+      if (!window.XLSX) return;
+      const headers = ['PIVOTE', 'DISTRITO FEDERAL', 'DISTRITO LOCAL', 'MUNICIPIO', 'SECCION', 'LOCALIDAD', 'MANZANA', 'PADRON', 'LISTA', 'NOMBRE DE LOCALIDAD'];
+      const ws = window.XLSX.utils.aoa_to_sheet([headers]);
+      ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 4, 22)) }));
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
+      ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Padrón');
+      window.XLSX.writeFile(wb, `Plantilla_Padron_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
+
   const compararPadrones = (anterior, actual) => {
     const mapAnterior = new Map(anterior.map(m => [claveManzana(m), m]));
     const mapActual = new Map(actual.map(m => [claveManzana(m), m]));
@@ -2942,6 +2958,7 @@ export default function App() {
                </div>
             </div>
         </div>
+        <button onClick={exportarPlantillaPadron} className="mt-6 z-10 flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
       </div>
     );
   }
