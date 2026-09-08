@@ -872,11 +872,19 @@ export default function App() {
   const exportarPlantillaPadron = () => {
       if (!window.XLSX) return;
       const headers = ['PIVOTE', 'DISTRITO FEDERAL', 'DISTRITO LOCAL', 'MUNICIPIO', 'SECCION', 'LOCALIDAD', 'MANZANA', 'PADRON', 'LISTA', 'NOMBRE DE LOCALIDAD'];
-      const ws = window.XLSX.utils.aoa_to_sheet([headers]);
+      // PIVOTE = MUNICIPIO & SECCION & LOCALIDAD (verificado contra un padrón real). Se deja la
+      // fórmula ya escrita en las primeras 10 filas para que solo se arrastre hacia abajo.
+      const filasConFormula = 10;
+      const rows = [headers];
+      for (let i = 0; i < filasConFormula; i++) {
+          const fila = i + 2; // fila de Excel (la 1 es el encabezado)
+          rows.push([{ t: 'str', f: `D${fila}&E${fila}&F${fila}` }, '', '', '', '', '', '', '', '', '']);
+      }
+      const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 4, 22)) }));
       const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
-      ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
+      ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasConFormula, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(wb, ws, 'Padrón');
       window.XLSX.writeFile(wb, `Plantilla_Padron_${obtenerFechaHoraArchivo()}.xlsx`);
@@ -1908,10 +1916,13 @@ export default function App() {
     const ws = window.XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 2, 24)) }));
     headers.forEach((_, i) => { const addr = window.XLSX.utils.encode_cell({ r: 0, c: i }); if (ws[addr]) ws[addr].s = headerStyleIne; });
+    const costoColIndex = headers.indexOf("Costo Mobiliario (Renta)");
+    const dataCellStyleCosto = { ...dataCellStyle, numFmt: '"$"#,##0.00' };
+    const totalesRowStyleCosto = { ...totalesRowStyle, numFmt: '"$"#,##0.00' };
     for (let r = 1; r < totalesRowIdx; r++) {
-      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (ws[addr]) ws[addr].s = dataCellStyle; }
+      for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (ws[addr]) ws[addr].s = (c === costoColIndex) ? dataCellStyleCosto : dataCellStyle; }
     }
-    for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: totalesRowIdx, c }); if (ws[addr]) ws[addr].s = totalesRowStyle; }
+    for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: totalesRowIdx, c }); if (ws[addr]) ws[addr].s = (c === costoColIndex) ? totalesRowStyleCosto : totalesRowStyle; }
     window.XLSX.utils.book_append_sheet(wb, ws, "Equipamiento MCU");
 
     // --- HOJA 2: DOMICILIOS (mamparas de accesibilidad por domicilio) ---
