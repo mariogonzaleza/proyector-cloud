@@ -2941,23 +2941,25 @@ export default function App() {
                 <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
               </label>
 
-              <div className="pt-4 mt-2 border-t border-pink-400/50 text-left">
-                  <p className="text-[10px] text-pink-100 font-bold uppercase tracking-widest text-center mb-3">¿Solo quieres comparar dos padrones? No hace falta cargar uno primero</p>
+              <div className="pt-4 mt-2 border-t border-pink-400/50 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                      <label className={`flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-dashed rounded-2xl transition-all text-center ${archivosComparacionLibre.anterior ? 'border-emerald-300 bg-emerald-700/20 text-emerald-100' : 'border-pink-300 text-pink-100 hover:bg-pink-700/50 cursor-pointer'}`}>
-                          {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
-                          <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-full px-1">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                          {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
                           <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('anterior', e)} />
                       </label>
-                      <label className={`flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-dashed rounded-2xl transition-all text-center ${archivosComparacionLibre.actual ? 'border-emerald-300 bg-emerald-700/20 text-emerald-100' : 'border-pink-300 text-pink-100 hover:bg-pink-700/50 cursor-pointer'}`}>
-                          {archivosComparacionLibre.actual ? <CheckCircle2 className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
-                          <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-full px-1">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                          {archivosComparacionLibre.actual ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
                           <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('actual', e)} />
                       </label>
                   </div>
-                  <button onClick={ejecutarComparacionLibre} disabled={!archivosComparacionLibre.anterior || !archivosComparacionLibre.actual || comparandoPadron} className="mt-3 w-full bg-white/15 hover:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
-                      {comparandoPadron ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Comparando...</> : <><ArrowRightLeft className="w-3.5 h-3.5" /> Comparar</>}
-                  </button>
+                  {archivosComparacionLibre.anterior && archivosComparacionLibre.actual && (
+                      <button onClick={ejecutarComparacionLibre} disabled={comparandoPadron} className={`w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
+                          {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar'}</span>
+                      </button>
+                  )}
               </div>
 
               {resultadoComparacionJSX}
@@ -4065,8 +4067,8 @@ export default function App() {
                                         <div className="flex justify-between items-center mb-3 text-left">
                                             <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución</span>
                                             <div className="flex gap-2">
-                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 pl-2 pr-2.5 py-1 rounded-md shadow-sm flex items-baseline gap-1 text-left"><span className="text-[9px] font-black">P</span><span className="text-base font-black italic leading-none">{Number(stats.totalMesasPadron)}</span></span>
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 pl-2 pr-2.5 py-1 rounded-md shadow-sm flex items-baseline gap-1 text-left"><span className="text-[9px] font-black">L</span><span className="text-base font-black italic leading-none">{Number(stats.totalMesasLista)}</span></span>
+                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2.5 py-1 rounded-md shadow-sm text-base font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-md shadow-sm text-base font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1.5">
