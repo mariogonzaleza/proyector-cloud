@@ -345,8 +345,7 @@ export default function App() {
   const [distritoInfo, setDistritoInfo] = useState({ numero: "", estado: "MÉXICO" });
   const [casillasGlobales, setCasillasGlobales] = useState([]); 
   const [searchQuery, setSearchQuery] = useState("");
-  const [dashboardData, setDashboardData] = useState({ loading: false, cloud: [], local: [] });
-  const [isDistrictValidated, setIsDistrictValidated] = useState(false);
+  const [dashboardData, setDashboardData] = useState({ loading: false, cloud: [] });
 
   const [form, setForm] = useState({
     seccionOrigen: "", rol: "alimentadora", localidad: "", manzanasSeleccionadas: [], tipoElegido: "E1", casillaUidDestino: "" 
@@ -502,19 +501,8 @@ export default function App() {
     localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
     setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${numStr}`) || CABECERAS_DISTRITALES_MEXICO[numStr] || "");
     cargarUbicacionDeDistrito(numStr);
-
-    const savedExcelStr = localStorage.getItem(`proyector_excel_D${numStr}`);
-    if (savedExcelStr) {
-        try {
-            const parsedExcel = JSON.parse(savedExcelStr);
-            if (parsedExcel && parsedExcel.length > 0) {
-                setRawElectoralData(parsedExcel);
-                setCasillasGlobales(cargarCasillasLocal(numStr, parsedExcel));
-                setView(targetView);
-                return;
-            }
-        } catch(e) {}
-    }
+    // El padrón (Excel) nunca se recuerda de una sesión a otra — siempre hay que volver a
+    // cargarlo. Solo las configuraciones (diseño, ubicación, equipamiento) persisten.
     setView('upload');
   };
 
@@ -579,10 +567,11 @@ export default function App() {
       try {
         const parsed = parsearManzanasDeArchivo(event.target.result);
         setRawElectoralData(parsed);
-        try {
-            localStorage.setItem(`proyector_excel_D${distritoInfo.numero}`, JSON.stringify(parsed));
-            localStorage.setItem('proyector_last_district', JSON.stringify(distritoInfo));
-        } catch(err) { console.warn("Padrón muy grande para LocalStorage."); }
+        // El padrón en sí NUNCA se guarda en este equipo (siempre hay que volver a subirlo);
+        // solo se recuerda qué distrito es, y se re-vincula el diseño ya guardado (Extraordinarias)
+        // contra este padrón recién cargado.
+        try { localStorage.setItem('proyector_last_district', JSON.stringify(distritoInfo)); } catch(err) {}
+        setCasillasGlobales(cargarCasillasLocal(distritoInfo.numero, parsed));
 
         setErrorMessage(null);
       } catch (err) { setErrorMessage("Error en el formato del Excel o archivo no válido."); }
@@ -2705,15 +2694,7 @@ export default function App() {
             const parsedDistrict = JSON.parse(lastDistrictStr); setDistritoInfo(parsedDistrict);
             setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${parsedDistrict.numero}`) || CABECERAS_DISTRITALES_MEXICO[parsedDistrict.numero] || "");
             cargarUbicacionDeDistrito(parsedDistrict.numero);
-            const savedExcelStr = localStorage.getItem(`proyector_excel_D${parsedDistrict.numero}`);
-            if (savedExcelStr) {
-                const parsedExcel = JSON.parse(savedExcelStr);
-                if (parsedExcel && parsedExcel.length > 0) {
-                    setRawElectoralData(parsedExcel);
-                    setIsDistrictValidated(true);
-                    setCasillasGlobales(cargarCasillasLocal(parsedDistrict.numero, parsedExcel));
-                }
-            }
+            // El padrón nunca se recuerda entre sesiones: siempre hay que volver a cargarlo.
         } catch (e) { setView('welcome'); }
     }
     return () => unsubscribe();
@@ -2877,9 +2858,6 @@ export default function App() {
     if (view === 'welcome') {
         const fetchDashboard = async () => {
             setDashboardData(prev => ({...prev, loading: true}));
-            const localKeys = Object.keys(localStorage).filter(k => k.startsWith('proyector_excel_D'));
-            const localDistricts = localKeys.map(k => k.replace('proyector_excel_D', '')).sort((a, b) => Number(a) - Number(b));
-            
             let cloudDistricts = [];
             if (isCloudEnabled && db && user && user.uid !== 'local-user') {
                 try {
@@ -2888,22 +2866,11 @@ export default function App() {
                     cloudDistricts = snap.docs.map(d => d.id.replace('distrito_', '')).sort((a, b) => Number(a) - Number(b));
                 } catch (e) { console.warn("No se pudieron cargar los distritos de la nube.", e); }
             }
-            setDashboardData({ loading: false, local: localDistricts, cloud: cloudDistricts });
+            setDashboardData({ loading: false, cloud: cloudDistricts });
         };
         fetchDashboard();
     }
   }, [view, user]);
-
-  const limpiarCaché = () => {
-      setModalConfig({
-          isOpen: true,
-          message: '¿Seguro que deseas borrar el Padrón guardado en este navegador? Tu maqueta en la nube NO se borrará.',
-          onConfirm: () => {
-              localStorage.clear(); setDistritoInfo({ numero: "", estado: "MÉXICO" });
-              setRawElectoralData([]); setCasillasGlobales([]); setView('welcome'); setIsDistrictValidated(false);
-          }
-      });
-  };
 
   const renderHeader = () => (
     <header className="bg-white text-slate-800 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-600">
@@ -2919,64 +2886,27 @@ export default function App() {
 
   if (view === 'welcome') {
     return (
-      <>
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
-        {localStorage.getItem('proyector_last_district') && (
-             <button onClick={limpiarCaché} className="absolute top-6 right-6 text-xs text-slate-500 hover:text-red-500 flex items-center gap-2 transition-all z-20"><Trash2 className="w-4 h-4"/> Limpiar Caché Local</button>
-        )}
-        
         <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
             <div className="bg-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-500 relative overflow-hidden flex flex-col justify-center text-center">
               <Cloud className="w-16 h-16 mx-auto mb-6 text-white" />
               <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white">Proyector Cloud</h2>
               <p className="text-pink-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic">v18.0 | Panel de Control</p>
-              
+
               <div className="space-y-4">
                   <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
                   <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
                       let v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                      if (v !== '' && parseInt(v, 10) > 40) v = '40';
                       setDistritoInfo({...distritoInfo, numero: v});
-                      setIsDistrictValidated(false);
                   }}/>
-                  
-                  {!isDistrictValidated ? (
-                      <button onClick={() => { 
-                          if(distritoInfo.numero) {
-                              const savedExcelStr = localStorage.getItem(`proyector_excel_D${distritoInfo.numero}`);
-                              if (savedExcelStr) {
-                                  try {
-                                      const parsed = JSON.parse(savedExcelStr);
-                                      if (parsed && parsed.length > 0) { setIsDistrictValidated(true); return; }
-                                  } catch(e){}
-                              }
-                              const numStr = String(distritoInfo.numero);
-                              localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
-                              setCasillasGlobales([]); setDomicilios({}); setUbicacionCasillas({}); setReporteDiferenciaProyeccion(null);
-                              setView('upload');
-                          }
-                      }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
-                  ) : (
-                      <div className="animate-in fade-in slide-in-from-top-2 space-y-3">
-                          <div className="flex items-center gap-2 text-white bg-pink-700 p-3 rounded-xl border border-pink-500 text-sm font-bold justify-center shadow-sm">
-                              <CheckCircle2 className="w-5 h-5" /> Padrón Detectado en Memoria
-                          </div>
-                          <p className="text-xs text-pink-100 font-bold uppercase tracking-widest text-left pt-1">¿A dónde deseas ir?</p>
-                          <div className="flex gap-2">
-                              <button onClick={() => { loadDistrictFromDashboard(distritoInfo.numero, 'extraordinary'); }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-md transition-all">Extraordinarias <ArrowRight className="w-4 h-4 inline ml-1" /></button>
-                              <button onClick={() => { loadDistrictFromDashboard(distritoInfo.numero, 'final'); }} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-md transition-all">Proyección <ChevronRight className="w-4 h-4 inline ml-1" /></button>
-                          </div>
-                          <button onClick={() => {
-                              // Solo borra el padrón guardado en este equipo; NO toca casillas, domicilios,
-                              // ubicación ni equipamiento (esos siguen intactos en la nube y se re-vinculan
-                              // solos contra el padrón nuevo en cuanto lo subas).
-                              localStorage.removeItem(`proyector_excel_D${distritoInfo.numero}`);
-                              setRawElectoralData([]);
-                              setIsDistrictValidated(false);
-                              setView('upload');
-                          }} className="w-full text-pink-200 hover:text-white text-[10px] font-bold uppercase tracking-widest underline underline-offset-2 transition-colors">Borrar Padrón y Cargar Otro</button>
-                      </div>
-                  )}
+                  <p className="text-[10px] text-pink-200 italic">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
+                  <button onClick={() => {
+                      if (!distritoInfo.numero) return;
+                      const numStr = String(distritoInfo.numero);
+                      localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
+                      setRawElectoralData([]);
+                      setView('upload');
+                  }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
               </div>
             </div>
 
@@ -3003,43 +2933,10 @@ export default function App() {
                     }
                   </div>
 
-                  <div>
-                    <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><HardDrive className="w-4 h-4 text-slate-600"/> En este equipo (Padrones)</h4>
-                     {dashboardData.local.length === 0 ? <p className="text-sm text-slate-400 italic">No hay padrones Excel guardados localmente.</p> :
-                     <div className="flex flex-wrap gap-2">
-                        {dashboardData.local.map(d => (
-                            <div key={`local-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-slate-300">
-                                <button onClick={() => loadDistrictFromDashboard(d, 'extraordinary')} className="bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 text-sm font-black transition-all">
-                                    D{f4(d)}
-                                </button>
-                                <button onClick={() => loadDistrictFromDashboard(d, 'final')} title="Ir directo a Proyección" className="bg-slate-50 hover:bg-slate-800 hover:text-white text-slate-700 px-3 py-2 text-sm font-black transition-all border-l border-slate-300 flex items-center justify-center">
-                                    <ChevronRight className="w-4 h-4"/>
-                                </button>
-                            </div>
-                        ))}
-                     </div>
-                    }
-                  </div>
                </div>
             </div>
         </div>
       </div>
-      {modalConfig.isOpen && (
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center border-2 border-slate-200">
-            <AlertTriangle className="w-14 h-14 text-pink-600 mx-auto mb-4" />
-            <h3 className="text-xl font-black text-slate-900 mb-2">Confirmar Acción</h3>
-            <p className="text-sm text-slate-600 mb-8 font-bold">{modalConfig.message}</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setModalConfig({ isOpen: false, message: '', onConfirm: null })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">Cancelar</button>
-              {modalConfig.onConfirm && (
-                <button onClick={() => { modalConfig.onConfirm(); setModalConfig({ isOpen: false, message: '', onConfirm: null }); }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs">Confirmar</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      </>
     );
   }
 
