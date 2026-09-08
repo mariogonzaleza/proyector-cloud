@@ -3394,7 +3394,7 @@ export default function App() {
                         return (
                             <div key={c.id} className={`relative p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-4 ring-pink-300' : ''}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
                                 <input type="checkbox" className="absolute top-2 left-2 w-4 h-4 accent-pink-600 cursor-pointer" checked={isSeleccionada} onClick={e => e.stopPropagation()} onChange={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} />
-                                <span className={`${isMampara ? 'bg-pink-800 text-pink-400' : 'bg-pink-600 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
+                                <span className={`${isMampara ? 'bg-pink-800 text-white' : 'bg-pink-600 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
                                 <span className={`text-base font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
                                 <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara Especial' : 'Cancel'}</span>
                             </div>
