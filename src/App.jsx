@@ -3423,17 +3423,18 @@ export default function App() {
                     {busquedaAsignacion.trim() !== '' && <button onClick={() => setBusquedaAsignacion('')} className="text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 px-2 py-2">Limpiar búsqueda</button>}
                 </div>
                 <p className="text-[10px] text-slate-400 -mt-2 mb-3 font-bold">Escribe varias secciones separadas por coma o espacio (ej. "33, 35 40") y usa "Sumar visibles" para juntarlas todas en tu selección antes de marcarlas.</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
+                <p className="text-[10px] text-slate-400 mb-2 font-bold">Da clic para seleccionar (no cambia nada todavía) — usa "Marcar como Cancel/Mampara" abajo para aplicar.</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
                     {casillasAsignacionFiltradas.map((c) => {
                         const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
                         const isMampara = tipoActual === 'mampara';
                         const isSeleccionada = seleccionAsignacion.includes(c.id);
                         return (
-                            <div key={c.id} className={`relative p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-4 ring-pink-300' : ''}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
-                                <input type="checkbox" className="absolute top-2 left-2 w-4 h-4 accent-pink-600 cursor-pointer" checked={isSeleccionada} onClick={e => e.stopPropagation()} onChange={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])} />
-                                <span className={`${isMampara ? 'bg-pink-800 text-white' : 'bg-pink-600 text-white'} px-3 py-1 rounded text-sm font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
-                                <span className={`text-base font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
-                                <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara Especial' : 'Cancel'}</span>
+                            <div key={c.id} className={`relative p-2 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-sm text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-2 ring-pink-400' : ''}`} onClick={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}>
+                                <input type="checkbox" className="absolute top-1 left-1 w-3.5 h-3.5 accent-pink-600 pointer-events-none" checked={isSeleccionada} readOnly />
+                                <span className={`${isMampara ? 'bg-pink-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded text-[10px] font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
+                                <span className={`text-sm font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
+                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara' : 'Cancel'}</span>
                             </div>
                         );
                     })}
