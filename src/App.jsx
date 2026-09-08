@@ -1815,12 +1815,16 @@ export default function App() {
   };
 
   const marcarTodasMamparas = (tipo) => {
+      if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+      isLocalActionActive.current = true;
       const nuevoEstado = {};
       todasLasCasillasEquipamiento.forEach(c => { nuevoEstado[c.id] = tipo; });
       setMamparasPorCasilla(nuevoEstado);
   };
 
   const marcarSeleccionAsignacion = (tipo) => {
+      if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+      isLocalActionActive.current = true;
       setMamparasPorCasilla(prev => {
           const next = { ...prev };
           seleccionAsignacion.forEach(id => { next[id] = tipo; });
@@ -3371,7 +3375,7 @@ export default function App() {
               {/* ASIGNACIÓN MODULAR (CANCEL VS MAMPARA POR CASILLA) */}
               <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
                 <button onClick={() => toggleEquipSeccion('asignacion')} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
-                    <span className="text-base font-black uppercase text-slate-800 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-pink-500" /> Asignación Modular</span>
+                    <span className="text-base font-black uppercase text-slate-800 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-pink-500" /> Asignación Cancel/Mampara</span>
                     {equipExpandido.asignacion ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
                 </button>
                 {equipExpandido.asignacion && (
