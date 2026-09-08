@@ -374,6 +374,7 @@ export default function App() {
   const [cabeceraDistrital, setCabeceraDistrital] = useState("");
   const [comparacionAnterior, setComparacionAnterior] = useState(null);
   const [comparandoPadron, setComparandoPadron] = useState(false);
+  const [archivosComparacionLibre, setArchivosComparacionLibre] = useState({ anterior: null, actual: null });
   const [detalleConflictosAbierto, setDetalleConflictosAbierto] = useState(false);
   const [importJsonAvisos, setImportJsonAvisos] = useState(null);
 
@@ -470,10 +471,12 @@ export default function App() {
       if (!localidadesMap.has(locId)) localidadesMap.set(locId, nombreLoc ? `${locId} (${nombreLoc})` : locId);
     });
     
-    return { 
-      total: totalPadron, totalLista, totalMesasPadron: numCasillasPadron, totalMesasLista: numCasillasLista, 
-      mesasDetallePadron, mesasDetalleLista, distPadron, distLista, 
-      localidadesInvolucradas: Array.from(localidadesMap.values()).sort().join(', '),
+    const localidadesArray = Array.from(localidadesMap.values()).sort();
+    return {
+      total: totalPadron, totalLista, totalMesasPadron: numCasillasPadron, totalMesasLista: numCasillasLista,
+      mesasDetallePadron, mesasDetalleLista, distPadron, distLista,
+      localidadesInvolucradas: localidadesArray.join(', '),
+      localidadesInvolucradasArray: localidadesArray,
       variacion: numCasillasPadron !== numCasillasLista
     };
   };
@@ -917,6 +920,32 @@ export default function App() {
       finally { inputElement.value = null; setComparandoPadron(false); }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  // Comparación "libre": permite comparar dos padrones directamente desde la primera
+  // pantalla (antes de cargar el padrón principal del distrito), sin depender de que ya
+  // haya un rawElectoralData cargado — cada archivo se parsea de forma independiente.
+  const handleArchivoComparacionLibre = (tipo, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setArchivosComparacionLibre(prev => ({ ...prev, [tipo]: file }));
+    e.target.value = null;
+  };
+
+  const ejecutarComparacionLibre = () => {
+    if (!archivosComparacionLibre.anterior || !archivosComparacionLibre.actual) return;
+    if (isXlsxLibLoading) { setErrorMessage("La librería de Excel aún está cargando. Intenta de nuevo."); return; }
+
+    setComparandoPadron(true);
+    Promise.all([archivosComparacionLibre.anterior.arrayBuffer(), archivosComparacionLibre.actual.arrayBuffer()])
+      .then(([bufAnterior, bufActual]) => {
+        const anterior = parsearManzanasDeArchivo(bufAnterior);
+        const actual = parsearManzanasDeArchivo(bufActual);
+        setComparacionAnterior(compararPadrones(anterior, actual));
+        setErrorMessage(null);
+      })
+      .catch(() => setErrorMessage("Alguno de los dos archivos no tiene un formato válido."))
+      .finally(() => setComparandoPadron(false));
   };
 
   const exportarReporteComparacionPadron = () => {
@@ -2868,6 +2897,33 @@ export default function App() {
   }
 
   if (view === 'upload') {
+    const resultadoComparacionJSX = comparacionAnterior && (
+        <div className="p-5 bg-white rounded-3xl border-2 border-pink-200 text-left animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-black text-pink-700 uppercase tracking-widest">Resultado de la Comparación</p>
+                <button onClick={() => setComparacionAnterior(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <ul className="text-[11px] font-bold text-slate-600 space-y-1.5">
+                <li>Secciones: <span className="text-emerald-600">{comparacionAnterior.seccionesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.seccionesDesaparecidas.length} desaparecieron</span></li>
+                <li>Localidades: <span className="text-emerald-600">{comparacionAnterior.localidadesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.localidadesDesaparecidas.length} desaparecieron</span></li>
+                <li>Manzanas: <span className="text-emerald-600">{comparacionAnterior.manzanasNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.manzanasDesaparecidas.length} desaparecieron</span> · <span className="text-amber-600">{comparacionAnterior.manzanasCambiadas.length} cambiaron padrón/lista</span></li>
+            </ul>
+            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Padrón Electoral</p>
+                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.padronAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.padronActual.toLocaleString()}</p>
+                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaPadron > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaPadron < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaPadron > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaPadron.toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lista Nominal</p>
+                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.listaAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.listaActual.toLocaleString()}</p>
+                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaLista > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaLista < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaLista > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaLista.toLocaleString()}</p>
+                </div>
+            </div>
+            <button onClick={exportarReporteComparacionPadron} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"><FileDown className="w-4 h-4" /> Descargar Reporte Excel</button>
+        </div>
+    );
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center">
         <div className="max-w-md w-full bg-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-500 relative overflow-hidden text-center">
@@ -2876,13 +2932,36 @@ export default function App() {
           <h2 className="text-2xl font-black mb-1 uppercase tracking-tighter text-white leading-tight">Carga de Padrón</h2>
           <p className="text-pink-200 text-xs mb-8 uppercase tracking-[0.2em] font-bold italic">Distrito {f4(distritoInfo.numero)}</p>
           {errorMessage && ( <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-1"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-red-700 leading-tight">{errorMessage}</p></div> )}
-          
+
           {rawElectoralData.length === 0 ? (
-            <label className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-pink-400 rounded-3xl hover:bg-pink-700 cursor-pointer transition-all bg-pink-600 shadow-sm">
-              <FileSpreadsheet className="w-10 h-10 text-white mb-4" />
-              <span className="text-xs font-black uppercase tracking-widest text-pink-100">Seleccionar Padrón (.xlsx)</span>
-              <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
-            </label>
+            <div className="space-y-4">
+              <label className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-pink-400 rounded-3xl hover:bg-pink-700 cursor-pointer transition-all bg-pink-600 shadow-sm">
+                <FileSpreadsheet className="w-10 h-10 text-white mb-4" />
+                <span className="text-xs font-black uppercase tracking-widest text-pink-100">Seleccionar Padrón (.xlsx)</span>
+                <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
+              </label>
+
+              <div className="pt-4 mt-2 border-t border-pink-400/50 text-left">
+                  <p className="text-[10px] text-pink-100 font-bold uppercase tracking-widest text-center mb-3">¿Solo quieres comparar dos padrones? No hace falta cargar uno primero</p>
+                  <div className="grid grid-cols-2 gap-2">
+                      <label className={`flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-dashed rounded-2xl transition-all text-center ${archivosComparacionLibre.anterior ? 'border-emerald-300 bg-emerald-700/20 text-emerald-100' : 'border-pink-300 text-pink-100 hover:bg-pink-700/50 cursor-pointer'}`}>
+                          {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
+                          <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-full px-1">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
+                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('anterior', e)} />
+                      </label>
+                      <label className={`flex flex-col items-center justify-center gap-1.5 p-3 border-2 border-dashed rounded-2xl transition-all text-center ${archivosComparacionLibre.actual ? 'border-emerald-300 bg-emerald-700/20 text-emerald-100' : 'border-pink-300 text-pink-100 hover:bg-pink-700/50 cursor-pointer'}`}>
+                          {archivosComparacionLibre.actual ? <CheckCircle2 className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
+                          <span className="text-[9px] font-black uppercase tracking-widest truncate max-w-full px-1">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
+                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('actual', e)} />
+                      </label>
+                  </div>
+                  <button onClick={ejecutarComparacionLibre} disabled={!archivosComparacionLibre.anterior || !archivosComparacionLibre.actual || comparandoPadron} className="mt-3 w-full bg-white/15 hover:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
+                      {comparandoPadron ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Comparando...</> : <><ArrowRightLeft className="w-3.5 h-3.5" /> Comparar</>}
+                  </button>
+              </div>
+
+              {resultadoComparacionJSX}
+            </div>
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
                <div className="p-6 bg-white border border-pink-200 rounded-3xl flex flex-col items-center shadow-sm">
@@ -2910,32 +2989,7 @@ export default function App() {
                    </label>
                </div>
 
-               {comparacionAnterior && (
-                   <div className="p-5 bg-white rounded-3xl border-2 border-pink-200 text-left animate-in fade-in slide-in-from-bottom-2">
-                       <div className="flex items-center justify-between mb-3">
-                           <p className="text-xs font-black text-pink-700 uppercase tracking-widest">Resultado de la Comparación</p>
-                           <button onClick={() => setComparacionAnterior(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-                       </div>
-                       <ul className="text-[11px] font-bold text-slate-600 space-y-1.5">
-                           <li>Secciones: <span className="text-emerald-600">{comparacionAnterior.seccionesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.seccionesDesaparecidas.length} desaparecieron</span></li>
-                           <li>Localidades: <span className="text-emerald-600">{comparacionAnterior.localidadesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.localidadesDesaparecidas.length} desaparecieron</span></li>
-                           <li>Manzanas: <span className="text-emerald-600">{comparacionAnterior.manzanasNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.manzanasDesaparecidas.length} desaparecieron</span> · <span className="text-amber-600">{comparacionAnterior.manzanasCambiadas.length} cambiaron padrón/lista</span></li>
-                       </ul>
-                       <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
-                           <div className="text-center">
-                               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Padrón Electoral</p>
-                               <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.padronAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.padronActual.toLocaleString()}</p>
-                               <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaPadron > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaPadron < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaPadron > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaPadron.toLocaleString()}</p>
-                           </div>
-                           <div className="text-center">
-                               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lista Nominal</p>
-                               <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.listaAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.listaActual.toLocaleString()}</p>
-                               <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaLista > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaLista < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaLista > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaLista.toLocaleString()}</p>
-                           </div>
-                       </div>
-                       <button onClick={exportarReporteComparacionPadron} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"><FileDown className="w-4 h-4" /> Descargar Reporte Excel</button>
-                   </div>
-               )}
+               {resultadoComparacionJSX}
             </div>
           )}
         </div>
@@ -4000,15 +4054,19 @@ export default function App() {
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Localidades del Polígono</p>
                                         <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg font-black shadow-sm">Total MZ: {[c.sede, ...(c.alimentadoras || [])].length}</span>
                                       </div>
-                                      <p className="text-xs font-bold text-slate-700 leading-snug">{stats.localidadesInvolucradas}</p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                          {(stats.localidadesInvolucradasArray || []).map((loc, i) => (
+                                              <span key={i} className="bg-pink-50 border-2 border-pink-200 text-pink-700 px-2.5 py-1 rounded-lg text-[11px] font-black shadow-sm">{loc}</span>
+                                          ))}
+                                      </div>
                                     </div>
 
                                     <div className={`rounded-2xl p-4 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                                         <div className="flex justify-between items-center mb-3 text-left">
                                             <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución</span>
                                             <div className="flex gap-2">
-                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2.5 py-1 rounded-md text-[9px] font-black text-left shadow-sm">P: {Number(stats.totalMesasPadron)}</span>
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-md text-[9px] font-black text-left shadow-sm">L: {Number(stats.totalMesasLista)}</span>
+                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 pl-2 pr-2.5 py-1 rounded-md shadow-sm flex items-baseline gap-1 text-left"><span className="text-[9px] font-black">P</span><span className="text-base font-black italic leading-none">{Number(stats.totalMesasPadron)}</span></span>
+                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 pl-2 pr-2.5 py-1 rounded-md shadow-sm flex items-baseline gap-1 text-left"><span className="text-[9px] font-black">L</span><span className="text-base font-black italic leading-none">{Number(stats.totalMesasLista)}</span></span>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1.5">
