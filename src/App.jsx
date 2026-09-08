@@ -3198,22 +3198,38 @@ export default function App() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
-                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              {configEquipoBloqueada ? (
+                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosNacionales}</div>
+                              ) : (
+                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              )}
                               <p className="text-[10px] text-slate-400 mt-1">2 sillas c/u. Nota: 8 PPN con registro (Acuerdos INE/CG344/2026 e INE/CG347/2026).</p>
                           </div>
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Locales</label>
-                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              {configEquipoBloqueada ? (
+                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosLocales}</div>
+                              ) : (
+                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              )}
                               <p className="text-[10px] text-slate-400 mt-1">2 PPL con registro vigente en Edomex: PRD (local desde 2024) y Podemos (nuevo, 2026) — corte agosto 2026.</p>
                           </div>
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Sillas x Partido Local</label>
-                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              {configEquipoBloqueada ? (
+                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.sillasPorPartidoLocal}</div>
+                              ) : (
+                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              )}
                               <p className="text-[10px] text-slate-400 mt-1">Modelo INE 2026-2027: 1 silla (solo puede estar una representación local a la vez en casilla)</p>
                           </div>
                           <div>
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Elecciones Locales (urnas OPL)</label>
-                              <input type="number" min="0" disabled={configEquipoBloqueada} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              {configEquipoBloqueada ? (
+                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numEleccionesLocales}</div>
+                              ) : (
+                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              )}
                               <p className="text-[10px] text-slate-400 mt-1">Edomex: Dip. Locales + Ayuntamientos = 2</p>
                           </div>
                       </div>
@@ -3246,16 +3262,16 @@ export default function App() {
 
               {/* PAQUETE UNITARIO POR CASILLA */}
               <SeccionColapsable title="Paquete Unitario por Casilla" icon={<Layers className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.paquetes} onToggle={() => toggleEquipSeccion('paquetes')}>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* MOBILIARIO */}
                   <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-2 h-full bg-pink-500"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Mobiliario</h3>
-                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
+                      <h3 className="text-base font-black uppercase text-slate-800 mb-4">Mobiliario</h3>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
                           <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Mesas</p>
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Tablones/Mesas</p>
                               <p className="text-3xl font-black text-slate-900">{paqueteMampara.mobiliario.tablonesMesas}</p>
                           </div>
                           <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
@@ -3263,14 +3279,22 @@ export default function App() {
                               <p className="text-3xl font-black text-slate-900">{paqueteMampara.sillas.total}</p>
                           </div>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
+                      <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200">
+                          <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Desglose de Sillas</p>
+                          <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                              <li>FMDCU: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.fmdcu}</span></li>
+                              <li>RPP Nacionales: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.nacionales}</span></li>
+                              <li>RPP Locales: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.locales}</span></li>
+                              <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.mamparas}</span></li>
+                              {equipConfig.sillasParaUrna && <li>Urna: <span className="text-slate-900 ml-1">{paqueteMampara.sillas.urna}</span></li>}
+                          </ul>
+                      </div>
                   </div>
 
                   {/* MATERIAL ELECTORAL */}
                   <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-2 h-full bg-slate-800"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Material Electoral</h3>
-                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
+                      <h3 className="text-base font-black uppercase text-slate-800 mb-4">Material Electoral</h3>
 
                       <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
                           <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
@@ -3382,7 +3406,7 @@ export default function App() {
                           <div className="grid grid-cols-2 gap-4">
                               <div className="bg-pink-600 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
-                                  <span className="text-2xl font-black text-pink-400">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
+                                  <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
                               </div>
                               <div className="bg-pink-600 p-5 rounded-2xl border-2 border-pink-800 flex flex-col justify-center items-center shadow-sm">
                                   <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
@@ -3422,17 +3446,17 @@ export default function App() {
 
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-200 uppercase">Urnas Locales</span>
-                                  <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
+                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Urnas Locales</span>
+                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-200 uppercase">Base P/Urna</span>
-                                  <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
+                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Base P/Urna</span>
+                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
                               </div>
-                              <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-200 uppercase">Cancel IEEM</span>
-                                  <span className="text-base font-black text-pink-400">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
+                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Cancel IEEM</span>
+                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
                               </div>
                           </div>
                       </div>
