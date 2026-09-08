@@ -175,8 +175,8 @@ const calcularEquipamientoCasilla = (totalElecciones, usarMamparas = false, conf
     const sillasNacionales = numPartidosNacionales * 2;
     const sillasLocales = numPartidosLocales * sillasPorPartidoLocal;
     const sillasUrna = configOpcional.sillasParaUrna ? 1 : 0; // sustituye la mesa pequeña de urna por una silla
-    let sillasTotal = sillasFMDCU + sillasNacionales + sillasLocales + sillasUrna;
-    if (usarMamparas) sillasTotal += (totalEleccionesNum >= 5 ? 2 : 1); // silla de apoyo en la mesa de mamparas especiales
+    const sillasMamparas = usarMamparas ? 2 : 0; // 1 silla por cada una de las 2 mamparas; si es cancel, no se proyectan
+    let sillasTotal = sillasFMDCU + sillasNacionales + sillasLocales + sillasUrna + sillasMamparas;
 
     // --- 3) MATERIAL ELECTORAL - APORTACIÓN INE (constante, no depende del # de elecciones) ---
     const canceles = usarMamparas ? 0 : 1;
@@ -193,7 +193,7 @@ const calcularEquipamientoCasilla = (totalElecciones, usarMamparas = false, conf
 
     return {
         mobiliario: { tablonesMesas: mobiliarioCalculado },
-        sillas: { total: sillasTotal, fmdcu: sillasFMDCU, nacionales: sillasNacionales, locales: sillasLocales, urna: sillasUrna },
+        sillas: { total: sillasTotal, fmdcu: sillasFMDCU, nacionales: sillasNacionales, locales: sillasLocales, urna: sillasUrna, mamparas: sillasMamparas },
         materialIne: { canceles, mamparas, marcadorasCredenciales, liquidosIndelebles, marcadoresBoletas, urnasFederales },
         materialOpl: { urnasLocales: urnasLocalesOpl, basesPortaUrna: basesPortaUrnaOpl, cancelPorCasilla: cancelPorCasillaOpl }
     };
@@ -1837,7 +1837,7 @@ export default function App() {
     const totales = Array(headers.length - 5).fill(0);
 
     todasLasCasillasEquipamiento.forEach(c => {
-      const tipo = mamparasPorCasilla[c.id] || 'cancel';
+      const tipo = mamparasPorCasilla[c.id] || 'mampara';
       const req = calcularEquipamientoCasilla(equipConfig.totalElecciones, tipo === 'mampara', equipConfig);
       const asign = ubicacionCasillas[claveCasillaUbicacion(c.seccion, c.nombre)];
       const tipoDomicilio = asign ? (domicilios[asign.domicilioId]?.tipoDomicilio || 'SIN TIPO') : 'SIN ASIGNAR';
@@ -2632,22 +2632,21 @@ export default function App() {
   const equipamientoDistrital = useMemo(() => {
       const totales = {
           mobiliario: { tablonesMesas: 0 },
-          sillas: { total: 0, fmdcu: 0, nacionales: 0, locales: 0, urna: 0 },
+          sillas: { total: 0, fmdcu: 0, nacionales: 0, locales: 0, urna: 0, mamparas: 0 },
           materialIne: { canceles: 0, mamparas: 0, marcadorasCredenciales: 0, liquidosIndelebles: 0, marcadoresBoletas: 0, urnasFederales: 0 },
           materialOpl: { urnasLocales: 0, basesPortaUrna: 0, cancelPorCasilla: 0 }
       };
       todasLasCasillasEquipamiento.forEach(c => {
-          const tipo = mamparasPorCasilla[c.id] || 'cancel';
+          const tipo = mamparasPorCasilla[c.id] || 'mampara';
           const req = calcularEquipamientoCasilla(equipConfig.totalElecciones, tipo === 'mampara', equipConfig);
           totales.mobiliario.tablonesMesas += req.mobiliario.tablonesMesas;
-          totales.sillas.total += req.sillas.total; totales.sillas.fmdcu += req.sillas.fmdcu; totales.sillas.nacionales += req.sillas.nacionales; totales.sillas.locales += req.sillas.locales; totales.sillas.urna += req.sillas.urna;
+          totales.sillas.total += req.sillas.total; totales.sillas.fmdcu += req.sillas.fmdcu; totales.sillas.nacionales += req.sillas.nacionales; totales.sillas.locales += req.sillas.locales; totales.sillas.urna += req.sillas.urna; totales.sillas.mamparas += req.sillas.mamparas;
           totales.materialIne.canceles += req.materialIne.canceles; totales.materialIne.mamparas += req.materialIne.mamparas; totales.materialIne.marcadorasCredenciales += req.materialIne.marcadorasCredenciales; totales.materialIne.liquidosIndelebles += req.materialIne.liquidosIndelebles; totales.materialIne.marcadoresBoletas += req.materialIne.marcadoresBoletas; totales.materialIne.urnasFederales += req.materialIne.urnasFederales;
           totales.materialOpl.urnasLocales += req.materialOpl.urnasLocales; totales.materialOpl.basesPortaUrna += req.materialOpl.basesPortaUrna; totales.materialOpl.cancelPorCasilla += req.materialOpl.cancelPorCasilla;
       });
       return totales;
   }, [todasLasCasillasEquipamiento, mamparasPorCasilla, equipConfig]);
 
-  const paqueteCancel = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, false, equipConfig), [equipConfig]);
   const paqueteMampara = useMemo(() => calcularEquipamientoCasilla(equipConfig.totalElecciones, true, equipConfig), [equipConfig]);
 
   useEffect(() => {
@@ -3227,7 +3226,7 @@ export default function App() {
                           </div>
                           <div className="flex items-center gap-3">
                               <div className="flex-1">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteCancel.mobiliario.tablonesMesas})</label>
+                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteMampara.mobiliario.tablonesMesas})</label>
                                   <div className="flex items-center gap-2">
                                       <input type="number" min="0" disabled={configEquipoBloqueada} placeholder="Automático (INE)" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.mobiliarioPorCasilla} onChange={e => setEquipConfig({...equipConfig, mobiliarioPorCasilla: e.target.value})} />
                                       {!configEquipoBloqueada && equipConfig.mobiliarioPorCasilla !== '' && (
@@ -3243,65 +3242,40 @@ export default function App() {
               {/* PAQUETE UNITARIO POR CASILLA */}
               <SeccionColapsable title="Paquete Unitario por Casilla" icon={<Layers className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.paquetes} onToggle={() => toggleEquipSeccion('paquetes')}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* PAQUETE CON CANCEL (equipo estándar) */}
+                  {/* MOBILIARIO */}
                   <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-2 h-full bg-pink-500"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Paquete Unitario (Cancel)</h3>
-                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Lo que recibe 1 sola casilla estándar</p>
+                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Mobiliario</h3>
+                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
 
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 border-b-2 border-slate-200 pb-1">Mobiliario / Sillas</p>
-                              <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                  <li>Tablones/Mesas: <span className="text-slate-900 ml-1">{paqueteCancel.mobiliario.tablonesMesas}</span></li>
-                                  <li>Sillas (total): <span className="text-slate-900 ml-1">{paqueteCancel.sillas.total}</span></li>
-                              </ul>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Mesas</p>
+                              <p className="text-3xl font-black text-slate-900">{paqueteMampara.mobiliario.tablonesMesas}</p>
                           </div>
-                          <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200">
-                              <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
-                              <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                  <li>Canceles: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.canceles}</span></li>
-                                  <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.urnasFederales}</span></li>
-                                  <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.liquidosIndelebles}</span></li>
-                                  <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadoresBoletas}</span></li>
-                                  <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadorasCredenciales}</span></li>
-                              </ul>
+                          <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
+                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Sillas</p>
+                              <p className="text-3xl font-black text-slate-900">{paqueteMampara.sillas.total}</p>
                           </div>
                       </div>
-                      <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-900">
-                          <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-slate-700 pb-1">Aporta OPL / IEEM</p>
-                          <ul className="text-sm text-slate-300 font-bold space-y-1.5 grid grid-cols-2">
-                              <li>Urnas Locales: <span className="text-white ml-1">{paqueteCancel.materialOpl.urnasLocales}</span></li>
-                              <li>Base Porta Urna: <span className="text-white ml-1">{paqueteCancel.materialOpl.basesPortaUrna}</span></li>
-                              <li>Cancel IEEM: <span className="text-white ml-1">{paqueteCancel.materialOpl.cancelPorCasilla}</span></li>
-                          </ul>
-                      </div>
+                      <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
                   </div>
 
-                  {/* PAQUETE CON MAMPARA (cualquier tipo de casilla, no exclusivo de Especiales) */}
+                  {/* MATERIAL ELECTORAL */}
                   <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-2 h-full bg-slate-800"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Paquete Unitario (Mampara)</h3>
-                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Lo que recibe 1 casilla equipada con mamparas (en vez de cancel)</p>
+                      <h3 className="text-base font-black uppercase text-slate-800 mb-1">Material Electoral</h3>
+                      <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
 
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="bg-slate-50 p-4 rounded-xl border-2 border-slate-200">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 border-b-2 border-slate-200 pb-1">Mobiliario / Sillas</p>
-                              <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                  <li>Tablones/Mesas: <span className="text-slate-900 ml-1">{paqueteMampara.mobiliario.tablonesMesas}</span></li>
-                                  <li>Sillas (total): <span className="text-slate-900 ml-1">{paqueteMampara.sillas.total}</span></li>
-                              </ul>
-                          </div>
-                          <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200">
-                              <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
-                              <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                  <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
-                                  <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
-                                  <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
-                                  <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
-                                  <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
-                              </ul>
-                          </div>
+                      <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
+                          <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
+                          <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                              <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
+                              <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
+                              <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
+                              <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
+                              <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
+                          </ul>
                       </div>
                       <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-900">
                           <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-slate-700 pb-1">Aporta OPL / IEEM</p>
@@ -3325,7 +3299,7 @@ export default function App() {
                 <div className="px-6 pb-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Selecciona qué casillas llevan cancel y cuáles mampara especial.</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Todas las casillas parten con mampara por default. Marca aquí las excepciones que llevarán cancel.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
@@ -3340,7 +3314,7 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
                     {todasLasCasillasEquipamiento.map((c, i) => {
-                        const tipoActual = mamparasPorCasilla[c.id] || 'cancel';
+                        const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
                         const isMampara = tipoActual === 'mampara';
                         return (
                             <div key={i} className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer ${isMampara ? 'bg-slate-800 border-slate-900 shadow-md text-white' : 'bg-white border-slate-300 hover:border-pink-400'}`} onClick={() => setMamparasPorCasilla(prev => ({...prev, [c.id]: isMampara ? 'cancel' : 'mampara'}))}>
@@ -3382,7 +3356,7 @@ export default function App() {
                                   <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
                               </div>
                           </div>
-                          <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
+                          <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
 
                           <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-slate-800 pb-2">Accesibilidad</p>
                           <div className="grid grid-cols-2 gap-4">
