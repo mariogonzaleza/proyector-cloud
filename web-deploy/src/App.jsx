@@ -2969,7 +2969,10 @@ export default function App() {
                </div>
             </div>
         </div>
-        <button onClick={exportarPlantillaPadron} className="mt-6 z-10 flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
+        <div className="mt-6 z-10 flex flex-wrap gap-3 justify-center">
+            <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
+            <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
+        </div>
       </div>
     );
   }
