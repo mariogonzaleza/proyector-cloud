@@ -1,0 +1,5 @@
+# Nunca convertir finales de línea en archivos binarios (evita corrupción en Windows/Git autocrlf).
+*.pdf binary
+*.xlsx binary
+*.png binary
+*.ico binary
