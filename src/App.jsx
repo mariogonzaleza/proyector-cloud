@@ -1161,31 +1161,9 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const ejecutarAsignacion = () => {
-    if (form.manzanasSeleccionadas.length === 0) return;
-    if (form.rol === 'alimentadora') {
-        if (!form.casillaUidDestino) { setErrorMessage("Error: Selecciona una Casilla Destino."); return; }
-        const casillaDestino = casillasGlobales.find(c => String(c.uid) === String(form.casillaUidDestino));
-        if (casillaDestino && casillaDestino.sede) {
-            const seccionDestino = String(casillaDestino.sede.seccion);
-            const difSeccion = form.manzanasSeleccionadas.find(m => String(m.seccion) !== seccionDestino);
-            if (difSeccion) { setErrorMessage(`Bloqueo: No se pueden asignar manzanas entre diferentes secciones. (Sede en Sec ${f4(seccionDestino)} - Manzana en Sec ${f4(difSeccion.seccion)})`); return; }
-        }
-        const sedesIds = new Set(casillasGlobales.map(c => c.sede?.id));
-        const invalidManzanas = form.manzanasSeleccionadas.filter(m => sedesIds.has(m.id));
-        if (invalidManzanas.length > 0) { setErrorMessage(`Bloqueo: La manzana ya funge como SEDE.`); return; }
-    }
-    if (form.rol === 'sede') {
-        const newSedesKeys = new Set();
-        for (const mzData of form.manzanasSeleccionadas) {
-            const key = `${mzData.seccion}-${form.tipoElegido}`;
-            if (newSedesKeys.has(key)) { setErrorMessage(`Bloqueo: Múltiples sedes simultáneas.`); return; }
-            newSedesKeys.add(key);
-            const duplicate = casillasGlobales.find(c => String(c.sede?.seccion) === String(mzData.seccion) && String(c.tipo) === String(form.tipoElegido) && c.sede?.id !== mzData.id);
-            if (duplicate) { setErrorMessage(`Bloqueo: Ya existe una Extraordinaria '${form.tipoElegido}' en la Sección ${f4(mzData.seccion)}.`); return; }
-        }
-    }
-
+  // Aplica de verdad la asignación ya validada (y, si hacía falta, ya confirmada por el
+  // usuario en el modal de "esta manzana ya está en otro lado").
+  const aplicarAsignacion = () => {
     setErrorMessage(null);
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
@@ -1222,6 +1200,59 @@ export default function App() {
     setForm(prev => ({ ...prev, manzanasSeleccionadas: [] }));
     setSuccessMessage("Cambios aplicados.");
     setTimeout(() => setSuccessMessage(null), 2000);
+  };
+
+  const ejecutarAsignacion = () => {
+    if (form.manzanasSeleccionadas.length === 0) return;
+    if (form.rol === 'alimentadora') {
+        if (!form.casillaUidDestino) { setErrorMessage("Error: Selecciona una Casilla Destino."); return; }
+        const casillaDestino = casillasGlobales.find(c => String(c.uid) === String(form.casillaUidDestino));
+        if (casillaDestino && casillaDestino.sede) {
+            const seccionDestino = String(casillaDestino.sede.seccion);
+            const difSeccion = form.manzanasSeleccionadas.find(m => String(m.seccion) !== seccionDestino);
+            if (difSeccion) { setErrorMessage(`Bloqueo: No se pueden asignar manzanas entre diferentes secciones. (Sede en Sec ${f4(seccionDestino)} - Manzana en Sec ${f4(difSeccion.seccion)})`); return; }
+        }
+        const sedesIds = new Set(casillasGlobales.map(c => c.sede?.id));
+        const invalidManzanas = form.manzanasSeleccionadas.filter(m => sedesIds.has(m.id));
+        if (invalidManzanas.length > 0) { setErrorMessage(`Bloqueo: La manzana ya funge como SEDE.`); return; }
+    }
+    if (form.rol === 'sede') {
+        const newSedesKeys = new Set();
+        for (const mzData of form.manzanasSeleccionadas) {
+            const key = `${mzData.seccion}-${form.tipoElegido}`;
+            if (newSedesKeys.has(key)) { setErrorMessage(`Bloqueo: Múltiples sedes simultáneas.`); return; }
+            newSedesKeys.add(key);
+            const duplicate = casillasGlobales.find(c => String(c.sede?.seccion) === String(mzData.seccion) && String(c.tipo) === String(form.tipoElegido) && c.sede?.id !== mzData.id);
+            if (duplicate) { setErrorMessage(`Bloqueo: Ya existe una Extraordinaria '${form.tipoElegido}' en la Sección ${f4(mzData.seccion)}.`); return; }
+        }
+    }
+
+    // Seguro de reasignación: si alguna manzana seleccionada ya pertenece a OTRA casilla
+    // (sede o alimentadora) distinta al destino actual, no se mueve en silencio — se avisa
+    // primero y se pide confirmar, porque a esa otra casilla se le quitaría de encima.
+    const conflictos = [];
+    form.manzanasSeleccionadas.forEach(mz => {
+        for (const c of casillasGlobales) {
+            if (form.rol === 'alimentadora' && String(c.uid) === String(form.casillaUidDestino)) continue;
+            if (c.sede?.id === mz.id) {
+                conflictos.push({ manzana: mz, tipoAnterior: String(c.tipo), rolAnterior: 'sede', quedariaVacia: (c.alimentadoras || []).length === 0 });
+            } else if (c.alimentadoras?.some(a => a.id === mz.id)) {
+                conflictos.push({ manzana: mz, tipoAnterior: String(c.tipo), rolAnterior: 'alimentadora', quedariaVacia: false });
+            }
+        }
+    });
+
+    if (conflictos.length > 0) {
+        const detalle = conflictos.map(x => `Mz ${f4(x.manzana.manzana)} (hoy ${x.rolAnterior === 'sede' ? 'es la sede' : 'es alimentadora'} de ${x.tipoAnterior}${x.quedariaVacia ? ', que se quedaría sin manzanas y desaparecería' : ''})`).join('; ');
+        setModalConfig({
+            isOpen: true,
+            message: `Atención: ${detalle}. Si confirmas, se quitarán de ahí y pasarán a esta nueva asignación. ¿Quieres continuar?`,
+            onConfirm: () => aplicarAsignacion()
+        });
+        return;
+    }
+
+    aplicarAsignacion();
   };
 
   const desvincularManzana = (boothUid, mzId) => {
