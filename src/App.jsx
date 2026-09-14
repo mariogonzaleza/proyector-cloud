@@ -353,7 +353,7 @@ export default function App() {
   const [dashboardData, setDashboardData] = useState({ loading: false, cloud: [] });
 
   const [form, setForm] = useState({
-    seccionOrigen: "", rol: "alimentadora", localidad: "", manzanasSeleccionadas: [], tipoElegido: "E1", casillaUidDestino: "" 
+    seccionOrigen: "", rol: "", localidad: "", manzanasSeleccionadas: [], tipoElegido: "E1", casillaUidDestino: ""
   });
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -2797,7 +2797,12 @@ export default function App() {
   useEffect(() => {
     if (form.rol === 'alimentadora') {
         const destinoValido = sedesActivas.some(s => String(s.uid) === String(form.casillaUidDestino));
-        if (!destinoValido) setForm(prev => ({ ...prev, casillaUidDestino: sedesActivas.length > 0 ? String(sedesActivas[0].uid) : "" }));
+        if (!destinoValido) {
+            // Al auto-elegir un destino también se fija su sección — el Paso 3 (Sección
+            // "fija") y el listado de localidades dependen de que ambos queden sincronizados.
+            const primera = sedesActivas.length > 0 ? sedesActivas[0] : null;
+            setForm(prev => ({ ...prev, casillaUidDestino: primera ? String(primera.uid) : "", seccionOrigen: primera ? String(primera.sede.seccion) : "" }));
+        }
     }
   }, [form.rol, sedesActivas, form.casillaUidDestino]);
 
@@ -4155,58 +4160,109 @@ export default function App() {
                 <div className="space-y-5 text-left">
                   {errorMessage && ( <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 shadow-sm text-left"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5 text-left" /><p className="text-xs font-bold text-red-800 leading-tight text-left">{errorMessage}</p><button onClick={()=>setErrorMessage(null)}><X className="w-4 h-4 text-red-400 text-left" /></button></div> )}
                   {successMessage && ( <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-start gap-3 text-left shadow-sm"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-emerald-800 leading-tight text-left">{successMessage}</p><button onClick={()=>setSuccessMessage(null)}><X className="w-4 h-4 text-emerald-400" /></button></div> )}
-                  
-                  <div className="grid grid-cols-2 gap-4 text-left">
-                    <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1 text-left">Sec. Sede</label>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
-                            <option value="">-- SEC --</option>
-                            {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
-                        </select>
-                    </div>
-                    <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1 text-left">Localidad</label>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
-                            <option value="">-- LOC --</option>
-                            {localidadesDisp.map(l => {
-                                const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
-                                return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
-                            })}
-                        </select>
+
+                  {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
+                  <div className="space-y-2.5 text-left">
+                    <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
+                    <div className="grid grid-cols-1 gap-2.5 text-left">
+                        <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-pink-50'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase text-left">Crear una casilla nueva</p>
+                                <p className={`text-[10px] font-bold text-left ${form.rol === 'sede' ? 'text-pink-100' : 'text-slate-400'}`}>Le pones un número (E1, E2...) y eliges su manzana sede</p>
+                            </div>
+                        </button>
+                        <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-pink-50'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase text-left">Agregar manzanas a una casilla ya creada</p>
+                                <p className={`text-[10px] font-bold text-left ${form.rol === 'alimentadora' ? 'text-pink-100' : 'text-slate-400'}`}>{sedesActivas.length === 0 ? 'Primero crea una casilla nueva (opción de arriba)' : 'Suma más manzanas a su Padrón y Lista'}</p>
+                            </div>
+                        </button>
                     </div>
                   </div>
 
-                  {form.localidad && (
+                  {/* PASO 2: depende de qué se eligió arriba */}
+                  {form.rol === 'sede' && (
+                    <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
+                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
+                            {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
+                        </select>
+                    </div>
+                  )}
+                  {form.rol === 'alimentadora' && (
+                    <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
+                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
+                            <option value="">-- Elige una casilla --</option>
+                            {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
+                        </select>
+                    </div>
+                  )}
+
+                  {/* PASO 3: localidad + manzanas, ya con la sección resuelta (fija si es alimentadora) */}
+                  {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
                     <div className="space-y-5 text-left">
                       <div className="space-y-2.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block ml-1 text-left">Manzanas en {f4(form.localidad)}{catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`] ? ` — ${catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`]}` : ''}</label>
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            {form.rol === 'sede' ? (
+                                <div className="space-y-1.5 text-left">
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                                    <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
+                                        <option value="">-- SEC --</option>
+                                        {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5 text-left">
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                                    <div className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm font-black text-slate-500 text-left" title="Se fija sola: una casilla solo puede tener manzanas de su misma sección">Sec. {f4(form.seccionOrigen)} (fija)</div>
+                                </div>
+                            )}
+                            <div className="space-y-1.5 text-left">
+                                <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Localidad</label>
+                                <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" disabled={!form.seccionOrigen} value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
+                                    <option value="">-- LOC --</option>
+                                    {localidadesDisp.map(l => {
+                                        const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
+                                        return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+                      </div>
+
+                      {form.localidad && (
+                      <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
-                            const assign = getMzAssignment(m.id); const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
-                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${isSelected ? 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white'} ${assign?.type === 'sede' ? 'text-white bg-pink-800 border-pink-900 shadow-md font-black' : ''} ${assign?.type === 'alimentadora' ? 'text-pink-700 bg-pink-100 border-pink-300 shadow-inner' : ''}`}><span className={`opacity-50 mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' ? 'text-white' : ''}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
+                            const assign = getMzAssignment(m.id);
+                            const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
+                            let tileClasses;
+                            if (isSelected) tileClasses = 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800';
+                            else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
+                            else if (assign?.type === 'alimentadora') tileClasses = 'bg-pink-100 border-pink-300 text-pink-700 shadow-inner';
+                            else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
+                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
                         })}</div>
                       </div>
-                      
+                      )}
+
                       {form.manzanasSeleccionadas.length > 0 && (
-                        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-5 shadow-xl border-b-4 border-pink-600 text-left">
-                          <div className="flex justify-between items-center text-left">
-                             <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Selección</p><h4 className="text-2xl font-black italic text-left text-white">{form.manzanasSeleccionadas.length} MZ</h4></div>
-                             <div className="text-right text-left text-right">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left text-right">Sumatoria</p>
-                                <p className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()}</p>
-                                <p className="text-xs font-bold text-left text-pink-100 mt-0.5">L: {totalesSeleccion.lista.toLocaleString()}</p>
-                             </div>
+                        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Vas a hacer esto</p>
+                          <p className="text-sm font-bold leading-relaxed text-left">
+                            {form.rol === 'sede'
+                                ? <>Crear la casilla <span className="text-pink-300 font-black">{form.tipoElegido}</span> en la Sección <span className="text-pink-300 font-black">{f4(form.seccionOrigen)}</span>, con la manzana <span className="text-pink-300 font-black">{f4(form.manzanasSeleccionadas[0]?.manzana)}</span> como su sede.</>
+                                : <>Agregar <span className="text-pink-300 font-black">{form.manzanasSeleccionadas.length} manzana{form.manzanasSeleccionadas.length === 1 ? '' : 's'}</span> a la casilla <span className="text-pink-300 font-black">{sedesActivas.find(c => String(c.uid) === String(form.casillaUidDestino))?.tipo}</span> (Sección {f4(form.seccionOrigen)}).</>
+                            }
+                          </p>
+                          <div className="flex justify-between items-center border-t border-slate-700 pt-4 text-left">
+                             <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Suma de esta selección</p><h4 className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()} · L: {totalesSeleccion.lista.toLocaleString()}</h4></div>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-3 text-left">
-                            <button onClick={() => setForm(f => ({ ...f, rol: 'sede', manzanasSeleccionadas: f.manzanasSeleccionadas.slice(0, 1) }))} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${form.rol === 'sede' ? 'bg-pink-600 text-white shadow-md scale-105 border-2 border-pink-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-2 border-transparent'}`}>Establecer Sede</button>
-                            <button onClick={() => setForm(f => ({ ...f, rol: 'alimentadora' }))} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 text-white shadow-md scale-105 border-2 border-pink-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-2 border-transparent'}`}>Alimentadora</button>
-                          </div>
-                          
-                          <select className="w-full bg-slate-800 rounded-xl p-3 text-sm font-bold text-white border-2 border-slate-700 text-left focus:ring-2 focus:ring-pink-500 outline-none" value={form.rol === 'sede' ? form.tipoElegido : form.casillaUidDestino} onChange={e => setForm({...form, [form.rol === 'sede' ? 'tipoElegido' : 'casillaUidDestino']: e.target.value})}>
-                            {form.rol === 'sede' ? Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>) : sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} (Sec {f4(c.sede?.seccion)} Mz {f4(c.sede?.manzana)})</option>)}
-                          </select>
-                          
-                          <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center">Confirmar Vínculo</button>
+                          <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
                         </div>
                       )}
                     </div>
