@@ -3149,7 +3149,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col overflow-hidden text-left">
       {renderHeader()}
       
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm z-40 relative">
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-y-2 shadow-sm z-40 relative">
         <div className="flex items-center gap-3">
            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
               {NAV_SECCIONES.map(sec => {
@@ -3164,7 +3164,7 @@ export default function App() {
            </div>
            <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {view === 'extraordinary' ? (
             <div className="flex gap-2 mr-1 border-r border-slate-200 pr-4">
                <button onClick={(e) => {
@@ -4309,12 +4309,12 @@ export default function App() {
             </div>
             
             <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
-              <div className="flex justify-between items-center mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
+              <div className="flex flex-wrap justify-between items-center gap-y-3 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
                 <div className="flex items-center gap-4 text-left">
                    <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
                    <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
                 </div>
-                <div className="flex items-center gap-3 text-left">
+                <div className="flex flex-wrap items-center gap-3 text-left">
                   <div className={`text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600' : 'bg-slate-800'}`}>
                     <Hash className="w-4 h-4 text-left" />
                     <span className="text-xs font-black uppercase text-left tracking-wider">
