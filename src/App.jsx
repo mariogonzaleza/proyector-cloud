@@ -365,21 +365,17 @@ export default function App() {
   const [busquedaAsignacion, setBusquedaAsignacion] = useState('');
   const [seleccionAsignacion, setSeleccionAsignacion] = useState([]);
 
-  const [equipExpandido, setEquipExpandido] = useState({ config: false, paquetes: false, asignacion: false, volumen: false });
+  const [equipTab, setEquipTab] = useState('config'); // 'config' | 'paquetes' | 'asignacion' | 'volumen'
   const [configEquipoBloqueada, setConfigEquipoBloqueada] = useState(true);
   // Candado de precios de renta: siempre inicia bloqueado/oculto (no se persiste), por seguridad
   // — cada vez que se abre la app hay que dar click para volver a mostrar los precios.
   const [preciosRentaDesbloqueado, setPreciosRentaDesbloqueado] = useState(false);
-  const toggleEquipSeccion = (key) => setEquipExpandido(prev => ({ ...prev, [key]: !prev[key] }));
 
   const [seccionesExpandidas, setSeccionesExpandidas] = useState({});
   const toggleSeccion = (seccion) => setSeccionesExpandidas(prev => ({ ...prev, [seccion]: !prev[seccion] }));
-  const [resumenExpandido, setResumenExpandido] = useState(false);
+  const [proyeccionTab, setProyeccionTab] = useState('resumen'); // 'resumen' | 'folios' | 'listado' | 'ubicacion'
   const [busquedaProyeccion, setBusquedaProyeccion] = useState('');
-  const [listadoExpandido, setListadoExpandido] = useState(false);
-  const [ubicacionExpandido, setUbicacionExpandido] = useState(false);
   const [filtroAlerta, setFiltroAlerta] = useState(null); // null | 'variacion' | 'menos100'
-  const [foliosExpandido, setFoliosExpandido] = useState(false);
   const [fechaCorte, setFechaCorte] = useState("");
   const [cabeceraDistrital, setCabeceraDistrital] = useState("");
   const [comparacionAnterior, setComparacionAnterior] = useState(null);
@@ -1725,7 +1721,7 @@ export default function App() {
     const margin = 40;
     let y;
 
-    doc.setFillColor(204, 0, 153);
+    doc.setFillColor(73, 39, 111);
     doc.rect(0, 0, pageWidth, 90, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -1747,7 +1743,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [204, 0, 153], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Casilla', 'Padrón', 'Lista Nominal']],
       body: [
         ['Total de Casillas', totalCasillasDistrito.totalPadron, totalCasillasDistrito.totalLista],
@@ -1777,7 +1773,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [204, 0, 153], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
       head: [['Municipio', 'Casillas', '% del Distrito']],
       body: municipiosDelDistrito.map(m => [m.nombre, String(m.casillas), `${m.porcentaje.toFixed(1)}%`]),
     });
@@ -1790,7 +1786,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
       head: [['Observación', 'Secciones Detectadas']],
       body: [
         ['Variación Padrón/Lista', String(countVariacion)],
@@ -1823,7 +1819,7 @@ export default function App() {
 
     tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [239, 68, 68], filasVariacion, [], () => []);
     tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [217, 119, 6], filasMenos100, [], () => []);
-    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [124, 58, 237], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
+    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [150, 128, 180], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
 
     // --- 4. Estado de Ubicación de Casillas ---
     if (y > pageHeight - 150) { doc.addPage(); y = 50; }
@@ -1855,7 +1851,7 @@ export default function App() {
     const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [103, 64, 146], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Domicilio', 'Domicilios', '% del Total', 'Secciones']],
       body: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => [
         tipo, String(count), totalDomicilios > 0 ? `${(count / totalDomicilios * 100).toFixed(1)}%` : '0.0%', String(seccionesPorTipoDomicilio[tipo] || 0)
@@ -3226,8 +3222,27 @@ export default function App() {
                   </div>
               </div>
 
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
+                  {[
+                      { key: 'config', label: 'Configuración de la Elección', icon: Settings2 },
+                      { key: 'paquetes', label: 'Paquete Unitario por Casilla', icon: Layers },
+                      { key: 'asignacion', label: 'Asignación Cancel/Mampara', icon: CheckCircle2 },
+                      { key: 'volumen', label: 'Volumen Total Requerido', icon: Box },
+                  ].map(tab => {
+                      const Icon = tab.icon;
+                      const isActive = equipTab === tab.key;
+                      return (
+                          <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                              <Icon className="w-3.5 h-3.5" /> {tab.label}
+                          </button>
+                      );
+                  })}
+              </div>
+
               {/* CONTROLES PRINCIPALES (Configuración + Representaciones + Mobiliario, fusionados) */}
-              <SeccionColapsable title="Configuración de la Elección" icon={<Settings2 className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.config} onToggle={() => toggleEquipSeccion('config')}>
+              {equipTab === 'config' && (
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+                  <div className="px-6 pt-6 pb-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                       <div>
                           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Base de Proyección</label>
@@ -3318,10 +3333,14 @@ export default function App() {
                           </div>
                       </div>
                   </div>
-              </SeccionColapsable>
+                  </div>
+              </div>
+              )}
 
               {/* PAQUETE UNITARIO POR CASILLA */}
-              <SeccionColapsable title="Paquete Unitario por Casilla" icon={<Layers className="w-5 h-5 text-pink-500" />} isOpen={equipExpandido.paquetes} onToggle={() => toggleEquipSeccion('paquetes')}>
+              {equipTab === 'paquetes' && (
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+                  <div className="px-6 pt-6 pb-6">
               <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* MOBILIARIO */}
@@ -3409,16 +3428,14 @@ export default function App() {
                       </div>
                   </div>
               </div>
-              </SeccionColapsable>
+                  </div>
+              </div>
+              )}
 
               {/* ASIGNACIÓN MODULAR (CANCEL VS MAMPARA POR CASILLA) */}
+              {equipTab === 'asignacion' && (
               <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                <button onClick={() => toggleEquipSeccion('asignacion')} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
-                    <span className="text-base font-black uppercase text-slate-800 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-pink-500" /> Asignación Cancel/Mampara</span>
-                    {equipExpandido.asignacion ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                </button>
-                {equipExpandido.asignacion && (
-                <div className="px-6 pb-6">
+                <div className="px-6 pt-6 pb-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Todas las casillas parten con mampara por default. Marca aquí las excepciones que llevarán cancel.</p>
@@ -3491,19 +3508,13 @@ export default function App() {
                     </div>
                 )}
                 </div>
-                )}
               </div>
+              )}
 
               {/* VOLUMEN TOTAL DISTRITAL */}
+              {equipTab === 'volumen' && (
               <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                <button onClick={() => toggleEquipSeccion('volumen')} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                        {equipExpandido.volumen ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                        <span className="text-sm font-black uppercase tracking-widest text-slate-800">Volumen Total Requerido (Distrital)</span>
-                    </div>
-                </button>
-                {equipExpandido.volumen && (
-                <div className="px-4 sm:px-8 pb-8">
+                <div className="px-4 sm:px-8 pt-8 pb-8">
               <div className="bg-pink-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-800 text-white">
                   <div className="flex justify-end mb-6">
                       <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-pink-50 text-pink-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
@@ -3592,8 +3603,8 @@ export default function App() {
                   </div>
               </div>
                 </div>
-                )}
               </div>
+              )}
 
             </div>
           </div>
@@ -3604,20 +3615,27 @@ export default function App() {
           <div className="lg:col-span-12 overflow-y-auto p-10 text-left bg-slate-50">
             <div className="max-w-7xl mx-auto space-y-8 pb-24 text-left">
                 <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
+                    {[
+                        { key: 'resumen', label: 'Resumen Distrital', icon: Calculator },
+                        { key: 'folios', label: 'Asignación de Folios', icon: Hash },
+                        { key: 'listado', label: 'Listado de Casillas', icon: ListOrdered },
+                        { key: 'ubicacion', label: 'Tipos de Domicilios de Casillas', icon: Building2 },
+                    ].map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = proyeccionTab === tab.key;
+                        return (
+                            <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                                <Icon className="w-3.5 h-3.5" /> {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {proyeccionTab === 'resumen' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                    <button onClick={() => setResumenExpandido(!resumenExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            {resumenExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Resumen Distrital</span>
-                        </div>
-                        {!resumenExpandido && (
-                            <span className="text-lg font-black italic text-pink-600">
-                                P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas
-                            </span>
-                        )}
-                    </button>
-                    {resumenExpandido && (
-                        <div className="px-8 pb-8 space-y-6">
+                        <div className="p-8 space-y-6">
                             <div className="p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-r from-pink-600 to-pink-800">
                                 <div className="flex flex-wrap items-center justify-between gap-4 text-left">
                                     <div className="flex items-center gap-4 text-left">
@@ -3700,27 +3718,12 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
-                    )}
                 </div>
+                )}
 
+                {proyeccionTab === 'folios' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                    <button onClick={() => setFoliosExpandido(!foliosExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            {foliosExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Asignación de Folios de Boletas</span>
-                        </div>
-                        {!foliosExpandido && (
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                <span><span className="text-pink-600">{totalesFolios.totalCasillas}</span> casillas</span>
-                                <span className="text-slate-300">·</span>
-                                <span><span className="text-violet-600">{totalesFolios.totalBoletas.toLocaleString()}</span> boletas</span>
-                                <span className="text-slate-300">·</span>
-                                <span>Folio final: <span className="text-emerald-600">{totalesFolios.folioFinalDistrito.toLocaleString()}</span></span>
-                            </span>
-                        )}
-                    </button>
-                    {foliosExpandido && (
-                        <div className="px-4 sm:px-8 pb-8 space-y-6">
+                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
                             <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
                                 <div className="text-left">
                                     <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">Asignación de Folios de Boletas</h2>
@@ -3810,23 +3813,12 @@ export default function App() {
                                 </table>
                             </div>
                         </div>
-                    )}
                 </div>
+                )}
 
+                {proyeccionTab === 'listado' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                    <button onClick={() => setListadoExpandido(!listadoExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            {listadoExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Listado de Casillas</span>
-                        </div>
-                        {!listadoExpandido && (
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                {seccionesAgrupadas.length} secciones · <span className="text-red-600">{countVariacion} con variación</span> · <span className="text-amber-600">{countMenos100} con menos de 100</span> · <span className="text-violet-600">{countCercaCorte750} cerca del corte de 750</span>
-                            </span>
-                        )}
-                    </button>
-                    {listadoExpandido && (
-                        <div className="px-4 sm:px-8 pb-8 space-y-6">
+                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
                             <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
                                <div className="text-left">
                                    <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
@@ -3989,23 +3981,12 @@ export default function App() {
                                 </div>
                             )}
                         </div>
-                    )}
                 </div>
+                )}
 
+                {proyeccionTab === 'ubicacion' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                    <button onClick={() => setUbicacionExpandido(!ubicacionExpandido)} className="w-full flex items-center justify-between px-8 py-5 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            {ubicacionExpandido ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                            <span className="text-sm font-black uppercase tracking-widest text-slate-800">Tipos de Domicilios de Casillas</span>
-                        </div>
-                        {!ubicacionExpandido && (
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                <span className="text-emerald-600">{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} completas</span> · <span className="text-amber-600">{seccionesUbicacion.filter(s => s.estado === 'parcial').length} parciales</span> · <span className="text-slate-500">{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} sin asignar</span>
-                            </span>
-                        )}
-                    </button>
-                    {ubicacionExpandido && (
-                        <div className="px-4 sm:px-8 pb-8 space-y-6">
+                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
 
                             <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
                                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -4172,8 +4153,8 @@ export default function App() {
                             )}
 
                         </div>
-                    )}
                 </div>
+                )}
             </div>
           </div>
         )}
@@ -4378,6 +4359,16 @@ export default function App() {
                                 </div>
                             ) : (
                                 <>
+                                    {stats.localidadesInvolucradasArray && stats.localidadesInvolucradasArray.length > 0 && (
+                                      <div className="text-left">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Localidades del Polígono ({stats.localidadesInvolucradasArray.length})</p>
+                                        <div className="flex flex-wrap gap-1.5 text-left">
+                                          {stats.localidadesInvolucradasArray.map((loc, i) => (
+                                            <span key={i} className="bg-violet-50 border-2 border-violet-200 text-violet-700 px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">{loc}</span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                     <div className="text-left">
                                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
                                       <div className="flex flex-col gap-1.5 text-left">
