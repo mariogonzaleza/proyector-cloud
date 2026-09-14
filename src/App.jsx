@@ -4309,18 +4309,20 @@ export default function App() {
             </div>
             
             <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
-              <div className="flex flex-wrap justify-between items-center gap-y-3 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
-                <div className="flex items-center gap-4 text-left">
-                   <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
-                   <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-left">
-                  <div className={`text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600' : 'bg-slate-800'}`}>
-                    <Hash className="w-4 h-4 text-left" />
-                    <span className="text-xs font-black uppercase text-left tracking-wider">
+              <div className="flex flex-wrap justify-between items-start gap-y-4 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
+                <div className="flex flex-col gap-2 text-left">
+                  <div className="flex items-center gap-4 text-left">
+                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
+                     <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
+                  </div>
+                  <div className={`inline-flex items-center gap-2 w-max px-3 py-1.5 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                    <Hash className="w-3.5 h-3.5 text-left shrink-0" />
+                    <span className="text-[10px] font-black uppercase text-left tracking-wider">
                       Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
                     </span>
                   </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-left">
                   <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left active:scale-95 transition-all ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-red-600 text-white hover:bg-red-700'}`}>
                     {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-4 h-4 text-left" /> : <AlertTriangle className="w-4 h-4 text-left" />}
                     <span className="text-xs font-black uppercase text-left tracking-wider">
