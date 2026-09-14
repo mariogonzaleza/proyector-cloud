@@ -3113,6 +3113,11 @@ export default function App() {
                    <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
                        {rawElectoralData.length.toLocaleString()} Registros procesados
                    </p>
+                   {!hayManzanas && (
+                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 font-bold uppercase tracking-widest mt-3 text-center">
+                           Sin datos de manzana · Extraordinarias y QGIS no aplican
+                       </p>
+                   )}
                </div>
                <p className="text-xs text-pink-100 font-bold uppercase tracking-widest pt-2">¿A dónde deseas ir?</p>
                <div className="flex gap-2 w-full mt-2">
