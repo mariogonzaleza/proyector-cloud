@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Reglas definitivas de producción — reemplazan el "modo de prueba" automático
+// de Firestore, que caduca 30 días después de crear la base de datos.
+//
+// La app autentica a cada visitante de forma anónima (signInAnonymously) antes
+// de leer/escribir, así que exigir un usuario autenticado bloquea accesos
+// directos a la API fuera de la app sin restringir el uso normal (ver
+// compañeros/observaciones compartidas) para el que fue pensada.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
