@@ -340,6 +340,16 @@ export default function App() {
   const [distritoInfo, setDistritoInfo] = useState({ numero: "", estado: "MÉXICO" });
   const [casillasGlobales, setCasillasGlobales] = useState([]); 
   const [searchQuery, setSearchQuery] = useState("");
+  // Polígonos Guardados: por default aparecen colapsados como listado; el polígono que se
+  // acaba de crear/modificar en la Mesa de Armado se expande solo (y los demás se colapsan),
+  // para que "mientras se arma" se vea el detalle y luego quede como lista desplegable.
+  const [casillasExpandidas, setCasillasExpandidas] = useState(new Set());
+  const toggleCasillaExpandida = (uid) => setCasillasExpandidas(prev => {
+      const key = String(uid);
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+  });
   const [dashboardData, setDashboardData] = useState({ loading: false, cloud: [] });
 
   const [form, setForm] = useState({
@@ -1180,6 +1190,11 @@ export default function App() {
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
 
+    // Se genera antes (en vez de dentro del updater) para poder enfocar ese mismo polígono
+    // en "Polígonos Guardados" justo después — es la única sede nueva, ya que "Establecer
+    // Sede" siempre deja la selección en una sola manzana.
+    const nuevoUidSede = Date.now() + Math.random();
+
     setCasillasGlobales(prev => {
       let nuevasCasillas = [...prev];
       const idsSeleccionados = new Set(form.manzanasSeleccionadas.map(m => m.id));
@@ -1189,7 +1204,7 @@ export default function App() {
       })).filter(c => c.sede !== null || (c.alimentadoras && c.alimentadoras.length > 0) || String(c.tipo).startsWith('S'));
 
       if (form.rol === 'sede') {
-        form.manzanasSeleccionadas.forEach(mzData => { nuevasCasillas.push({ uid: Date.now() + Math.random(), tipo: form.tipoElegido, sede: { ...mzData }, alimentadoras: [] }); });
+        form.manzanasSeleccionadas.forEach(mzData => { nuevasCasillas.push({ uid: nuevoUidSede, tipo: form.tipoElegido, sede: { ...mzData }, alimentadoras: [] }); });
       } else {
         nuevasCasillas = nuevasCasillas.map(c => {
           if (String(c.uid) === String(form.casillaUidDestino)) {
@@ -1202,6 +1217,8 @@ export default function App() {
       }
       return nuevasCasillas;
     });
+    // Solo el polígono recién armado queda expandido; el resto se ve como listado colapsado.
+    setCasillasExpandidas(new Set([String(form.rol === 'sede' ? nuevoUidSede : form.casillaUidDestino)]));
     setForm(prev => ({ ...prev, manzanasSeleccionadas: [] }));
     setSuccessMessage("Cambios aplicados.");
     setTimeout(() => setSuccessMessage(null), 2000);
@@ -4222,25 +4239,31 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-24 text-left">
-                {sortedCasillasGlobales.length === 0 ? ( <div className="lg:col-span-3 h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
+              <div className="flex flex-col gap-3 pb-24 text-left">
+                {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
                   sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
                       const stats = calcularProyeccion(c);
                       const isEspecial = String(c.tipo).startsWith('S');
+                      const isExpanded = casillasExpandidas.has(String(c.uid));
 
                       return (
                         <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
-                          <div className={`px-3 py-2 flex justify-between items-center text-left border-b-2 ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center gap-2 text-left">
-                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm`}>{String(c.tipo)}</span>
-                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest">SEC. {f4(c.sede?.seccion)}</p>
+                          <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center gap-2 text-left min-w-0">
+                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
+                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
+                                  {!isExpanded && (
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
+                                  )}
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                   {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
-                                  <button onClick={() => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                               </div>
                           </div>
 
+                          {isExpanded && (
                           <div className="p-3 space-y-2.5 flex-1 text-left">
                             <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
                                 <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
@@ -4325,6 +4348,7 @@ export default function App() {
                                 </>
                             )}
                           </div>
+                          )}
                         </div>
                       );
                   })
