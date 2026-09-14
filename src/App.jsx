@@ -214,7 +214,7 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
                         {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu diseño que ya no están en el padrón'}
                     </p>
                     <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y alimentadoras) siguen existiendo en él.' : <>
+                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y Mz integrantes) siguen existiendo en él.' : <>
                             {conflictos.desaparecidas.length} manzana(s) que usa tu diseño ya no existen en el padrón que acabas de cargar. Esas casillas quedaron sin esa manzana — revísalas en la Mesa de Armado.
                         </>}
                     </p>
@@ -709,7 +709,7 @@ export default function App() {
               }
               const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
                   const mz = padron.find(m => norm(m.seccion) === norm(ref.s) && norm(m.localidad) === norm(ref.l) && norm(m.manzana) === norm(ref.m));
-                  if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'ALIMENTADORA', seccion: ref.s, localidad: ref.l, manzana: ref.m });
+                  if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'MZ INTEGRANTE', seccion: ref.s, localidad: ref.l, manzana: ref.m });
                   return mz;
               }).filter(Boolean);
               return { uid: c.uid, tipo: c.tipo, sede, alimentadoras };
@@ -1141,7 +1141,7 @@ export default function App() {
           if (!sede) noEncontradas.push({ tipo: c.tipo, rol: 'Sede', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
           const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
               const mz = rawElectoralData.find(m => normalize(m.seccion) === normalize(ref.s) && normalize(m.localidad) === normalize(ref.l) && normalize(m.manzana) === normalize(ref.m));
-              if (!mz) noEncontradas.push({ tipo: c.tipo, rol: 'Alimentadora', seccion: ref.s, localidad: ref.l, manzana: ref.m });
+              if (!mz) noEncontradas.push({ tipo: c.tipo, rol: 'Mz Integrante', seccion: ref.s, localidad: ref.l, manzana: ref.m });
               return mz;
           }).filter(Boolean);
           if (!sede) return null;
@@ -1243,7 +1243,7 @@ export default function App() {
     });
 
     if (conflictos.length > 0) {
-        const detalle = conflictos.map(x => `Mz ${f4(x.manzana.manzana)} (hoy ${x.rolAnterior === 'sede' ? 'es la sede' : 'es alimentadora'} de ${x.tipoAnterior}${x.quedariaVacia ? ', que se quedaría sin manzanas y desaparecería' : ''})`).join('; ');
+        const detalle = conflictos.map(x => `Mz ${f4(x.manzana.manzana)} (hoy ${x.rolAnterior === 'sede' ? 'es la sede' : 'es Mz Integrante'} de ${x.tipoAnterior}${x.quedariaVacia ? ', que se quedaría sin manzanas y desaparecería' : ''})`).join('; ');
         setModalConfig({
             isOpen: true,
             message: `Atención: ${detalle}. Si confirmas, se quitarán de ahí y pasarán a esta nueva asignación. ¿Quieres continuar?`,
@@ -1297,7 +1297,7 @@ export default function App() {
         const mapa = disenoPorSeccion.get(secId);
         mapa.set(claveManzana(c.sede), { rol: `SEDE ${c.tipo}`, localidad: c.sede.localidad, manzana: c.sede.manzana, padron: c.sede.padron, lista: c.sede.lista });
         (c.alimentadoras || []).forEach(a => {
-            mapa.set(claveManzana(a), { rol: `ALIMENTADORA ${c.tipo}`, localidad: a.localidad, manzana: a.manzana, padron: a.padron, lista: a.lista });
+            mapa.set(claveManzana(a), { rol: `MZ INTEGRANTE ${c.tipo}`, localidad: a.localidad, manzana: a.manzana, padron: a.padron, lista: a.lista });
         });
     });
 
@@ -4418,7 +4418,7 @@ export default function App() {
 
                                     {c.alimentadoras && c.alimentadoras.length > 0 && (
                                       <div className="pt-2 border-t border-slate-100 text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Cuerpo Alimentador ({c.alimentadoras.length})</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Mz Integrantes ({c.alimentadoras.length})</p>
                                         <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
                                             {c.alimentadoras.map((a, i) => (
                                                 <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
