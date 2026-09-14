@@ -2458,6 +2458,7 @@ export default function App() {
   const countVariacion = useMemo(() => seccionesAgrupadas.filter(g => g.tieneVariacion).length, [seccionesAgrupadas]);
   const countMenos100 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneMenos100).length, [seccionesAgrupadas]);
   const countCercaCorte750 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneCercaCorte750).length, [seccionesAgrupadas]);
+  const hayManzanas = useMemo(() => rawElectoralData.some(m => m.manzana !== ""), [rawElectoralData]);
 
   // Filas individuales (una por casilla/categoría) con al menos una observación: Variación, Menos de 100 o Cerca del Corte de 750.
   // Se reutiliza tanto en el Reporte de Observaciones (Excel) como en el Informe Ejecutivo (PDF).
@@ -3112,6 +3113,11 @@ export default function App() {
                    <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
                        {rawElectoralData.length.toLocaleString()} Registros procesados
                    </p>
+                   {!hayManzanas && (
+                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 font-bold uppercase tracking-widest mt-3 text-center">
+                           Sin datos de manzana · Extraordinarias y QGIS no aplican
+                       </p>
+                   )}
                </div>
                <p className="text-xs text-pink-100 font-bold uppercase tracking-widest pt-2">¿A dónde deseas ir?</p>
                <div className="flex gap-2 w-full mt-2">
@@ -3143,7 +3149,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col overflow-hidden text-left">
       {renderHeader()}
       
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm z-40 relative">
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-y-2 shadow-sm z-40 relative">
         <div className="flex items-center gap-3">
            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
               {NAV_SECCIONES.map(sec => {
@@ -3158,7 +3164,7 @@ export default function App() {
            </div>
            <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {view === 'extraordinary' ? (
             <div className="flex gap-2 mr-1 border-r border-slate-200 pr-4">
                <button onClick={(e) => {
@@ -3854,7 +3860,7 @@ export default function App() {
                                    <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Star className="w-5 h-5 text-pink-500" /> Agregar Casillas Especiales</button>
                                    <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Bookmark className="w-5 h-5 text-pink-200" /> Proyección Oficial INE</button>
                                    <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><AlertTriangle className="w-5 h-5 text-violet-200" /> Reporte de Observaciones</button>
-                                   <button onClick={exportarQGIS} className="bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Download className="w-5 h-5" /> QGIS</button>
+                                   <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white active:scale-95'}`}><Download className="w-5 h-5" /> QGIS</button>
                                </div>
                             </div>
                             
@@ -4303,18 +4309,20 @@ export default function App() {
             </div>
             
             <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
-              <div className="flex justify-between items-center mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
-                <div className="flex items-center gap-4 text-left">
-                   <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
-                   <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
-                </div>
-                <div className="flex items-center gap-3 text-left">
-                  <div className={`text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600' : 'bg-slate-800'}`}>
-                    <Hash className="w-4 h-4 text-left" />
-                    <span className="text-xs font-black uppercase text-left tracking-wider">
+              <div className="flex flex-wrap justify-between items-start gap-y-4 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
+                <div className="flex flex-col gap-2 text-left">
+                  <div className="flex items-center gap-4 text-left">
+                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
+                     <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
+                  </div>
+                  <div className={`inline-flex items-center gap-2 w-max px-3 py-1.5 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-pink-50 text-pink-700 border border-pink-200'}`}>
+                    <Hash className="w-3.5 h-3.5 text-left shrink-0" />
+                    <span className="text-[10px] font-black uppercase text-left tracking-wider">
                       Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
                     </span>
                   </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-left">
                   <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left active:scale-95 transition-all ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-red-600 text-white hover:bg-red-700'}`}>
                     {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-4 h-4 text-left" /> : <AlertTriangle className="w-4 h-4 text-left" />}
                     <span className="text-xs font-black uppercase text-left tracking-wider">
@@ -4339,8 +4347,11 @@ export default function App() {
                               <div className="flex items-center gap-2 text-left min-w-0">
                                   <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
                                   <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
+                                  {!isEspecial && (nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) && (
+                                      <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
+                                  )}
                                   {!isExpanded && (
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate shrink-0">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
                                   )}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
@@ -4367,70 +4378,91 @@ export default function App() {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-start gap-2 text-left"><MapPin className="w-3.5 h-3.5 text-pink-500 mt-1 shrink-0 text-left" /><div className="flex-1 text-left"><p className="text-[9px] font-black text-slate-400 uppercase leading-none text-left tracking-widest">Sede</p><p className="text-xs font-bold text-slate-800 mt-1 truncate uppercase text-left" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} • Loc {String(c.sede?.localidad)} {c.sede?.nombreLocalidad ? `- ${c.sede?.nombreLocalidad}` : ''}</p></div><span className="text-[9px] font-mono text-slate-500 font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm text-left text-center">P:{String(c.sede?.padron)}<br/>L:{String(c.sede?.lista)}</span></div>
-                                    <div className="pt-2 border-t border-slate-100 text-left">
-                                      <div className="flex justify-between items-center mb-1">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Localidades del Polígono</p>
-                                        <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md font-black shadow-sm">Total MZ: {[c.sede, ...(c.alimentadoras || [])].length}</span>
-                                      </div>
-                                      <div className="flex flex-wrap gap-1">
-                                          {(stats.localidadesInvolucradasArray || []).map((loc, i) => (
-                                              <span key={i} className="bg-pink-50 border-2 border-pink-200 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm">{loc}</span>
-                                          ))}
+                                    <div className="text-left">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
+                                      <div className="flex flex-col gap-1.5 text-left">
+                                        <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
+                                            <span className="flex items-center gap-1.5 min-w-0 text-left">
+                                                <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
+                                                <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
+                                            </span>
+                                            <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
+                                        </div>
+                                        {(c.alimentadoras || []).length > 0 && (
+                                          <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
+                                              {c.alimentadoras.map((a, i) => {
+                                                  const nombreLoc = nombreLocalidad(a.municipio, a.localidad) || a.nombreLocalidad;
+                                                  return (
+                                                  <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
+                                                      <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
+                                                      <div className="flex gap-2 items-center shrink-0 ml-2">
+                                                          <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
+                                                          <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
+                                                      </div>
+                                                  </div>
+                                                  );
+                                              })}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
 
+                                    {(stats.totalMesasPadron > 1 || stats.totalMesasLista > 1 || stats.variacion) && (
                                     <div className={`rounded-xl p-2.5 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                                         <div className="flex justify-between items-center mb-1.5 text-left">
-                                            <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución</span>
-                                            <div className="flex gap-1.5">
-                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
-                                            </div>
+                                            <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
+                                            {stats.variacion ? (
+                                                <div className="flex gap-1.5">
+                                                    <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                                    <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
+                                            )}
                                         </div>
-                                        <div className="flex flex-col gap-1">
+                                        {stats.variacion ? (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex flex-wrap gap-1 text-left">
+                                                    {stats.distPadron.map((item, i) => {
+                                                        const isNoInstala = item.nombre === 'NO INSTALA';
+                                                        return (
+                                                            <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
+                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
+                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 text-left">
+                                                    {stats.distLista.map((item, i) => {
+                                                        const isNoInstala = item.nombre === 'NO INSTALA';
+                                                        return (
+                                                            <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
+                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ) : (
                                             <div className="flex flex-wrap gap-1 text-left">
                                                 {stats.distPadron.map((item, i) => {
                                                     const isNoInstala = item.nombre === 'NO INSTALA';
+                                                    const listaItem = stats.distLista[i];
                                                     return (
-                                                        <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
-                                                            <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
-                                                            {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                        <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                            {item.nombre}
+                                                            {!isNoInstala && <span className="text-slate-400 font-bold not-italic">P:{item.valor} · L:{listaItem?.valor ?? item.valor}</span>}
                                                             {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                                                         </div>
                                                     );
                                                 })}
                                             </div>
-                                            <div className="flex flex-wrap gap-1 text-left">
-                                                {stats.distLista.map((item, i) => {
-                                                    const isNoInstala = item.nombre === 'NO INSTALA';
-                                                    return (
-                                                        <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
-                                                            <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
-                                                            {item.nombre} {(!isNoInstala) && `(${item.valor})`}
-                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
-
-                                    {c.alimentadoras && c.alimentadoras.length > 0 && (
-                                      <div className="pt-2 border-t border-slate-100 text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Mz Integrantes ({c.alimentadoras.length})</p>
-                                        <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
-                                            {c.alimentadoras.map((a, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
-                                                    <span title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic text-left">(Sec {f4(a.seccion)})</span></span>
-                                                    <div className="flex gap-2 items-center">
-                                                        <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
-                                                        <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors text-left bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5 text-left" /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                      </div>
                                     )}
                                 </>
                             )}
