@@ -214,7 +214,7 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
                         {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu diseño que ya no están en el padrón'}
                     </p>
                     <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y alimentadoras) siguen existiendo en él.' : <>
+                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y Mz integrantes) siguen existiendo en él.' : <>
                             {conflictos.desaparecidas.length} manzana(s) que usa tu diseño ya no existen en el padrón que acabas de cargar. Esas casillas quedaron sin esa manzana — revísalas en la Mesa de Armado.
                         </>}
                     </p>
@@ -340,10 +340,20 @@ export default function App() {
   const [distritoInfo, setDistritoInfo] = useState({ numero: "", estado: "MÉXICO" });
   const [casillasGlobales, setCasillasGlobales] = useState([]); 
   const [searchQuery, setSearchQuery] = useState("");
+  // Polígonos Guardados: por default aparecen colapsados como listado; el polígono que se
+  // acaba de crear/modificar en la Mesa de Armado se expande solo (y los demás se colapsan),
+  // para que "mientras se arma" se vea el detalle y luego quede como lista desplegable.
+  const [casillasExpandidas, setCasillasExpandidas] = useState(new Set());
+  const toggleCasillaExpandida = (uid) => setCasillasExpandidas(prev => {
+      const key = String(uid);
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+  });
   const [dashboardData, setDashboardData] = useState({ loading: false, cloud: [] });
 
   const [form, setForm] = useState({
-    seccionOrigen: "", rol: "alimentadora", localidad: "", manzanasSeleccionadas: [], tipoElegido: "E1", casillaUidDestino: "" 
+    seccionOrigen: "", rol: "", localidad: "", manzanasSeleccionadas: [], tipoElegido: "E1", casillaUidDestino: ""
   });
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -699,7 +709,7 @@ export default function App() {
               }
               const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
                   const mz = padron.find(m => norm(m.seccion) === norm(ref.s) && norm(m.localidad) === norm(ref.l) && norm(m.manzana) === norm(ref.m));
-                  if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'ALIMENTADORA', seccion: ref.s, localidad: ref.l, manzana: ref.m });
+                  if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'MZ INTEGRANTE', seccion: ref.s, localidad: ref.l, manzana: ref.m });
                   return mz;
               }).filter(Boolean);
               return { uid: c.uid, tipo: c.tipo, sede, alimentadoras };
@@ -1131,7 +1141,7 @@ export default function App() {
           if (!sede) noEncontradas.push({ tipo: c.tipo, rol: 'Sede', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
           const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
               const mz = rawElectoralData.find(m => normalize(m.seccion) === normalize(ref.s) && normalize(m.localidad) === normalize(ref.l) && normalize(m.manzana) === normalize(ref.m));
-              if (!mz) noEncontradas.push({ tipo: c.tipo, rol: 'Alimentadora', seccion: ref.s, localidad: ref.l, manzana: ref.m });
+              if (!mz) noEncontradas.push({ tipo: c.tipo, rol: 'Mz Integrante', seccion: ref.s, localidad: ref.l, manzana: ref.m });
               return mz;
           }).filter(Boolean);
           if (!sede) return null;
@@ -1149,6 +1159,47 @@ export default function App() {
       finally { inputElement.value = null; }
     };
     reader.readAsText(file);
+  };
+
+  // Aplica de verdad la asignación ya validada (y, si hacía falta, ya confirmada por el
+  // usuario en el modal de "esta manzana ya está en otro lado").
+  const aplicarAsignacion = () => {
+    setErrorMessage(null);
+    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    isLocalActionActive.current = true;
+
+    // Se genera antes (en vez de dentro del updater) para poder enfocar ese mismo polígono
+    // en "Polígonos Guardados" justo después — es la única sede nueva, ya que "Establecer
+    // Sede" siempre deja la selección en una sola manzana.
+    const nuevoUidSede = Date.now() + Math.random();
+
+    setCasillasGlobales(prev => {
+      let nuevasCasillas = [...prev];
+      const idsSeleccionados = new Set(form.manzanasSeleccionadas.map(m => m.id));
+      nuevasCasillas = nuevasCasillas.map(c => ({
+        ...c, sede: (idsSeleccionados.has(c.sede?.id) && form.rol === 'sede') ? null : c.sede,
+        alimentadoras: (c.alimentadoras || []).filter(a => !idsSeleccionados.has(a.id))
+      })).filter(c => c.sede !== null || (c.alimentadoras && c.alimentadoras.length > 0) || String(c.tipo).startsWith('S'));
+
+      if (form.rol === 'sede') {
+        form.manzanasSeleccionadas.forEach(mzData => { nuevasCasillas.push({ uid: nuevoUidSede, tipo: form.tipoElegido, sede: { ...mzData }, alimentadoras: [] }); });
+      } else {
+        nuevasCasillas = nuevasCasillas.map(c => {
+          if (String(c.uid) === String(form.casillaUidDestino)) {
+            const idsExistentes = new Set((c.alimentadoras || []).map(a => a.id));
+            const filtradas = form.manzanasSeleccionadas.filter(m => !idsExistentes.has(m.id));
+            return { ...c, alimentadoras: [...(c.alimentadoras || []), ...filtradas] };
+          }
+          return c;
+        });
+      }
+      return nuevasCasillas;
+    });
+    // Solo el polígono recién armado queda expandido; el resto se ve como listado colapsado.
+    setCasillasExpandidas(new Set([String(form.rol === 'sede' ? nuevoUidSede : form.casillaUidDestino)]));
+    setForm(prev => ({ ...prev, manzanasSeleccionadas: [] }));
+    setSuccessMessage("Cambios aplicados.");
+    setTimeout(() => setSuccessMessage(null), 2000);
   };
 
   const ejecutarAsignacion = () => {
@@ -1176,35 +1227,32 @@ export default function App() {
         }
     }
 
-    setErrorMessage(null);
-    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
-    isLocalActionActive.current = true;
-
-    setCasillasGlobales(prev => {
-      let nuevasCasillas = [...prev];
-      const idsSeleccionados = new Set(form.manzanasSeleccionadas.map(m => m.id));
-      nuevasCasillas = nuevasCasillas.map(c => ({
-        ...c, sede: (idsSeleccionados.has(c.sede?.id) && form.rol === 'sede') ? null : c.sede,
-        alimentadoras: (c.alimentadoras || []).filter(a => !idsSeleccionados.has(a.id))
-      })).filter(c => c.sede !== null || (c.alimentadoras && c.alimentadoras.length > 0) || String(c.tipo).startsWith('S'));
-
-      if (form.rol === 'sede') {
-        form.manzanasSeleccionadas.forEach(mzData => { nuevasCasillas.push({ uid: Date.now() + Math.random(), tipo: form.tipoElegido, sede: { ...mzData }, alimentadoras: [] }); });
-      } else {
-        nuevasCasillas = nuevasCasillas.map(c => {
-          if (String(c.uid) === String(form.casillaUidDestino)) {
-            const idsExistentes = new Set((c.alimentadoras || []).map(a => a.id));
-            const filtradas = form.manzanasSeleccionadas.filter(m => !idsExistentes.has(m.id));
-            return { ...c, alimentadoras: [...(c.alimentadoras || []), ...filtradas] };
-          }
-          return c;
-        });
-      }
-      return nuevasCasillas;
+    // Seguro de reasignación: si alguna manzana seleccionada ya pertenece a OTRA casilla
+    // (sede o alimentadora) distinta al destino actual, no se mueve en silencio — se avisa
+    // primero y se pide confirmar, porque a esa otra casilla se le quitaría de encima.
+    const conflictos = [];
+    form.manzanasSeleccionadas.forEach(mz => {
+        for (const c of casillasGlobales) {
+            if (form.rol === 'alimentadora' && String(c.uid) === String(form.casillaUidDestino)) continue;
+            if (c.sede?.id === mz.id) {
+                conflictos.push({ manzana: mz, tipoAnterior: String(c.tipo), rolAnterior: 'sede', quedariaVacia: (c.alimentadoras || []).length === 0 });
+            } else if (c.alimentadoras?.some(a => a.id === mz.id)) {
+                conflictos.push({ manzana: mz, tipoAnterior: String(c.tipo), rolAnterior: 'alimentadora', quedariaVacia: false });
+            }
+        }
     });
-    setForm(prev => ({ ...prev, manzanasSeleccionadas: [] }));
-    setSuccessMessage("Cambios aplicados.");
-    setTimeout(() => setSuccessMessage(null), 2000);
+
+    if (conflictos.length > 0) {
+        const detalle = conflictos.map(x => `Mz ${f4(x.manzana.manzana)} (hoy ${x.rolAnterior === 'sede' ? 'es la sede' : 'es Mz Integrante'} de ${x.tipoAnterior}${x.quedariaVacia ? ', que se quedaría sin manzanas y desaparecería' : ''})`).join('; ');
+        setModalConfig({
+            isOpen: true,
+            message: `Atención: ${detalle}. Si confirmas, se quitarán de ahí y pasarán a esta nueva asignación. ¿Quieres continuar?`,
+            onConfirm: () => aplicarAsignacion()
+        });
+        return;
+    }
+
+    aplicarAsignacion();
   };
 
   const desvincularManzana = (boothUid, mzId) => {
@@ -1249,7 +1297,7 @@ export default function App() {
         const mapa = disenoPorSeccion.get(secId);
         mapa.set(claveManzana(c.sede), { rol: `SEDE ${c.tipo}`, localidad: c.sede.localidad, manzana: c.sede.manzana, padron: c.sede.padron, lista: c.sede.lista });
         (c.alimentadoras || []).forEach(a => {
-            mapa.set(claveManzana(a), { rol: `ALIMENTADORA ${c.tipo}`, localidad: a.localidad, manzana: a.manzana, padron: a.padron, lista: a.lista });
+            mapa.set(claveManzana(a), { rol: `MZ INTEGRANTE ${c.tipo}`, localidad: a.localidad, manzana: a.manzana, padron: a.padron, lista: a.lista });
         });
     });
 
@@ -2780,7 +2828,12 @@ export default function App() {
   useEffect(() => {
     if (form.rol === 'alimentadora') {
         const destinoValido = sedesActivas.some(s => String(s.uid) === String(form.casillaUidDestino));
-        if (!destinoValido) setForm(prev => ({ ...prev, casillaUidDestino: sedesActivas.length > 0 ? String(sedesActivas[0].uid) : "" }));
+        if (!destinoValido) {
+            // Al auto-elegir un destino también se fija su sección — el Paso 3 (Sección
+            // "fija") y el listado de localidades dependen de que ambos queden sincronizados.
+            const primera = sedesActivas.length > 0 ? sedesActivas[0] : null;
+            setForm(prev => ({ ...prev, casillaUidDestino: primera ? String(primera.uid) : "", seccionOrigen: primera ? String(primera.sede.seccion) : "" }));
+        }
     }
   }, [form.rol, sedesActivas, form.casillaUidDestino]);
 
@@ -4138,58 +4191,109 @@ export default function App() {
                 <div className="space-y-5 text-left">
                   {errorMessage && ( <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 shadow-sm text-left"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5 text-left" /><p className="text-xs font-bold text-red-800 leading-tight text-left">{errorMessage}</p><button onClick={()=>setErrorMessage(null)}><X className="w-4 h-4 text-red-400 text-left" /></button></div> )}
                   {successMessage && ( <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-start gap-3 text-left shadow-sm"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-emerald-800 leading-tight text-left">{successMessage}</p><button onClick={()=>setSuccessMessage(null)}><X className="w-4 h-4 text-emerald-400" /></button></div> )}
-                  
-                  <div className="grid grid-cols-2 gap-4 text-left">
-                    <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1 text-left">Sec. Sede</label>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
-                            <option value="">-- SEC --</option>
-                            {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
-                        </select>
-                    </div>
-                    <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 ml-1 text-left">Localidad</label>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
-                            <option value="">-- LOC --</option>
-                            {localidadesDisp.map(l => {
-                                const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
-                                return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
-                            })}
-                        </select>
+
+                  {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
+                  <div className="space-y-2.5 text-left">
+                    <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
+                    <div className="grid grid-cols-1 gap-2.5 text-left">
+                        <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-pink-50'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase text-left">Crear una casilla nueva</p>
+                                <p className={`text-[10px] font-bold text-left ${form.rol === 'sede' ? 'text-pink-100' : 'text-slate-400'}`}>Le pones un número (E1, E2...) y eliges su manzana sede</p>
+                            </div>
+                        </button>
+                        <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-pink-50'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase text-left">Agregar manzanas a una casilla ya creada</p>
+                                <p className={`text-[10px] font-bold text-left ${form.rol === 'alimentadora' ? 'text-pink-100' : 'text-slate-400'}`}>{sedesActivas.length === 0 ? 'Primero crea una casilla nueva (opción de arriba)' : 'Suma más manzanas a su Padrón y Lista'}</p>
+                            </div>
+                        </button>
                     </div>
                   </div>
 
-                  {form.localidad && (
+                  {/* PASO 2: depende de qué se eligió arriba */}
+                  {form.rol === 'sede' && (
+                    <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
+                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
+                            {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
+                        </select>
+                    </div>
+                  )}
+                  {form.rol === 'alimentadora' && (
+                    <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
+                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
+                            <option value="">-- Elige una casilla --</option>
+                            {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
+                        </select>
+                    </div>
+                  )}
+
+                  {/* PASO 3: localidad + manzanas, ya con la sección resuelta (fija si es alimentadora) */}
+                  {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
                     <div className="space-y-5 text-left">
                       <div className="space-y-2.5 text-left">
-                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block ml-1 text-left">Manzanas en {f4(form.localidad)}{catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`] ? ` — ${catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(form.localidad)}`]}` : ''}</label>
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
+                        <div className="grid grid-cols-2 gap-4 text-left">
+                            {form.rol === 'sede' ? (
+                                <div className="space-y-1.5 text-left">
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                                    <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
+                                        <option value="">-- SEC --</option>
+                                        {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5 text-left">
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                                    <div className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm font-black text-slate-500 text-left" title="Se fija sola: una casilla solo puede tener manzanas de su misma sección">Sec. {f4(form.seccionOrigen)} (fija)</div>
+                                </div>
+                            )}
+                            <div className="space-y-1.5 text-left">
+                                <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Localidad</label>
+                                <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" disabled={!form.seccionOrigen} value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
+                                    <option value="">-- LOC --</option>
+                                    {localidadesDisp.map(l => {
+                                        const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
+                                        return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+                      </div>
+
+                      {form.localidad && (
+                      <div className="space-y-2.5 text-left">
+                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
                         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
-                            const assign = getMzAssignment(m.id); const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
-                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${isSelected ? 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white'} ${assign?.type === 'sede' ? 'text-slate-800 bg-slate-200 border-slate-300 shadow-inner font-black' : ''} ${assign?.type === 'alimentadora' ? 'text-pink-700 bg-pink-100 border-pink-300 shadow-inner' : ''}`}><span className="opacity-50 mb-1 font-mono text-[8px] text-left">MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
+                            const assign = getMzAssignment(m.id);
+                            const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
+                            let tileClasses;
+                            if (isSelected) tileClasses = 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800';
+                            else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
+                            else if (assign?.type === 'alimentadora') tileClasses = 'bg-pink-100 border-pink-300 text-pink-700 shadow-inner';
+                            else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
+                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
                         })}</div>
                       </div>
-                      
+                      )}
+
                       {form.manzanasSeleccionadas.length > 0 && (
-                        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-5 shadow-xl border-b-4 border-pink-600 text-left">
-                          <div className="flex justify-between items-center text-left">
-                             <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Selección</p><h4 className="text-2xl font-black italic text-left text-white">{form.manzanasSeleccionadas.length} MZ</h4></div>
-                             <div className="text-right text-left text-right">
-                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left text-right">Sumatoria</p>
-                                <p className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()}</p>
-                                <p className="text-xs font-bold text-left text-pink-100 mt-0.5">L: {totalesSeleccion.lista.toLocaleString()}</p>
-                             </div>
+                        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Vas a hacer esto</p>
+                          <p className="text-sm font-bold leading-relaxed text-left">
+                            {form.rol === 'sede'
+                                ? <>Crear la casilla <span className="text-pink-300 font-black">{form.tipoElegido}</span> en la Sección <span className="text-pink-300 font-black">{f4(form.seccionOrigen)}</span>, con la manzana <span className="text-pink-300 font-black">{f4(form.manzanasSeleccionadas[0]?.manzana)}</span> como su sede.</>
+                                : <>Agregar <span className="text-pink-300 font-black">{form.manzanasSeleccionadas.length} manzana{form.manzanasSeleccionadas.length === 1 ? '' : 's'}</span> a la casilla <span className="text-pink-300 font-black">{sedesActivas.find(c => String(c.uid) === String(form.casillaUidDestino))?.tipo}</span> (Sección {f4(form.seccionOrigen)}).</>
+                            }
+                          </p>
+                          <div className="flex justify-between items-center border-t border-slate-700 pt-4 text-left">
+                             <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Suma de esta selección</p><h4 className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()} · L: {totalesSeleccion.lista.toLocaleString()}</h4></div>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-3 text-left">
-                            <button onClick={() => setForm(f => ({ ...f, rol: 'sede', manzanasSeleccionadas: f.manzanasSeleccionadas.slice(0, 1) }))} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${form.rol === 'sede' ? 'bg-pink-600 text-white shadow-md scale-105 border-2 border-pink-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-2 border-transparent'}`}>Establecer Sede</button>
-                            <button onClick={() => setForm(f => ({ ...f, rol: 'alimentadora' }))} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 text-white shadow-md scale-105 border-2 border-pink-500' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-2 border-transparent'}`}>Alimentadora</button>
-                          </div>
-                          
-                          <select className="w-full bg-slate-800 rounded-xl p-3 text-sm font-bold text-white border-2 border-slate-700 text-left focus:ring-2 focus:ring-pink-500 outline-none" value={form.rol === 'sede' ? form.tipoElegido : form.casillaUidDestino} onChange={e => setForm({...form, [form.rol === 'sede' ? 'tipoElegido' : 'casillaUidDestino']: e.target.value})}>
-                            {form.rol === 'sede' ? Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>) : sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} (Sec {f4(c.sede?.seccion)} Mz {f4(c.sede?.manzana)})</option>)}
-                          </select>
-                          
-                          <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center">Confirmar Vínculo</button>
+                          <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
                         </div>
                       )}
                     </div>
@@ -4222,25 +4326,31 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-24 text-left">
-                {sortedCasillasGlobales.length === 0 ? ( <div className="lg:col-span-3 h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
+              <div className="flex flex-col gap-3 pb-24 text-left">
+                {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
                   sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
                       const stats = calcularProyeccion(c);
                       const isEspecial = String(c.tipo).startsWith('S');
+                      const isExpanded = casillasExpandidas.has(String(c.uid));
 
                       return (
                         <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
-                          <div className={`px-3 py-2 flex justify-between items-center text-left border-b-2 ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center gap-2 text-left">
-                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm`}>{String(c.tipo)}</span>
-                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest">SEC. {f4(c.sede?.seccion)}</p>
+                          <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className="flex items-center gap-2 text-left min-w-0">
+                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
+                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
+                                  {!isExpanded && (
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
+                                  )}
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                   {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
-                                  <button onClick={() => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                               </div>
                           </div>
 
+                          {isExpanded && (
                           <div className="p-3 space-y-2.5 flex-1 text-left">
                             <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
                                 <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
@@ -4308,7 +4418,7 @@ export default function App() {
 
                                     {c.alimentadoras && c.alimentadoras.length > 0 && (
                                       <div className="pt-2 border-t border-slate-100 text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Cuerpo Alimentador ({c.alimentadoras.length})</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Mz Integrantes ({c.alimentadoras.length})</p>
                                         <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
                                             {c.alimentadoras.map((a, i) => (
                                                 <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
@@ -4325,6 +4435,7 @@ export default function App() {
                                 </>
                             )}
                           </div>
+                          )}
                         </div>
                       );
                   })
