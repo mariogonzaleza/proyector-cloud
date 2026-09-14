@@ -4339,8 +4339,11 @@ export default function App() {
                               <div className="flex items-center gap-2 text-left min-w-0">
                                   <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
                                   <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
+                                  {!isEspecial && (c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)) && (
+                                      <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)}>· {c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)}</p>
+                                  )}
                                   {!isExpanded && (
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate shrink-0">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
                                   )}
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
@@ -4373,21 +4376,24 @@ export default function App() {
                                         <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
                                             <span className="flex items-center gap-1.5 min-w-0 text-left">
                                                 <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
-                                                <span className="text-slate-700 truncate" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{c.sede?.nombreLocalidad ? ` - ${c.sede?.nombreLocalidad}` : ''}</span></span>
+                                                <span className="text-slate-700 truncate" title={c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)) ? ` - ${c.sede?.nombreLocalidad || nombreLocalidad(c.sede?.municipio, c.sede?.localidad)}` : ''}</span></span>
                                             </span>
                                             <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
                                         </div>
                                         {(c.alimentadoras || []).length > 0 && (
                                           <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
-                                              {c.alimentadoras.map((a, i) => (
+                                              {c.alimentadoras.map((a, i) => {
+                                                  const nombreLoc = a.nombreLocalidad || nombreLocalidad(a.municipio, a.localidad);
+                                                  return (
                                                   <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
-                                                      <span className="truncate" title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{a.nombreLocalidad ? ` - ${a.nombreLocalidad}` : ''}</span></span>
+                                                      <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
                                                       <div className="flex gap-2 items-center shrink-0 ml-2">
                                                           <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
                                                           <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
                                                       </div>
                                                   </div>
-                                              ))}
+                                                  );
+                                              })}
                                           </div>
                                         )}
                                       </div>
