@@ -843,7 +843,7 @@ export default function App() {
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: h.length > 20 ? 34 : 16 }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
@@ -882,7 +882,7 @@ export default function App() {
       }
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 4, 22)) }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasConFormula, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
@@ -995,7 +995,7 @@ export default function App() {
     const c = comparacionAnterior;
     const wb = window.XLSX.utils.book_new();
 
-    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
     const aplicarEstiloHoja = (ws, numCols, numRows, colorFilas) => {
         for (let cc = 0; cc < numCols; cc++) {
             const addr = window.XLSX.utils.encode_cell({ r: 0, c: cc });
@@ -1312,7 +1312,7 @@ export default function App() {
     });
 
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
 
     // Hoja Resumen
     const wsResumenData = [
@@ -1473,9 +1473,9 @@ export default function App() {
     ws1['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }, { hpt: 13 }, { hpt: 15 }, { hpt: 13 }, { hpt: 13 }];
 
     const estiloTituloS = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: 'D53FE5' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
-    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: 'D53FE5' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
+    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '9680B4' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
+    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '9680B4' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
     const estiloHeaderTotalS = { fill: { patternType: 'solid', fgColor: { rgb: '7030A0' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 8 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalGrandeS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
@@ -1537,8 +1537,8 @@ export default function App() {
     ws2['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }];
 
     const estiloTituloC = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: '9816A6' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: '58357E' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     if (ws2['A1']) ws2['A1'].s = estiloTituloC;
     ['A3','B3','C3','D3','E3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPrincipalC; });
     ['G3','H3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPadronListaC; });
@@ -1584,7 +1584,7 @@ export default function App() {
     ws3['!cols'] = [{wch:10}, {wch:15}, {wch:11}, {wch:10}, {wch:11}, {wch:10}, {wch:9}, {wch:15}, {wch:3.5}, {wch:9}, {wch:16}, {wch:16}];
     ws3['!rows'] = [{ hpt: 26 }];
 
-    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderBasicaE = { fill: { patternType: 'solid', fgColor: { rgb: '4472C4' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderExtraordinariaE = { fill: { patternType: 'solid', fgColor: { rgb: '65BFCB' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderManzanaSedeE = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }, font: { bold: false, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
@@ -1607,7 +1607,7 @@ export default function App() {
     if (!window.XLSX) return;
 
     const wb = window.XLSX.utils.book_new();
-    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const dataCellStyle = { alignment: { horizontal: 'center' } };
     const estiloVariacion = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
     const estiloMenos100 = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
@@ -1868,8 +1868,8 @@ export default function App() {
 
   const exportarReporteEquipamientoMCU = () => {
     if (!window.XLSX) return;
-    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
+    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
     const dataCellStyle = { font: { sz: 10 }, alignment: { horizontal: 'center' } };
 
     const wb = window.XLSX.utils.book_new();
@@ -2016,7 +2016,7 @@ export default function App() {
   const exportarReporteConflictosDiseno = () => {
     if (!window.XLSX || conflictosDiseno.total === 0) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const seccionesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => String(m.seccion).trim()))];
     const localidadesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => `${f4(m.seccion)}-${f4(m.localidad)}`))];
@@ -2047,7 +2047,7 @@ export default function App() {
   const exportarReporteImportacionJSON = () => {
     if (!window.XLSX || !importJsonAvisos) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: 'CC0099' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const wsResumenData = [
         ['REPORTE DE IMPORTACIÓN DE RESPALDO', ''],
@@ -2285,15 +2285,15 @@ export default function App() {
 
     const totalesRowIdx = dataStartRow + filasFolios.length;
     const filaTotal = totalesRowIdx + 1;
-    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
+    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
     ['A', 'B', 'C', 'D'].forEach(col => { if (ws[`${col}${filaTotal}`]) ws[`${col}${filaTotal}`].s = estiloTotalRosa; });
     if (ws[`H${filaTotal}`]) ws[`H${filaTotal}`].s = { numFmt: '#,##0', font: { name: FUENTE, sz: 9 }, alignment: { horizontal: 'center' } };
 
     const headerStyleBase = { font: { name: FUENTE, sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
-    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'BC326D' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
     const headerRppLocal = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '6FC5E6' } } };
-    const headerCandIndep = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'ECD5E9' } } };
+    const headerCandIndep = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'D1BDEF' } } };
     const headerStylesPorCol = { A: headerRosa, B: headerRosa, C: headerRosa, D: headerRosa, E: headerRppNacional, F: headerRppLocal, G: headerCandIndep, H: headerRosa, I: headerRosa, J: headerRosa, K: headerRosa };
     Object.entries(headerStylesPorCol).forEach(([col, estilo]) => {
         const cell = ws[`${col}4`];
@@ -2320,7 +2320,7 @@ export default function App() {
     });
     const wsPlantilla = window.XLSX.utils.aoa_to_sheet(rowsPlantilla);
     wsPlantilla['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
-    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: 'FF1584' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     ['A', 'B', 'C', 'D', 'E'].forEach(col => { const cell = wsPlantilla[`${col}1`]; if (cell) cell.s = headerPlantilla; });
     filasFolios.forEach((f, idx) => {
         const r = idx + 2;
@@ -2972,6 +2972,12 @@ export default function App() {
         <div className="mt-6 z-10 flex flex-wrap gap-3 justify-center">
             <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
             <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
+        </div>
+        <div className="mt-8 flex justify-center">
+            <div className="bg-gradient-to-r from-pink-600 to-pink-800 text-white px-6 py-3 rounded-2xl shadow-md text-center">
+                <p className="text-sm font-black italic tracking-tight">El INE, contigo siempre</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-pink-100 mt-0.5">Proceso Electoral Federal 2026-2027</p>
+            </div>
         </div>
       </div>
     );
