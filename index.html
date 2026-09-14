@@ -5,6 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Proyector Cloud v18.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Identidad INE 2026: la paleta magenta/rosa anterior queda descontinuada.
+      // Se remapea la escala "pink" de Tailwind (usada en toda la app) a los lilas
+      // institucionales, así todo botón/encabezado/acento se actualiza desde un
+      // solo lugar sin tocar cada clase suelta. Los 4 tonos oficiales del manual
+      // quedan en sus posiciones exactas: 200=Lila claro, 400=Lila, 600=Lila
+      // institucional (color dominante), 800=Lila oscuro.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Arial', 'Helvetica', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            colors: {
+              pink: {
+                50: '#F5F1FA',
+                100: '#E9DFF5',
+                200: '#D1BDEF',  // Lila claro (oficial)
+                300: '#B79FDE',
+                400: '#9680B4',  // Lila (oficial)
+                500: '#7D5EA0',
+                600: '#674092',  // Lila institucional (oficial) — color dominante
+                700: '#58357E',
+                800: '#49276F',  // Lila oscuro (oficial)
+                900: '#331B4D',
+                950: '#1F1030',
+              },
+              azul: {
+                DEFAULT: '#383B7E', // Azul institucional — texto y jerarquía secundaria
+              },
+            },
+          },
+        },
+      };
+    </script>
     <script type="importmap">
       {
         "imports": {
