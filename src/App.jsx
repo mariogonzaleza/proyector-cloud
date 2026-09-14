@@ -2458,6 +2458,7 @@ export default function App() {
   const countVariacion = useMemo(() => seccionesAgrupadas.filter(g => g.tieneVariacion).length, [seccionesAgrupadas]);
   const countMenos100 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneMenos100).length, [seccionesAgrupadas]);
   const countCercaCorte750 = useMemo(() => seccionesAgrupadas.filter(g => g.tieneCercaCorte750).length, [seccionesAgrupadas]);
+  const hayManzanas = useMemo(() => rawElectoralData.some(m => m.manzana !== ""), [rawElectoralData]);
 
   // Filas individuales (una por casilla/categoría) con al menos una observación: Variación, Menos de 100 o Cerca del Corte de 750.
   // Se reutiliza tanto en el Reporte de Observaciones (Excel) como en el Informe Ejecutivo (PDF).
@@ -3854,7 +3855,7 @@ export default function App() {
                                    <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Star className="w-5 h-5 text-pink-500" /> Agregar Casillas Especiales</button>
                                    <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Bookmark className="w-5 h-5 text-pink-200" /> Proyección Oficial INE</button>
                                    <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><AlertTriangle className="w-5 h-5 text-violet-200" /> Reporte de Observaciones</button>
-                                   <button onClick={exportarQGIS} className="bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Download className="w-5 h-5" /> QGIS</button>
+                                   <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white active:scale-95'}`}><Download className="w-5 h-5" /> QGIS</button>
                                </div>
                             </div>
                             
