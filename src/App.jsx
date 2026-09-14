@@ -4367,70 +4367,88 @@ export default function App() {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-start gap-2 text-left"><MapPin className="w-3.5 h-3.5 text-pink-500 mt-1 shrink-0 text-left" /><div className="flex-1 text-left"><p className="text-[9px] font-black text-slate-400 uppercase leading-none text-left tracking-widest">Sede</p><p className="text-xs font-bold text-slate-800 mt-1 truncate uppercase text-left" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} • Loc {String(c.sede?.localidad)} {c.sede?.nombreLocalidad ? `- ${c.sede?.nombreLocalidad}` : ''}</p></div><span className="text-[9px] font-mono text-slate-500 font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm text-left text-center">P:{String(c.sede?.padron)}<br/>L:{String(c.sede?.lista)}</span></div>
-                                    <div className="pt-2 border-t border-slate-100 text-left">
-                                      <div className="flex justify-between items-center mb-1">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Localidades del Polígono</p>
-                                        <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md font-black shadow-sm">Total MZ: {[c.sede, ...(c.alimentadoras || [])].length}</span>
-                                      </div>
-                                      <div className="flex flex-wrap gap-1">
-                                          {(stats.localidadesInvolucradasArray || []).map((loc, i) => (
-                                              <span key={i} className="bg-pink-50 border-2 border-pink-200 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm">{loc}</span>
-                                          ))}
+                                    <div className="text-left">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
+                                      <div className="flex flex-col gap-1.5 text-left">
+                                        <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
+                                            <span className="flex items-center gap-1.5 min-w-0 text-left">
+                                                <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
+                                                <span className="text-slate-700 truncate" title={c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{c.sede?.nombreLocalidad ? ` - ${c.sede?.nombreLocalidad}` : ''}</span></span>
+                                            </span>
+                                            <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
+                                        </div>
+                                        {(c.alimentadoras || []).length > 0 && (
+                                          <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
+                                              {c.alimentadoras.map((a, i) => (
+                                                  <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
+                                                      <span className="truncate" title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{a.nombreLocalidad ? ` - ${a.nombreLocalidad}` : ''}</span></span>
+                                                      <div className="flex gap-2 items-center shrink-0 ml-2">
+                                                          <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
+                                                          <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
 
+                                    {(stats.totalMesasPadron > 1 || stats.totalMesasLista > 1 || stats.variacion) && (
                                     <div className={`rounded-xl p-2.5 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                                         <div className="flex justify-between items-center mb-1.5 text-left">
-                                            <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución</span>
-                                            <div className="flex gap-1.5">
-                                                <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
-                                            </div>
+                                            <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
+                                            {stats.variacion ? (
+                                                <div className="flex gap-1.5">
+                                                    <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                                    <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
+                                            )}
                                         </div>
-                                        <div className="flex flex-col gap-1">
+                                        {stats.variacion ? (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex flex-wrap gap-1 text-left">
+                                                    {stats.distPadron.map((item, i) => {
+                                                        const isNoInstala = item.nombre === 'NO INSTALA';
+                                                        return (
+                                                            <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
+                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
+                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 text-left">
+                                                    {stats.distLista.map((item, i) => {
+                                                        const isNoInstala = item.nombre === 'NO INSTALA';
+                                                        return (
+                                                            <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
+                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ) : (
                                             <div className="flex flex-wrap gap-1 text-left">
                                                 {stats.distPadron.map((item, i) => {
                                                     const isNoInstala = item.nombre === 'NO INSTALA';
+                                                    const listaItem = stats.distLista[i];
                                                     return (
-                                                        <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
-                                                            <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
-                                                            {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                        <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                            {item.nombre}
+                                                            {!isNoInstala && <span className="text-slate-400 font-bold not-italic">P:{item.valor} · L:{listaItem?.valor ?? item.valor}</span>}
                                                             {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                                                         </div>
                                                     );
                                                 })}
                                             </div>
-                                            <div className="flex flex-wrap gap-1 text-left">
-                                                {stats.distLista.map((item, i) => {
-                                                    const isNoInstala = item.nombre === 'NO INSTALA';
-                                                    return (
-                                                        <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
-                                                            <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
-                                                            {item.nombre} {(!isNoInstala) && `(${item.valor})`}
-                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
-
-                                    {c.alimentadoras && c.alimentadoras.length > 0 && (
-                                      <div className="pt-2 border-t border-slate-100 text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Mz Integrantes ({c.alimentadoras.length})</p>
-                                        <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
-                                            {c.alimentadoras.map((a, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 text-left shadow-sm">
-                                                    <span title={a.nombreLocalidad}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic text-left">(Sec {f4(a.seccion)})</span></span>
-                                                    <div className="flex gap-2 items-center">
-                                                        <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
-                                                        <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors text-left bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5 text-left" /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                      </div>
                                     )}
                                 </>
                             )}
