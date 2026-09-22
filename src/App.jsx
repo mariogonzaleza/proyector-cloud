@@ -425,6 +425,15 @@ export default function App() {
     return String(val).padStart(4, '0');
   };
 
+  // Forma canónica del número de distrito (siempre 2 dígitos, "01".."40"), para que "1", "01"
+  // y "0001" nunca generen documentos/llaves distintas en Firestore o localStorage. Devuelve
+  // null si no es un distrito válido (fuera de 1-40, vacío, no numérico).
+  const normalizarDistrito = (val) => {
+    const n = parseInt(String(val ?? '').replace(/\D/g, ''), 10);
+    if (!n || n < 1 || n > 40) return null;
+    return String(n).padStart(2, '0');
+  };
+
   const obtenerFechaHoraArchivo = () => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -497,7 +506,7 @@ export default function App() {
   };
 
   const loadDistrictFromDashboard = (distNum, targetView = 'extraordinary') => {
-    const numStr = String(distNum);
+    const numStr = normalizarDistrito(distNum) || String(distNum);
     // Se resetea al cambiar de distrito sin pasar por "Salir": evita que el guardado a la nube
     // dispare con el estado "listo" del distrito anterior antes de confirmar el remoto del nuevo.
     lastSavedJson.current = "";
@@ -2769,7 +2778,10 @@ export default function App() {
     const lastDistrictStr = localStorage.getItem('proyector_last_district');
     if (lastDistrictStr) {
         try {
-            const parsedDistrict = JSON.parse(lastDistrictStr); setDistritoInfo(parsedDistrict);
+            const parsedDistrict = JSON.parse(lastDistrictStr);
+            const numNormalizado = normalizarDistrito(parsedDistrict.numero) || parsedDistrict.numero;
+            if (numNormalizado !== parsedDistrict.numero) parsedDistrict.numero = numNormalizado;
+            setDistritoInfo(parsedDistrict);
             setCabeceraDistrital(localStorage.getItem(`proyector_cabecera_D${parsedDistrict.numero}`) || CABECERAS_DISTRITALES_MEXICO[parsedDistrict.numero] || "");
             cargarUbicacionDeDistrito(parsedDistrict.numero);
             // El padrón nunca se recuerda entre sesiones: siempre hay que volver a cargarlo.
@@ -2946,7 +2958,11 @@ export default function App() {
                 try {
                     const maquetasRef = collection(db, 'artifacts', appId, 'public', 'data', 'maquetas');
                     const snap = await getDocs(maquetasRef);
-                    cloudDistricts = snap.docs.map(d => d.id.replace('distrito_', '')).sort((a, b) => Number(a) - Number(b));
+                    // Normaliza cada id ("1", "01", "0001"…) a su forma canónica antes de listar, para
+                    // que un mismo distrito con documentos duplicados en Firestore (herencia de antes
+                    // de la normalización) no aparezca dos veces en el Directorio de Proyectos.
+                    const idsNormalizados = snap.docs.map(d => normalizarDistrito(d.id.replace('distrito_', '')) || d.id.replace('distrito_', ''));
+                    cloudDistricts = [...new Set(idsNormalizados)].sort((a, b) => Number(a) - Number(b));
                 } catch (e) { console.warn("No se pudieron cargar los distritos de la nube.", e); }
             }
             setDashboardData({ loading: false, cloud: cloudDistricts });
@@ -2983,9 +2999,12 @@ export default function App() {
                       setDistritoInfo({...distritoInfo, numero: v});
                   }}/>
                   <p className="text-[10px] text-pink-200 italic">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
+                  {errorMessage && <p className="text-[10px] text-white bg-red-500/80 rounded-xl px-3 py-2 font-bold text-left">{errorMessage}</p>}
                   <button onClick={() => {
-                      if (!distritoInfo.numero) return;
-                      const numStr = String(distritoInfo.numero);
+                      const numStr = normalizarDistrito(distritoInfo.numero);
+                      if (!numStr) { setErrorMessage('Escribe un número de distrito válido, del 01 al 40.'); return; }
+                      setErrorMessage(null);
+                      setDistritoInfo({ numero: numStr, estado: "MÉXICO" });
                       localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
                       setRawElectoralData([]);
                       setView('upload');
