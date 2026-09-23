@@ -3990,6 +3990,19 @@ export default function App() {
                <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
                <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
             </div>
+            {(() => {
+              const totalBasica = basicaSedeCandidatas.length;
+              const confirmadasBasica = basicaSedeCandidatas.filter(s => !!basicaSedePorSeccion[s.seccion]).length;
+              const pendientesBasica = totalBasica - confirmadasBasica;
+              return (
+                <div className={`inline-flex items-center gap-2 w-max px-3 py-1.5 rounded-full text-left ${pendientesBasica === 0 ? 'bg-emerald-50 border-2 border-emerald-200 text-emerald-700' : 'bg-white border-2 border-amber-200 text-amber-700'}`}>
+                  <Hash className="w-3.5 h-3.5 text-left shrink-0" />
+                  <span className="text-[10px] font-black uppercase text-left tracking-wider">
+                    Confirmadas: {confirmadasBasica} · Pendientes: {pendientesBasica} · Total: {totalBasica}
+                  </span>
+                </div>
+              );
+            })()}
             <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada — elige y confirma cuál manzana sobrante es la sede de su básica.</p>
           </div>
           <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
