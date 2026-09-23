@@ -2810,1403 +2810,1403 @@ export default function App() {
   }, [view, user]);
 
   const renderEquipamiento = () => (
-          <div className="lg:col-span-12 overflow-y-auto p-10 text-left">
-            <div className="max-w-7xl mx-auto space-y-8 pb-24">
+    <div className="lg:col-span-12 overflow-y-auto p-10 text-left">
+      <div className="max-w-7xl mx-auto space-y-8 pb-24">
 
-              <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
-                  <div className="flex items-center gap-6">
-                      <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
-                          <Box className="w-8 h-8 text-white" />
-                      </div>
-                      <div>
-                          <p className="text-xs font-black uppercase tracking-[0.4em] text-pink-200">
-                              Proyección Logística (Modelo de Casilla Única INE · PEC 2026-2027)
-                          </p>
-                          <h4 className="text-3xl font-black italic tracking-tighter mt-1 text-white">Módulo de Equipamiento</h4>
-                      </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6 pt-6 border-t border-white/20">
-                      <div className="text-center sm:text-left">
-                          <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Básicas / Cont.</p>
-                          <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.b_c}</p>
-                      </div>
-                      <div className="text-center sm:text-left">
-                          <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Extraordinarias</p>
-                          <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.extra}</p>
-                      </div>
-                      <div className="text-center sm:text-left">
-                          <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Especiales</p>
-                          <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.esp}</p>
-                      </div>
-                  </div>
+        <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
+            <div className="flex items-center gap-6">
+                <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
+                    <Box className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-pink-200">
+                        Proyección Logística (Modelo de Casilla Única INE · PEC 2026-2027)
+                    </p>
+                    <h4 className="text-3xl font-black italic tracking-tighter mt-1 text-white">Módulo de Equipamiento</h4>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6 pt-6 border-t border-white/20">
+                <div className="text-center sm:text-left">
+                    <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Básicas / Cont.</p>
+                    <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.b_c}</p>
+                </div>
+                <div className="text-center sm:text-left">
+                    <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Extraordinarias</p>
+                    <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.extra}</p>
+                </div>
+                <div className="text-center sm:text-left">
+                    <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Especiales</p>
+                    <p className="text-2xl font-black text-white mt-1">{statsEquipamiento.esp}</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
+            {[
+                { key: 'config', label: 'Configuración de la Elección', icon: Settings2 },
+                { key: 'paquetes', label: 'Paquete Unitario por Casilla', icon: Layers },
+                { key: 'asignacion', label: 'Asignación Cancel/Mampara', icon: CheckCircle2 },
+                { key: 'volumen', label: 'Volumen Total Requerido', icon: Box },
+            ].map(tab => {
+                const Icon = tab.icon;
+                const isActive = equipTab === tab.key;
+                return (
+                    <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                        <Icon className="w-3.5 h-3.5" /> {tab.label}
+                    </button>
+                );
+            })}
+        </div>
+
+        {/* CONTROLES PRINCIPALES (Configuración + Representaciones + Mobiliario, fusionados) */}
+        {equipTab === 'config' && (
+        <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+            <div className="px-6 pt-6 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Base de Proyección</label>
+                    <div className="flex bg-slate-100 p-1 rounded-xl w-max border border-slate-200">
+                        <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'padron'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'padron' ? 'bg-white text-pink-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Padrón</button>
+                        <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'lista'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'lista' ? 'bg-white text-slate-800 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Lista Nominal</button>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2 italic">Afecta el total de casillas estimadas (Actualmente: {statsEquipamiento.total} casillas).</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Total de Elecciones a realizar</label>
+                    <div className="w-32 bg-slate-100 border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-black text-center text-slate-600 flex items-center justify-center gap-2">
+                        <Lock className="w-3.5 h-3.5 text-slate-400" /> {equipConfig.totalElecciones}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2 italic max-w-[220px]">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). Fijo — por ahora no es posible que cambie el número de elecciones.</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Editar Configuración</label>
+                    <button onClick={() => setConfigEquipoBloqueada(!configEquipoBloqueada)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black uppercase shadow-sm transition-all ${configEquipoBloqueada ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
+                        {configEquipoBloqueada ? <><Lock className="w-4 h-4" /> Bloqueado</> : <><Unlock className="w-4 h-4" /> Desbloqueado</>}
+                    </button>
+                    <p className="text-xs text-slate-400 mt-2 italic">{configEquipoBloqueada ? 'Toca para desbloquear y editar' : 'Toca para bloquear de nuevo'}</p>
+                </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t-2 border-slate-100">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-pink-500" /> Representaciones y Elecciones Locales</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
+                        {configEquipoBloqueada ? (
+                            <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosNacionales}</div>
+                        ) : (
+                            <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">2 sillas c/u. Nota: 8 PPN con registro (Acuerdos INE/CG344/2026 e INE/CG347/2026).</p>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Locales</label>
+                        {configEquipoBloqueada ? (
+                            <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosLocales}</div>
+                        ) : (
+                            <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">2 PPL con registro vigente en Edomex: PRD (local desde 2024) y Podemos (nuevo, 2026) — corte agosto 2026.</p>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Sillas x Partido Local</label>
+                        {configEquipoBloqueada ? (
+                            <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.sillasPorPartidoLocal}</div>
+                        ) : (
+                            <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">Modelo INE 2026-2027: 1 silla (solo puede estar una representación local a la vez en casilla)</p>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Elecciones Locales (urnas OPL)</label>
+                        {configEquipoBloqueada ? (
+                            <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numEleccionesLocales}</div>
+                        ) : (
+                            <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                        )}
+                        <p className="text-[10px] text-slate-400 mt-1">Edomex: Dip. Locales + Ayuntamientos = 2</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t-2 border-slate-100">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-pink-500" /> Equipamiento Mobiliario</h3>
+                <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
+                    <p className="text-[11px] text-slate-500 mb-3">Check para cambiar mesa para urna(s) por silla.</p>
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={equipConfig.sillasParaUrna} onChange={(e) => setEquipConfig({...equipConfig, sillasParaUrna: e.target.checked})} className="w-5 h-5 text-pink-600 rounded border-slate-300 focus:ring-pink-500 cursor-pointer" />
+                            <span className="text-sm font-black uppercase text-slate-700">Usar Silla para Urna</span>
+                        </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteMampara.mobiliario.tablonesMesas})</label>
+                            <div className="flex items-center gap-2">
+                                <input type="number" min="0" disabled={configEquipoBloqueada} placeholder="Automático (INE)" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.mobiliarioPorCasilla} onChange={e => setEquipConfig({...equipConfig, mobiliarioPorCasilla: e.target.value})} />
+                                {!configEquipoBloqueada && equipConfig.mobiliarioPorCasilla !== '' && (
+                                    <button onClick={() => setEquipConfig({...equipConfig, mobiliarioPorCasilla: ''})} title="Restaurar a default" className="bg-slate-200 p-2 rounded-xl hover:bg-slate-300 transition-colors text-slate-600"><RotateCcw className="w-4 h-4" /></button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+        )}
+
+        {/* PAQUETE UNITARIO POR CASILLA */}
+        {equipTab === 'paquetes' && (
+        <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+            <div className="px-6 pt-6 pb-6">
+        <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* MOBILIARIO */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-pink-500"></div>
+                <h3 className="text-base font-black uppercase text-slate-800 mb-4">Mobiliario</h3>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Tablones/Mesas</p>
+                        <p className="text-3xl font-black text-slate-900">{paqueteMampara.mobiliario.tablonesMesas}</p>
+                    </div>
+                    <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Sillas</p>
+                        <p className="text-3xl font-black text-slate-900">{paqueteMampara.sillas.total}</p>
+                    </div>
+                </div>
+                <p className="text-[10px] text-pink-600 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
+
+                {/* PRECIOS DE RENTA — oculto por default, solo se muestra tras dar click al candado */}
+                <div className="mt-4 pt-4 border-t-2 border-slate-100">
+                    <button onClick={() => setPreciosRentaDesbloqueado(v => !v)} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${preciosRentaDesbloqueado ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-pink-600'}`}>
+                        {preciosRentaDesbloqueado ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                        Precios de Renta {preciosRentaDesbloqueado ? '· click para ocultar' : '· click para mostrar'}
+                    </button>
+                    {preciosRentaDesbloqueado && (
+                        <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Mesa</label>
+                                <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
+                                    <span className="text-slate-400 font-black text-sm">$</span>
+                                    <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioMesa} onChange={e => setEquipConfig({...equipConfig, precioMesa: e.target.value})} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Silla</label>
+                                <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
+                                    <span className="text-slate-400 font-black text-sm">$</span>
+                                    <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioSilla} onChange={e => setEquipConfig({...equipConfig, precioSilla: e.target.value})} />
+                                </div>
+                            </div>
+                            <p className="col-span-2 text-[10px] text-slate-400 italic">Se usan para calcular el costo total de renta de mobiliario en "Volumen Total Requerido" y en el Excel exportado.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* MATERIAL ELECTORAL */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-slate-800"></div>
+                <h3 className="text-base font-black uppercase text-slate-800 mb-4">Material Electoral</h3>
+
+                <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
+                    <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Mampara</p>
+                            <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                                <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
+                                <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
+                                <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
+                                <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
+                                <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
+                            </ul>
+                        </div>
+                        <div className="border-l-2 border-pink-200 pl-4">
+                            <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Cancel</p>
+                            <ul className="text-sm text-slate-600 font-bold space-y-1.5">
+                                <li>Cancel: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.canceles}</span></li>
+                                <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.urnasFederales}</span></li>
+                                <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.liquidosIndelebles}</span></li>
+                                <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadoresBoletas}</span></li>
+                                <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadorasCredenciales}</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800">
+                    <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-pink-800 pb-1">Aporta OPL / IEEM</p>
+                    <ul className="text-sm text-slate-300 font-bold space-y-1.5 grid grid-cols-2">
+                        <li>Urnas Locales: <span className="text-white ml-1">{paqueteMampara.materialOpl.urnasLocales}</span></li>
+                        <li>Base Porta Urna: <span className="text-white ml-1">{paqueteMampara.materialOpl.basesPortaUrna}</span></li>
+                        <li>Cancel IEEM: <span className="text-white ml-1">{paqueteMampara.materialOpl.cancelPorCasilla}</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+        )}
+
+        {/* ASIGNACIÓN MODULAR (CANCEL VS MAMPARA POR CASILLA) */}
+        {equipTab === 'asignacion' && (
+        <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+          <div className="px-6 pt-6 pb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+              <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Todas las casillas parten con mampara por default. Marca aquí las excepciones que llevarán cancel.</p>
               </div>
-
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
-                  {[
-                      { key: 'config', label: 'Configuración de la Elección', icon: Settings2 },
-                      { key: 'paquetes', label: 'Paquete Unitario por Casilla', icon: Layers },
-                      { key: 'asignacion', label: 'Asignación Cancel/Mampara', icon: CheckCircle2 },
-                      { key: 'volumen', label: 'Volumen Total Requerido', icon: Box },
-                  ].map(tab => {
-                      const Icon = tab.icon;
-                      const isActive = equipTab === tab.key;
+              <div className="flex flex-wrap gap-2">
+                  {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
+                  <div className="flex gap-2 mr-2 pr-2 border-r border-slate-200">
+                       <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
+                       <label className="text-xs font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer border-2 border-slate-200"><FileUp className="w-4 h-4" /> Cargar<input type="file" className="hidden" accept=".json" onChange={importarRespaldoEquipamiento} /></label>
+                  </div>
+                  {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
+                  <button onClick={() => marcarTodasMamparas('cancel')} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm">Todas con Cancel</button>
+                  <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
+              </div>
+          </div>
+          <div className="mb-4">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Seleccionar por Sección (marca la sección completa, casilla por casilla se ajusta abajo)</p>
+              <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
+                  {seccionesParaAsignacion.map(g => {
+                      const seleccionadas = g.ids.filter(id => seleccionAsignacion.includes(id)).length;
+                      const todasSeleccionadas = seleccionadas === g.ids.length;
+                      const algunaSeleccionada = seleccionadas > 0 && !todasSeleccionadas;
                       return (
-                          <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
-                              <Icon className="w-3.5 h-3.5" /> {tab.label}
+                          <button key={g.seccion} onClick={() => {
+                              setSeleccionAsignacion(prev => todasSeleccionadas ? prev.filter(id => !g.ids.includes(id)) : [...new Set([...prev, ...g.ids])]);
+                          }} className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase border-2 transition-colors ${todasSeleccionadas ? 'bg-pink-600 border-pink-700 text-white' : algunaSeleccionada ? 'bg-white border-pink-400 text-pink-600' : 'bg-white border-slate-200 text-slate-600 hover:border-pink-300'}`}>
+                              SEC {f4(g.seccion)} ({g.ids.length}){algunaSeleccionada && ` · ${seleccionadas}/${g.ids.length}`}
                           </button>
                       );
                   })}
               </div>
-
-              {/* CONTROLES PRINCIPALES (Configuración + Representaciones + Mobiliario, fusionados) */}
-              {equipTab === 'config' && (
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                  <div className="px-6 pt-6 pb-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Base de Proyección</label>
-                          <div className="flex bg-slate-100 p-1 rounded-xl w-max border border-slate-200">
-                              <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'padron'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'padron' ? 'bg-white text-pink-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Padrón</button>
-                              <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'lista'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'lista' ? 'bg-white text-slate-800 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Lista Nominal</button>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-2 italic">Afecta el total de casillas estimadas (Actualmente: {statsEquipamiento.total} casillas).</p>
-                      </div>
-                      <div className="flex flex-col items-center text-center">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Total de Elecciones a realizar</label>
-                          <div className="w-32 bg-slate-100 border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-black text-center text-slate-600 flex items-center justify-center gap-2">
-                              <Lock className="w-3.5 h-3.5 text-slate-400" /> {equipConfig.totalElecciones}
-                          </div>
-                          <p className="text-xs text-slate-400 mt-2 italic max-w-[220px]">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). Fijo — por ahora no es posible que cambie el número de elecciones.</p>
-                      </div>
-                      <div className="flex flex-col items-center text-center">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Editar Configuración</label>
-                          <button onClick={() => setConfigEquipoBloqueada(!configEquipoBloqueada)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black uppercase shadow-sm transition-all ${configEquipoBloqueada ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
-                              {configEquipoBloqueada ? <><Lock className="w-4 h-4" /> Bloqueado</> : <><Unlock className="w-4 h-4" /> Desbloqueado</>}
-                          </button>
-                          <p className="text-xs text-slate-400 mt-2 italic">{configEquipoBloqueada ? 'Toca para desbloquear y editar' : 'Toca para bloquear de nuevo'}</p>
-                      </div>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t-2 border-slate-100">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-pink-500" /> Representaciones y Elecciones Locales</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
-                              {configEquipoBloqueada ? (
-                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosNacionales}</div>
-                              ) : (
-                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosNacionales} onChange={e => setEquipConfig({...equipConfig, numPartidosNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                              )}
-                              <p className="text-[10px] text-slate-400 mt-1">2 sillas c/u. Nota: 8 PPN con registro (Acuerdos INE/CG344/2026 e INE/CG347/2026).</p>
-                          </div>
-                          <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Locales</label>
-                              {configEquipoBloqueada ? (
-                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numPartidosLocales}</div>
-                              ) : (
-                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numPartidosLocales} onChange={e => setEquipConfig({...equipConfig, numPartidosLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                              )}
-                              <p className="text-[10px] text-slate-400 mt-1">2 PPL con registro vigente en Edomex: PRD (local desde 2024) y Podemos (nuevo, 2026) — corte agosto 2026.</p>
-                          </div>
-                          <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Sillas x Partido Local</label>
-                              {configEquipoBloqueada ? (
-                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.sillasPorPartidoLocal}</div>
-                              ) : (
-                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.sillasPorPartidoLocal} onChange={e => setEquipConfig({...equipConfig, sillasPorPartidoLocal: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                              )}
-                              <p className="text-[10px] text-slate-400 mt-1">Modelo INE 2026-2027: 1 silla (solo puede estar una representación local a la vez en casilla)</p>
-                          </div>
-                          <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Elecciones Locales (urnas OPL)</label>
-                              {configEquipoBloqueada ? (
-                                  <div className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-600">{equipConfig.numEleccionesLocales}</div>
-                              ) : (
-                                  <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={equipConfig.numEleccionesLocales} onChange={e => setEquipConfig({...equipConfig, numEleccionesLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                              )}
-                              <p className="text-[10px] text-slate-400 mt-1">Edomex: Dip. Locales + Ayuntamientos = 2</p>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t-2 border-slate-100">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-pink-500" /> Equipamiento Mobiliario</h3>
-                      <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
-                          <p className="text-[11px] text-slate-500 mb-3">Check para cambiar mesa para urna(s) por silla.</p>
-                          <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                  <input type="checkbox" checked={equipConfig.sillasParaUrna} onChange={(e) => setEquipConfig({...equipConfig, sillasParaUrna: e.target.checked})} className="w-5 h-5 text-pink-600 rounded border-slate-300 focus:ring-pink-500 cursor-pointer" />
-                                  <span className="text-sm font-black uppercase text-slate-700">Usar Silla para Urna</span>
-                              </label>
-                          </div>
-                          <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Cantidad por Casilla (Default INE: {paqueteMampara.mobiliario.tablonesMesas})</label>
-                                  <div className="flex items-center gap-2">
-                                      <input type="number" min="0" disabled={configEquipoBloqueada} placeholder="Automático (INE)" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" value={equipConfig.mobiliarioPorCasilla} onChange={e => setEquipConfig({...equipConfig, mobiliarioPorCasilla: e.target.value})} />
-                                      {!configEquipoBloqueada && equipConfig.mobiliarioPorCasilla !== '' && (
-                                          <button onClick={() => setEquipConfig({...equipConfig, mobiliarioPorCasilla: ''})} title="Restaurar a default" className="bg-slate-200 p-2 rounded-xl hover:bg-slate-300 transition-colors text-slate-600"><RotateCcw className="w-4 h-4" /></button>
-                                      )}
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-                  </div>
-              </div>
-              )}
-
-              {/* PAQUETE UNITARIO POR CASILLA */}
-              {equipTab === 'paquetes' && (
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                  <div className="px-6 pt-6 pb-6">
-              <p className="text-[11px] text-slate-500 uppercase tracking-wider font-bold mb-4">Proyección base por casilla (todas parten con mampara)</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* MOBILIARIO */}
-                  <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-2 h-full bg-pink-500"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-4">Mobiliario</h3>
-
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Tablones/Mesas</p>
-                              <p className="text-3xl font-black text-slate-900">{paqueteMampara.mobiliario.tablonesMesas}</p>
-                          </div>
-                          <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200 text-center">
-                              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Sillas</p>
-                              <p className="text-3xl font-black text-slate-900">{paqueteMampara.sillas.total}</p>
-                          </div>
-                      </div>
-                      <p className="text-[10px] text-pink-600 mt-3 font-bold">Desglose sillas: FMDCU {paqueteMampara.sillas.fmdcu} · RPP Nacionales {paqueteMampara.sillas.nacionales} · RPP Locales {paqueteMampara.sillas.locales} · Mamparas {paqueteMampara.sillas.mamparas}{equipConfig.sillasParaUrna && ` · Urna ${paqueteMampara.sillas.urna}`}</p>
-
-                      {/* PRECIOS DE RENTA — oculto por default, solo se muestra tras dar click al candado */}
-                      <div className="mt-4 pt-4 border-t-2 border-slate-100">
-                          <button onClick={() => setPreciosRentaDesbloqueado(v => !v)} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${preciosRentaDesbloqueado ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-400 hover:text-pink-600'}`}>
-                              {preciosRentaDesbloqueado ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                              Precios de Renta {preciosRentaDesbloqueado ? '· click para ocultar' : '· click para mostrar'}
-                          </button>
-                          {preciosRentaDesbloqueado && (
-                              <div className="grid grid-cols-2 gap-4 mt-3">
-                                  <div>
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Mesa</label>
-                                      <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
-                                          <span className="text-slate-400 font-black text-sm">$</span>
-                                          <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioMesa} onChange={e => setEquipConfig({...equipConfig, precioMesa: e.target.value})} />
-                                      </div>
-                                  </div>
-                                  <div>
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Renta / Silla</label>
-                                      <div className="flex items-center bg-white border-2 border-slate-200 rounded-xl px-3 focus-within:ring-2 focus-within:ring-pink-500">
-                                          <span className="text-slate-400 font-black text-sm">$</span>
-                                          <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioSilla} onChange={e => setEquipConfig({...equipConfig, precioSilla: e.target.value})} />
-                                      </div>
-                                  </div>
-                                  <p className="col-span-2 text-[10px] text-slate-400 italic">Se usan para calcular el costo total de renta de mobiliario en "Volumen Total Requerido" y en el Excel exportado.</p>
-                              </div>
-                          )}
-                      </div>
-                  </div>
-
-                  {/* MATERIAL ELECTORAL */}
-                  <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
-                      <div className="absolute top-0 left-0 w-2 h-full bg-slate-800"></div>
-                      <h3 className="text-base font-black uppercase text-slate-800 mb-4">Material Electoral</h3>
-
-                      <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
-                          <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
-                          <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                  <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Mampara</p>
-                                  <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                      <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
-                                      <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
-                                      <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.liquidosIndelebles}</span></li>
-                                      <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadoresBoletas}</span></li>
-                                      <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
-                                  </ul>
-                              </div>
-                              <div className="border-l-2 border-pink-200 pl-4">
-                                  <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Cancel</p>
-                                  <ul className="text-sm text-slate-600 font-bold space-y-1.5">
-                                      <li>Cancel: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.canceles}</span></li>
-                                      <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.urnasFederales}</span></li>
-                                      <li>Liq. Indeleble: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.liquidosIndelebles}</span></li>
-                                      <li>Marc. Boleta: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadoresBoletas}</span></li>
-                                      <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.marcadorasCredenciales}</span></li>
-                                  </ul>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="bg-pink-600 p-4 rounded-xl border-2 border-pink-800">
-                          <p className="text-[10px] text-white font-black uppercase tracking-widest mb-2 border-b-2 border-pink-800 pb-1">Aporta OPL / IEEM</p>
-                          <ul className="text-sm text-slate-300 font-bold space-y-1.5 grid grid-cols-2">
-                              <li>Urnas Locales: <span className="text-white ml-1">{paqueteMampara.materialOpl.urnasLocales}</span></li>
-                              <li>Base Porta Urna: <span className="text-white ml-1">{paqueteMampara.materialOpl.basesPortaUrna}</span></li>
-                              <li>Cancel IEEM: <span className="text-white ml-1">{paqueteMampara.materialOpl.cancelPorCasilla}</span></li>
-                          </ul>
-                      </div>
-                  </div>
-              </div>
-                  </div>
-              </div>
-              )}
-
-              {/* ASIGNACIÓN MODULAR (CANCEL VS MAMPARA POR CASILLA) */}
-              {equipTab === 'asignacion' && (
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                <div className="px-6 pt-6 pb-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Todas las casillas parten con mampara por default. Marca aquí las excepciones que llevarán cancel.</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
-                        <div className="flex gap-2 mr-2 pr-2 border-r border-slate-200">
-                             <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
-                             <label className="text-xs font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer border-2 border-slate-200"><FileUp className="w-4 h-4" /> Cargar<input type="file" className="hidden" accept=".json" onChange={importarRespaldoEquipamiento} /></label>
-                        </div>
-                        {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
-                        <button onClick={() => marcarTodasMamparas('cancel')} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl transition-colors shadow-sm">Todas con Cancel</button>
-                        <button onClick={() => marcarTodasMamparas('mampara')} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-5 py-2.5 rounded-xl transition-colors shadow-md">Todas con Mampara</button>
-                    </div>
-                </div>
-                <div className="mb-4">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Seleccionar por Sección (marca la sección completa, casilla por casilla se ajusta abajo)</p>
-                    <div className="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
-                        {seccionesParaAsignacion.map(g => {
-                            const seleccionadas = g.ids.filter(id => seleccionAsignacion.includes(id)).length;
-                            const todasSeleccionadas = seleccionadas === g.ids.length;
-                            const algunaSeleccionada = seleccionadas > 0 && !todasSeleccionadas;
-                            return (
-                                <button key={g.seccion} onClick={() => {
-                                    setSeleccionAsignacion(prev => todasSeleccionadas ? prev.filter(id => !g.ids.includes(id)) : [...new Set([...prev, ...g.ids])]);
-                                }} className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase border-2 transition-colors ${todasSeleccionadas ? 'bg-pink-600 border-pink-700 text-white' : algunaSeleccionada ? 'bg-white border-pink-400 text-pink-600' : 'bg-white border-slate-200 text-slate-600 hover:border-pink-300'}`}>
-                                    SEC {f4(g.seccion)} ({g.ids.length}){algunaSeleccionada && ` · ${seleccionadas}/${g.ids.length}`}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <div className="relative max-w-xs w-full">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Buscar secciones (ej. 33, 35, 40)..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaAsignacion} onChange={e => setBusquedaAsignacion(e.target.value)} />
-                    </div>
-                    <button onClick={() => {
-                        const idsVisibles = casillasAsignacionFiltradas.map(c => c.id);
-                        const todasYaSeleccionadas = idsVisibles.length > 0 && idsVisibles.every(id => seleccionAsignacion.includes(id));
-                        setSeleccionAsignacion(prev => todasYaSeleccionadas ? prev.filter(id => !idsVisibles.includes(id)) : [...new Set([...prev, ...idsVisibles])]);
-                    }} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl transition-colors shadow-sm">
-                        {casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => seleccionAsignacion.includes(c.id)) ? 'Quitar visibles de la selección' : `Sumar visibles a la selección (${casillasAsignacionFiltradas.length})`}
-                    </button>
-                    {busquedaAsignacion.trim() !== '' && <button onClick={() => setBusquedaAsignacion('')} className="text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 px-2 py-2">Limpiar búsqueda</button>}
-                </div>
-                <p className="text-[10px] text-slate-400 -mt-2 mb-3 font-bold">Escribe varias secciones separadas por coma o espacio (ej. "33, 35 40") y usa "Sumar visibles" para juntarlas todas en tu selección antes de marcarlas.</p>
-                <p className="text-[10px] text-slate-400 mb-2 font-bold">Da clic para seleccionar (no cambia nada todavía) — usa "Marcar como Cancel/Mampara" abajo para aplicar.</p>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
-                    {casillasAsignacionFiltradas.map((c) => {
-                        const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
-                        const isMampara = tipoActual === 'mampara';
-                        const isSeleccionada = seleccionAsignacion.includes(c.id);
-                        return (
-                            <div key={c.id} className={`relative p-2 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-sm text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-2 ring-pink-400' : ''}`} onClick={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}>
-                                <input type="checkbox" className="absolute top-1 left-1 w-3.5 h-3.5 accent-pink-600 pointer-events-none" checked={isSeleccionada} readOnly />
-                                <span className={`${isMampara ? 'bg-pink-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded text-[10px] font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
-                                <span className={`text-sm font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
-                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara' : 'Cancel'}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-                {seleccionAsignacion.length > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
-                        <span className="text-xs font-black uppercase">{seleccionAsignacion.length} casilla(s) seleccionada(s)</span>
-                        <button onClick={() => marcarSeleccionAsignacion('cancel')} className="bg-white text-slate-800 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Cancel</button>
-                        <button onClick={() => marcarSeleccionAsignacion('mampara')} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Mampara</button>
-                        <button onClick={() => setSeleccionAsignacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
-                    </div>
-                )}
-                </div>
-              </div>
-              )}
-
-              {/* VOLUMEN TOTAL DISTRITAL */}
-              {equipTab === 'volumen' && (
-              <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                <div className="px-4 sm:px-8 pt-8 pb-8">
-              <div className="bg-pink-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-800 text-white">
-                  <div className="flex justify-end mb-6">
-                      <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-pink-50 text-pink-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Mobiliario y Sillas</p>
-                          <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
-                                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Tablones/Mesas</p>
-                                  <p className="text-3xl font-black text-white">{equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()}</p>
-                              </div>
-                              <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
-                                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Sillas</p>
-                                  <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
-                              </div>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
-
-                          {preciosRentaDesbloqueado && (
-                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 shadow-sm mt-4">
-                                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Unlock className="w-3 h-3" /> Costo Total de Renta (Mobiliario)</p>
-                                  <p className="text-2xl font-black text-white">${costoRentaMobiliario.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                  <p className="text-[10px] text-slate-400 mt-1">Mesas: {equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()} × ${costoRentaMobiliario.precioMesa.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalMesas.toLocaleString(undefined, { minimumFractionDigits: 2 })} · Sillas: {equipamientoDistrital.sillas.total.toLocaleString()} × ${costoRentaMobiliario.precioSilla.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalSillas.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                              </div>
-                          )}
-
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
-                          <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
-                                  <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
-                                  <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
-                                  <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
-                                  <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
-                              </div>
-                          </div>
-                      </div>
-
-                      <div>
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta INE</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Canceles</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.canceles.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Mamparas</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.mamparas.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Urnas Fed</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.urnasFederales.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Boletas</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadoresBoletas.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Cred</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadorasCredenciales.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-slate-300 uppercase">Líq. Indeleble</span>
-                                  <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.liquidosIndelebles.toLocaleString()}</span>
-                              </div>
-                          </div>
-
-                          <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Urnas Locales</span>
-                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Base P/Urna</span>
-                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
-                              </div>
-                              <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
-                                  <span className="text-[11px] font-bold text-pink-600 uppercase">Cancel IEEM</span>
-                                  <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-                </div>
-              </div>
-              )}
-
-            </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+              <div className="relative max-w-xs w-full">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="Buscar secciones (ej. 33, 35, 40)..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaAsignacion} onChange={e => setBusquedaAsignacion(e.target.value)} />
+              </div>
+              <button onClick={() => {
+                  const idsVisibles = casillasAsignacionFiltradas.map(c => c.id);
+                  const todasYaSeleccionadas = idsVisibles.length > 0 && idsVisibles.every(id => seleccionAsignacion.includes(id));
+                  setSeleccionAsignacion(prev => todasYaSeleccionadas ? prev.filter(id => !idsVisibles.includes(id)) : [...new Set([...prev, ...idsVisibles])]);
+              }} className="text-xs font-black uppercase tracking-wider bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl transition-colors shadow-sm">
+                  {casillasAsignacionFiltradas.length > 0 && casillasAsignacionFiltradas.every(c => seleccionAsignacion.includes(c.id)) ? 'Quitar visibles de la selección' : `Sumar visibles a la selección (${casillasAsignacionFiltradas.length})`}
+              </button>
+              {busquedaAsignacion.trim() !== '' && <button onClick={() => setBusquedaAsignacion('')} className="text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 px-2 py-2">Limpiar búsqueda</button>}
+          </div>
+          <p className="text-[10px] text-slate-400 -mt-2 mb-3 font-bold">Escribe varias secciones separadas por coma o espacio (ej. "33, 35 40") y usa "Sumar visibles" para juntarlas todas en tu selección antes de marcarlas.</p>
+          <p className="text-[10px] text-slate-400 mb-2 font-bold">Da clic para seleccionar (no cambia nada todavía) — usa "Marcar como Cancel/Mampara" abajo para aplicar.</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-[300px] overflow-y-auto p-3 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar">
+              {casillasAsignacionFiltradas.map((c) => {
+                  const tipoActual = mamparasPorCasilla[c.id] || 'mampara';
+                  const isMampara = tipoActual === 'mampara';
+                  const isSeleccionada = seleccionAsignacion.includes(c.id);
+                  return (
+                      <div key={c.id} className={`relative p-2 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${isMampara ? 'bg-pink-600 border-pink-800 shadow-sm text-white' : 'bg-white border-slate-300 hover:border-pink-400'} ${isSeleccionada ? 'ring-2 ring-pink-400' : ''}`} onClick={() => setSeleccionAsignacion(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}>
+                          <input type="checkbox" className="absolute top-1 left-1 w-3.5 h-3.5 accent-pink-600 pointer-events-none" checked={isSeleccionada} readOnly />
+                          <span className={`${isMampara ? 'bg-pink-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded text-[10px] font-black tracking-widest shadow-inner`}>SEC {c.seccion}</span>
+                          <span className={`text-sm font-black ${isMampara ? 'text-white' : 'text-slate-800'}`}>{c.nombre}</span>
+                          <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${isMampara ? 'bg-pink-800 text-pink-100' : 'bg-slate-100 text-slate-600'}`}>{isMampara ? 'Mampara' : 'Cancel'}</span>
+                      </div>
+                  );
+              })}
+          </div>
+          {seleccionAsignacion.length > 0 && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+                  <span className="text-xs font-black uppercase">{seleccionAsignacion.length} casilla(s) seleccionada(s)</span>
+                  <button onClick={() => marcarSeleccionAsignacion('cancel')} className="bg-white text-slate-800 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Cancel</button>
+                  <button onClick={() => marcarSeleccionAsignacion('mampara')} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Mampara</button>
+                  <button onClick={() => setSeleccionAsignacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+              </div>
+          )}
+          </div>
+        </div>
+        )}
+
+        {/* VOLUMEN TOTAL DISTRITAL */}
+        {equipTab === 'volumen' && (
+        <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+          <div className="px-4 sm:px-8 pt-8 pb-8">
+        <div className="bg-pink-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-800 text-white">
+            <div className="flex justify-end mb-6">
+                <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-pink-50 text-pink-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Mobiliario y Sillas</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Tablones/Mesas</p>
+                            <p className="text-3xl font-black text-white">{equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Sillas</p>
+                            <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
+
+                    {preciosRentaDesbloqueado && (
+                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 shadow-sm mt-4">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Unlock className="w-3 h-3" /> Costo Total de Renta (Mobiliario)</p>
+                            <p className="text-2xl font-black text-white">${costoRentaMobiliario.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">Mesas: {equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()} × ${costoRentaMobiliario.precioMesa.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalMesas.toLocaleString(undefined, { minimumFractionDigits: 2 })} · Sillas: {equipamientoDistrital.sillas.total.toLocaleString()} × ${costoRentaMobiliario.precioSilla.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalSillas.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        </div>
+                    )}
+
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
+                            <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
+                            <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
+                            <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
+                            <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta INE</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Canceles</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.canceles.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Mamparas</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.mamparas.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Urnas Fed</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.urnasFederales.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Boletas</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadoresBoletas.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Cred</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadorasCredenciales.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-slate-300 uppercase">Líq. Indeleble</span>
+                            <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.liquidosIndelebles.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-pink-600 uppercase">Urnas Locales</span>
+                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-pink-600 uppercase">Base P/Urna</span>
+                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                            <span className="text-[11px] font-bold text-pink-600 uppercase">Cancel IEEM</span>
+                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+          </div>
+        </div>
+        )}
+
+      </div>
+    </div>
   );
 
   const renderProyeccion = () => (
-          <div className="lg:col-span-12 overflow-y-auto p-10 text-left bg-slate-50">
-            <div className="max-w-7xl mx-auto space-y-8 pb-24 text-left">
-                <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+    <div className="lg:col-span-12 overflow-y-auto p-10 text-left bg-slate-50">
+      <div className="max-w-7xl mx-auto space-y-8 pb-24 text-left">
+          <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
 
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
-                    {[
-                        { key: 'listado', label: 'Listado de Casillas', icon: ListOrdered },
-                        { key: 'resumen', label: 'Resumen Distrital', icon: Calculator },
-                        { key: 'folios', label: 'Asignación de Folios', icon: Hash },
-                        { key: 'ubicacion', label: 'Tipos de Domicilios de Casillas', icon: Building2 },
-                    ].map(tab => {
-                        const Icon = tab.icon;
-                        const isActive = proyeccionTab === tab.key;
-                        return (
-                            <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
-                                <Icon className="w-3.5 h-3.5" /> {tab.label}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {proyeccionTab === 'resumen' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                        <div className="p-8 space-y-6">
-                            <div className="p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-r from-pink-600 to-pink-800">
-                                <div className="flex flex-wrap items-center justify-between gap-4 text-left">
-                                    <div className="flex items-center gap-4 text-left">
-                                        <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white">
-                                            <Calculator className="w-8 h-8" />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-pink-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
-                                            <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
-                                        </div>
-                                    </div>
-                                    <div className="text-center bg-white/15 rounded-2xl px-5 py-2.5 shrink-0">
-                                        <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Municipios</p>
-                                        <p className="text-2xl font-black text-white mt-0.5">{totalMunicipios}</p>
-                                        <button onClick={exportarInformeEjecutivoPDF} className="mt-2 w-full flex items-center justify-center gap-1.5 bg-pink-700/40 hover:bg-pink-700/70 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border border-white/25 transition-all"><FileText className="w-3 h-3" /> Resumen Distrital</button>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
-                                    <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Básicas / Contiguas</p>
-                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.bcPadron} | L: {totalCasillasDistrito.bcLista}</p>
-                                    </div>
-                                    <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Extraordinarias</p>
-                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.exPadron} | L: {totalCasillasDistrito.exLista}</p>
-                                    </div>
-                                    <div className="text-center sm:text-left">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Especiales</p>
-                                        <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.espPadron} | L: {totalCasillasDistrito.espLista}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            {municipiosDelDistrito.length > 0 && (
-                                <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Municipios que conforman el distrito ({municipiosDelDistrito.length})</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {municipiosDelDistrito.map(m => (
-                                            <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-pink-50 text-pink-700">
-                                                <span className="text-[10px] font-black uppercase">{m.nombre}</span>
-                                                <span className="text-[9px] font-bold text-pink-500 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Total de Secciones</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{sections.length}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Padrón Electoral</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-violet-600 uppercase tracking-widest mb-1">Lista Nominal</p>
-                                    <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Básicas</p>
-                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Contiguas</p>
-                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias</p>
-                                    <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
-                                    <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
-                                </div>
-                                <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Especiales</p>
-                                    <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
-                                </div>
-                            </div>
-                        </div>
-                </div>
-                )}
-
-                {proyeccionTab === 'folios' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
-                            <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
-                                <div className="text-left">
-                                    <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">Asignación de Folios de Boletas</h2>
-                                    <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Boletas de Diputación Federal · Lista Nominal</p>
-                                </div>
-                                <button onClick={exportarFoliosExcel} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all"><FileDown className="w-5 h-5" /> Exportar Excel</button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 border-2 border-slate-200 rounded-2xl p-5">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Cabecera Distrital</label>
-                                    <input type="text" placeholder="Ej. TEPEXPAN" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={cabeceraDistrital} onChange={e => { const val = e.target.value.toUpperCase(); setCabeceraDistrital(val); localStorage.setItem(`proyector_cabecera_D${distritoInfo.numero}`, val); }} />
-                                    <p className="text-[10px] text-slate-400 mt-1">Nombre de la cabecera del distrito (aparece en "Distrito: {distritoInfo.numero} ..." del Excel). Se guarda por distrito.</p>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Repres. RPP Nacional</label>
-                                    <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasRppNacionales} onChange={e => setFolioConfig({...folioConfig, boletasRppNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                                    <p className="text-[10px] text-slate-400 mt-1">Default: 2 x 8 partidos nacionales vigentes. Sin lineamiento exacto confirmado — ajustar si la Junta define otra cifra.</p>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Repres. RPP Local</label>
-                                    <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasRppLocales} onChange={e => setFolioConfig({...folioConfig, boletasRppLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                                    <p className="text-[10px] text-slate-400 mt-1">Default: 1 x 2 partidos locales vigentes en Edomex (PRD, Podemos).</p>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Candidatura Indep.</label>
-                                    <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasCandidaturaIndependiente} onChange={e => setFolioConfig({...folioConfig, boletasCandidaturaIndependiente: e.target.value === '' ? '' : parseInt(e.target.value)})} />
-                                    <p className="text-[10px] text-slate-400 mt-1">Default: 0 (sin candidaturas independientes registradas en el corte actual).</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                                <div className="bg-slate-900 p-4 rounded-xl text-center">
-                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Secciones</p>
-                                    <p className="text-xl font-black text-white">{totalesFolios.totalSecciones}</p>
-                                </div>
-                                <div className="bg-slate-900 p-4 rounded-xl text-center">
-                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Casillas</p>
-                                    <p className="text-xl font-black text-white">{totalesFolios.totalCasillas}</p>
-                                </div>
-                                <div className="bg-slate-900 p-4 rounded-xl text-center">
-                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Ciudadanos</p>
-                                    <p className="text-xl font-black text-white">{totalesFolios.totalCiudadanos.toLocaleString()}</p>
-                                </div>
-                                <div className="bg-slate-900 p-4 rounded-xl text-center">
-                                    <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Total Boletas</p>
-                                    <p className="text-xl font-black text-pink-400">{totalesFolios.totalBoletas.toLocaleString()}</p>
-                                </div>
-                                <div className="bg-slate-900 p-4 rounded-xl text-center col-span-2 sm:col-span-1">
-                                    <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Folio Final</p>
-                                    <p className="text-xl font-black text-pink-400">{totalesFolios.folioFinalDistrito.toLocaleString()}</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-auto max-h-[500px]">
-                                <table className="w-full text-left border-collapse min-w-[900px]">
-                                    <thead className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest border-b-8 border-pink-600">
-                                        <tr>
-                                            <th className="p-4">Municipio</th>
-                                            <th className="p-4">Sección</th>
-                                            <th className="p-4">Casilla</th>
-                                            <th className="p-4 text-right">Ciudadanos</th>
-                                            <th className="p-4 text-right">RPP Nac.</th>
-                                            <th className="p-4 text-right">RPP Loc.</th>
-                                            <th className="p-4 text-right">Cand. Ind.</th>
-                                            <th className="p-4 text-right">Total Boletas</th>
-                                            <th className="p-4 text-right">Folio Inicial</th>
-                                            <th className="p-4 text-right">Folio Final</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-xs font-bold divide-y divide-slate-100">
-                                        {filasFolios.map(f => (
-                                            <tr key={f.id} className={`hover:bg-slate-50 ${f.categoria === 'ESPECIAL' ? 'bg-yellow-100' : ''}`}>
-                                                <td className="p-4 text-slate-600">{f.municipio}</td>
-                                                <td className="p-4 text-slate-900">{f4(f.seccion)}</td>
-                                                <td className="p-4 text-slate-600">{f.nombreCasilla}</td>
-                                                <td className="p-4 text-right text-slate-900">{f.ciudadanos.toLocaleString()}</td>
-                                                <td className="p-4 text-right text-slate-500">{f.boletasRppNacionales}</td>
-                                                <td className="p-4 text-right text-slate-500">{f.boletasRppLocales}</td>
-                                                <td className="p-4 text-right text-slate-500">{f.boletasCandidaturaIndependiente}</td>
-                                                <td className="p-4 text-right text-pink-700 font-black">{f.totalBoletas.toLocaleString()}</td>
-                                                <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioInicial).padStart(7, '0')}</td>
-                                                <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioFinal).padStart(7, '0')}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                </div>
-                )}
-
-                {proyeccionTab === 'listado' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
-                            <div className="flex flex-col gap-5 text-left">
-                               {/* FILA 1 — título + las dos acciones que importan, mismo tamaño, mismo corte */}
-                               <div className="flex flex-wrap items-center justify-between gap-4 text-left">
-                                   <div className="text-left">
-                                       <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
-                                       <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
-                                   </div>
-                                   <div className="flex flex-wrap items-stretch gap-2.5">
-                                       <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
-                                           <Plus className="w-6 h-6 text-yellow-400 shrink-0" />
-                                           <span className="text-sm font-black uppercase">Casillas Especiales</span>
-                                       </button>
-                                       <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
-                                           <Download className="w-6 h-6 text-pink-200 shrink-0" />
-                                           <span className="text-left leading-tight">
-                                               <span className="block text-sm font-black uppercase">Proyección Oficial INE</span>
-                                               <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Envío oficial a Junta Local</span>
-                                           </span>
-                                       </button>
-                                   </div>
-                               </div>
-
-                               {/* FILA 2 — barra de herramientas: buscar/filtrar a la izquierda, exports secundarios a la derecha */}
-                               <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
-                                   <div className="flex flex-wrap items-center gap-2">
-                                       <div className="relative">
-                                           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                           <input type="text" placeholder="Buscar sección, nomenclatura o tipo..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 text-slate-800" value={busquedaProyeccion} onChange={e => setBusquedaProyeccion(e.target.value)} />
-                                       </div>
-                                       <div className="flex items-center gap-1.5 bg-white border-2 border-slate-300 rounded-full pl-3 pr-1.5 py-1 focus-within:ring-2 focus-within:ring-pink-500">
-                                           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wide">Corte</span>
-                                           <input type="text" value={fechaCorte} onChange={e => setFechaCorte(e.target.value)} placeholder="DD/MM/AAAA" className="w-24 py-1 text-xs font-black text-slate-800 outline-none text-center bg-transparent" />
-                                       </div>
-                                       <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'variacion' ? null : 'variacion')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'variacion' ? 'bg-orange-600 border-orange-600 text-white shadow-md' : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-50'}`}>
-                                           <AlertTriangle className="w-3.5 h-3.5" /> Variación ({countVariacion})
-                                       </button>
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
-                                           <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
-                                       </button>
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
-                                           <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
-                                       </button>
-                                       {filtroAlerta && (
-                                           <button onClick={() => setFiltroAlerta(null)} className="px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 border-slate-200 text-slate-500 hover:bg-slate-100 transition-all bg-white">
-                                               <X className="w-3.5 h-3.5" /> Quitar filtro
-                                           </button>
-                                       )}
-                                   </div>
-                                   <div className="flex items-center gap-2 pr-1">
-                                       <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all active:scale-95 relative z-40"><AlertTriangle className="w-3.5 h-3.5" /> Observaciones</button>
-                                       <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800 text-white active:scale-95'}`}><MapIcon className="w-3.5 h-3.5" /> QGIS</button>
-                                   </div>
-                               </div>
-                            </div>
-
-                            {seccionesMostradas.length === 0 ? (
-                                <div className="p-16 text-center text-slate-400 italic font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
-                            ) : (
-                                <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-200 overflow-hidden overflow-x-auto text-left">
-                                    <table className="w-full text-left border-collapse min-w-[1000px] text-left">
-                                        <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-pink-600 text-left">
-                                            <tr>
-                                                <th className="p-3 text-left">Sección</th>
-                                                <th className="p-3 text-left">Grupo</th>
-                                                <th className="p-3 text-left">Nomenclatura</th>
-                                                <th className="p-3 text-left">Padrón / Lista</th>
-                                                <th className="p-3 text-left">Proyección Detallada</th>
-                                                <th className="p-3 text-center text-left">Total Casillas</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="text-xs font-bold divide-y divide-slate-100 text-left">
-                                            {seccionesMostradas.map((grupo) => {
-                                                const isExpanded = !!seccionesExpandidas[grupo.seccion] || busquedaProyeccion.trim() !== '' || !!filtroAlerta;
-                                                return (
-                                                    <React.Fragment key={grupo.seccion}>
-                                                        <tr onClick={() => toggleSeccion(grupo.seccion)} className={`cursor-pointer transition-colors ${isExpanded ? 'bg-pink-50' : 'hover:bg-slate-50'} ${grupo.tieneVariacion ? 'bg-red-50/50' : ''}`}>
-                                                            <td className="p-2.5" colSpan={4}>
-                                                                <div className="flex items-center gap-3 flex-wrap">
-                                                                    {isExpanded ? <ChevronUp className="w-4 h-4 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
-                                                                    <span className="font-black text-slate-900 text-sm">Sec {f4(grupo.seccion)}</span>
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {grupo.categorias.map(cat => (
-                                                                            <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-pink-100 text-pink-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
-                                                                        ))}
-                                                                        {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
-                                                                        {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
-                                                                        {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
-                                                                    </div>
-                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-2.5"></td>
-                                                            <td className="p-2.5 text-center">
-                                                                <div className="flex flex-col items-center justify-center">
-                                                                    <span className="text-base font-black text-pink-700">P: {grupo.totalPadron}</span>
-                                                                    <span className="text-xs font-bold text-slate-600 mt-0.5">L: {grupo.totalLista}</span>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        {isExpanded && grupo.rows.map((row, idx) => {
-                                                            const noInstala = row.distPadron.some(d => d.nombre === 'NO INSTALA') || row.distLista.some(d => d.nombre === 'NO INSTALA');
-                                                            return (
-                                                                <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-50/40' : row.categoria === 'ESPECIAL' ? 'bg-slate-50' : ''}`}>
-                                                                    <td className="p-2.5"></td>
-                                                                    <td className="p-2.5"><span className={`text-[9px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
-                                                                    <td className="p-2.5">
-                                                                        <div className="flex flex-col gap-1">
-                                                                            {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
-                                                                            {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-2.5 text-slate-500 font-mono text-left">
-                                                                        <div className="flex flex-col gap-0.5">
-                                                                            <span className="text-slate-900 font-black text-sm">P: {Number(row.padronRef).toLocaleString()}</span>
-                                                                            <span className="text-slate-500 text-[11px] font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
-                                                                            {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
-                                                                                const dist = Math.min(
-                                                                                    estaCercaDelCorte750(row.padronRef) ? distanciaAlCorte750(row.padronRef) : Infinity,
-                                                                                    estaCercaDelCorte750(row.listaRef) ? distanciaAlCorte750(row.listaRef) : Infinity
-                                                                                );
-                                                                                const nivel = nivelRiesgoCorte750(dist);
-                                                                                const colorNivel = nivel === 'ALTO' ? 'bg-red-100 text-red-700' : nivel === 'MEDIO' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
-                                                                                return (
-                                                                                    <span className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-2.5 text-left">
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <div className="flex flex-wrap gap-1 text-left">
-                                                                                {row.distPadron.map((item, i) => {
-                                                                                    const isNoInstala = item.nombre === 'NO INSTALA';
-                                                                                    return (
-                                                                                        <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-pink-50 border-pink-300 text-pink-700 font-bold'}`}>
-                                                                                            <span className="font-black text-[9px] opacity-50">P:</span>
-                                                                                            <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
-                                                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
-                                                                                        </span>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                            <div className="flex flex-wrap gap-1 text-left">
-                                                                                {row.distLista.map((item, i) => {
-                                                                                    const isNoInstala = item.nombre === 'NO INSTALA';
-                                                                                    return (
-                                                                                        <span key={`l-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
-                                                                                            <span className="font-black text-[9px] opacity-50">L:</span>
-                                                                                            <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
-                                                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
-                                                                                        </span>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="p-2.5 text-center">
-                                                                        <div className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 ${row.variacion ? 'bg-red-50 border-red-200' : noInstala ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                                                            <span className={`text-sm font-black ${noInstala ? 'text-amber-800' : 'text-pink-700'}`}>P: {Number(row.countPadron)}</span>
-                                                                            <span className={`text-xs font-bold mt-0.5 ${noInstala ? 'text-amber-600' : 'text-slate-600'}`}>L: {Number(row.countLista)}</span>
-                                                                            {row.variacion && <AlertTriangle className="w-4 h-4 text-red-500 mt-1" title="Variación detectada entre Padrón y Lista" />}
-                                                                            {!row.variacion && noInstala && (
-                                                                                <div className="mt-1 flex items-center gap-1 px-2 py-1 rounded shadow-sm bg-amber-100 border border-amber-400 text-amber-900">
-                                                                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-                                                                                    <span className="text-[9px] font-black uppercase leading-none text-center">No Instala</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                </div>
-                )}
-
-                {proyeccionTab === 'ubicacion' && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
-                        <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
-
-                            <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
-                                <div className="flex flex-wrap items-center justify-between gap-4">
-                                    <div className="flex items-center gap-6">
-                                        <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
-                                            <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
-                                        <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
-                                        <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
-                                            {limpiezaDomiciliosBloqueada ? <><Lock className="w-4 h-4" /> Limpieza Total</> : <><Unlock className="w-4 h-4" /> Limpieza Desbloqueada</>}
-                                        </button>
-                                        {!limpiezaDomiciliosBloqueada && (
-                                            <button onClick={limpiarTodosLosDomicilios} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><Trash2 className="w-4 h-4" /> Borrar Todos los Domicilios</button>
-                                        )}
-                                    </div>
-                                </div>
-                                <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
-                            </div>
-
-                            {Object.keys(conteoTiposDomicilio).length > 0 && (
-                                <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(() => {
-                                            const totalTipos = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
-                                            return Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
-                                                <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo} ({totalTipos > 0 ? (count / totalTipos * 100).toFixed(1) : '0.0'}%) · {seccionesPorTipoDomicilio[tipo] || 0} {(seccionesPorTipoDomicilio[tipo] || 0) === 1 ? 'sección' : 'secciones'}</button>
-                                            ));
-                                        })()}
-                                    </div>
-                                </div>
-                            )}
-
-                            {reporteDiferenciaProyeccion && (
-                                <div className="rounded-2xl border-2 border-violet-300 bg-violet-50 overflow-hidden">
-                                    <button onClick={() => setDiferenciaProyeccionExpandido(v => !v)} className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-violet-100/50 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            {diferenciaProyeccionExpandido ? <ChevronUp className="w-5 h-5 text-violet-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-violet-400 flex-shrink-0" />}
-                                            <BarChart3 className="w-5 h-5 text-violet-600 flex-shrink-0" />
-                                            <span className="text-sm font-black uppercase tracking-wide text-violet-700">Diferencia de Proyección (última importación)</span>
-                                        </div>
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>
-                                            {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'Sin diferencias' : `${reporteDiferenciaProyeccion.seccionesConDiferencia} sección(es) con diferencia`}
-                                        </span>
-                                    </button>
-                                    {diferenciaProyeccionExpandido && (
-                                        <div className="px-6 pb-6">
-                                            <div className="flex flex-wrap gap-2">
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Instalado: {reporteDiferenciaProyeccion.totales.real}</span>
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
-                                                <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
-                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
-                                            </div>
-                                            {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? (
-                                                <p className="text-xs mt-3 font-bold text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Todas las secciones coinciden con la proyección del sistema.</p>
-                                            ) : (
-                                                <>
-                                                    <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Esta misma tabla se incluye como segunda hoja al exportar el "Listado Tipos de Domicilio":</p>
-                                                    <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
-                                                        <table className="w-full text-left border-collapse min-w-[500px]">
-                                                            <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
-                                                                <tr><th className="p-2">Sección</th><th className="p-2 text-center">Instalado</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
-                                                            </thead>
-                                                            <tbody className="text-xs font-bold divide-y divide-violet-100 bg-white">
-                                                                {reporteDiferenciaProyeccion.filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).map(r => (
-                                                                    <tr key={r.seccion}>
-                                                                        <td className="p-2 text-slate-800">Sec {r.seccion}</td>
-                                                                        <td className="p-2 text-center text-slate-600">{r.real}</td>
-                                                                        <td className="p-2 text-center text-slate-600">{r.proyectadoPadron}</td>
-                                                                        <td className="p-2 text-center text-slate-600">{r.proyectadoLista}</td>
-                                                                        <td className={`p-2 text-center ${r.difPadron === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difPadron > 0 ? '+' : ''}{r.difPadron}</td>
-                                                                        <td className={`p-2 text-center ${r.difLista === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difLista > 0 ? '+' : ''}{r.difLista}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                <div className="relative max-w-xs w-full">
-                                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2.5 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaUbicacion} onChange={e => setBusquedaUbicacion(e.target.value)} />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'completo' ? 'todas' : 'completo')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'completo' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} Completas</button>
-                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'parcial' ? 'todas' : 'parcial')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'parcial' ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>{seccionesUbicacion.filter(s => s.estado === 'parcial').length} Parciales</button>
-                                    <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'sin_asignar' ? 'todas' : 'sin_asignar')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'sin_asignar' ? 'bg-slate-700 text-white shadow-md ring-2 ring-slate-400' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} Sin Asignar</button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {gruposUbicacionMostrados.map(grupo => {
-                                    const isOpen = !!seccionesUbicacionExpandidas[grupo.seccion];
-                                    const estiloEstado = grupo.estado === 'completo_unico' ? 'bg-emerald-100 text-emerald-700' : grupo.estado === 'completo_multiple' ? 'bg-sky-100 text-sky-700' : grupo.estado === 'parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600';
-                                    const textoEstado = grupo.estado === 'completo_unico' ? 'Un domicilio para toda la sección' : grupo.estado === 'completo_multiple' ? `${grupo.domiciliosUnicos} domicilios distintos` : grupo.estado === 'parcial' ? `${grupo.asignadas}/${grupo.total} asignadas` : 'Sin asignar';
-                                    return (
-                                        <div key={grupo.seccion} className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
-                                            <button onClick={() => setSeccionesUbicacionExpandidas(prev => ({ ...prev, [grupo.seccion]: !prev[grupo.seccion] }))} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    {isOpen ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
-                                                    <span className="text-base font-black uppercase text-slate-800">Sec {f4(grupo.seccion)}</span>
-                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${estiloEstado}`}>{textoEstado}</span>
-                                                </div>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{grupo.total} casilla{grupo.total !== 1 ? 's' : ''}</span>
-                                            </button>
-                                            {isOpen && (
-                                                <div className="px-6 pb-6 space-y-3">
-                                                    <div className="flex justify-end gap-2">
-                                                        {grupo.totalFaltantesCompletables > 0 && (
-                                                            <button onClick={() => completarClustersAutomaticamente(grupo.clustersCompletables)} title="Copia el domicilio ya asignado a las casillas faltantes, sólo dentro del mismo grupo físico (básica+contiguas, cada extraordinaria o cada especial por separado)" className="text-[10px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Completar automáticamente ({grupo.totalFaltantesCompletables})</button>
-                                                        )}
-                                                        <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
-                                                    </div>
-                                                    {grupo.casillas.map(c => (
-                                                        <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-pink-50' : 'border-slate-200 bg-slate-50'}`}>
-                                                            <input type="checkbox" className="w-4 h-4 accent-pink-600" checked={seleccionUbicacion.includes(c.clave)} onChange={() => setSeleccionUbicacion(prev => prev.includes(c.clave) ? prev.filter(x => x !== c.clave) : [...prev, c.clave])} />
-                                                            <span className="bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
-                                                            <div className="flex-1 min-w-[200px]">
-                                                                {c.dom ? (
-                                                                    <div className="text-xs">
-                                                                        <span className="font-black text-slate-800">{c.dom.tipoDomicilio || 'SIN TIPO'}</span>
-                                                                        <span className="text-slate-500"> — {c.dom.domicilio || 'sin dirección'}</span>
-                                                                        {c.dom.ubicacion && <p className="text-slate-400 text-[11px]">{c.dom.ubicacion}</p>}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-xs font-bold text-slate-400 italic">Sin asignar</span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => { setSeleccionUbicacion([c.clave]); setModalUbicacionConfig({ isOpen: true, claves: [c.clave], prefill: c.dom }); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Editar"><Pencil className="w-4 h-4" /></button>
-                                                                {grupo.casillas.some(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign) && (
-                                                                    <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
-                                                                )}
-                                                                {c.asign && (
-                                                                    <button onClick={() => borrarDomicilioDeCasilla(c.clave)} className="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-white transition-all" title="Borrar domicilio de esta casilla"><Trash2 className="w-4 h-4" /></button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {seleccionUbicacion.length > 0 && !modalUbicacionConfig.isOpen && (
-                                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
-                                    <span className="text-xs font-black uppercase">{seleccionUbicacion.length} casilla(s) seleccionada(s)</span>
-                                    <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
-                                    <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
-                                </div>
-                            )}
-
-                        </div>
-                </div>
-                )}
-            </div>
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
+              {[
+                  { key: 'listado', label: 'Listado de Casillas', icon: ListOrdered },
+                  { key: 'resumen', label: 'Resumen Distrital', icon: Calculator },
+                  { key: 'folios', label: 'Asignación de Folios', icon: Hash },
+                  { key: 'ubicacion', label: 'Tipos de Domicilios de Casillas', icon: Building2 },
+              ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = proyeccionTab === tab.key;
+                  return (
+                      <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                          <Icon className="w-3.5 h-3.5" /> {tab.label}
+                      </button>
+                  );
+              })}
           </div>
+
+          {proyeccionTab === 'resumen' && (
+          <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+                  <div className="p-8 space-y-6">
+                      <div className="p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-r from-pink-600 to-pink-800">
+                          <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+                              <div className="flex items-center gap-4 text-left">
+                                  <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white">
+                                      <Calculator className="w-8 h-8" />
+                                  </div>
+                                  <div className="text-left">
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-pink-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
+                                      <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
+                                  </div>
+                              </div>
+                              <div className="text-center bg-white/15 rounded-2xl px-5 py-2.5 shrink-0">
+                                  <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Municipios</p>
+                                  <p className="text-2xl font-black text-white mt-0.5">{totalMunicipios}</p>
+                                  <button onClick={exportarInformeEjecutivoPDF} className="mt-2 w-full flex items-center justify-center gap-1.5 bg-pink-700/40 hover:bg-pink-700/70 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border border-white/25 transition-all"><FileText className="w-3 h-3" /> Resumen Distrital</button>
+                              </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
+                              <div className="text-center sm:text-left">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Básicas / Contiguas</p>
+                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.bcPadron} | L: {totalCasillasDistrito.bcLista}</p>
+                              </div>
+                              <div className="text-center sm:text-left">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Extraordinarias</p>
+                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.exPadron} | L: {totalCasillasDistrito.exLista}</p>
+                              </div>
+                              <div className="text-center sm:text-left">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Especiales</p>
+                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.espPadron} | L: {totalCasillasDistrito.espLista}</p>
+                              </div>
+                          </div>
+                      </div>
+                      {municipiosDelDistrito.length > 0 && (
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Municipios que conforman el distrito ({municipiosDelDistrito.length})</p>
+                              <div className="flex flex-wrap gap-2">
+                                  {municipiosDelDistrito.map(m => (
+                                      <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-pink-50 text-pink-700">
+                                          <span className="text-[10px] font-black uppercase">{m.nombre}</span>
+                                          <span className="text-[9px] font-bold text-pink-500 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Total de Secciones</p>
+                              <h5 className="text-3xl font-black italic text-slate-800">{sections.length}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Padrón Electoral</p>
+                              <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-violet-600 uppercase tracking-widest mb-1">Lista Nominal</p>
+                              <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Básicas</p>
+                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Contiguas</p>
+                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias</p>
+                              <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
+                              <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
+                          </div>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Especiales</p>
+                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
+                          </div>
+                      </div>
+                  </div>
+          </div>
+          )}
+
+          {proyeccionTab === 'folios' && (
+          <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+                  <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
+                      <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
+                          <div className="text-left">
+                              <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">Asignación de Folios de Boletas</h2>
+                              <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Boletas de Diputación Federal · Lista Nominal</p>
+                          </div>
+                          <button onClick={exportarFoliosExcel} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all"><FileDown className="w-5 h-5" /> Exportar Excel</button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 border-2 border-slate-200 rounded-2xl p-5">
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Cabecera Distrital</label>
+                              <input type="text" placeholder="Ej. TEPEXPAN" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={cabeceraDistrital} onChange={e => { const val = e.target.value.toUpperCase(); setCabeceraDistrital(val); localStorage.setItem(`proyector_cabecera_D${distritoInfo.numero}`, val); }} />
+                              <p className="text-[10px] text-slate-400 mt-1">Nombre de la cabecera del distrito (aparece en "Distrito: {distritoInfo.numero} ..." del Excel). Se guarda por distrito.</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Repres. RPP Nacional</label>
+                              <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasRppNacionales} onChange={e => setFolioConfig({...folioConfig, boletasRppNacionales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">Default: 2 x 8 partidos nacionales vigentes. Sin lineamiento exacto confirmado — ajustar si la Junta define otra cifra.</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Repres. RPP Local</label>
+                              <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasRppLocales} onChange={e => setFolioConfig({...folioConfig, boletasRppLocales: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">Default: 1 x 2 partidos locales vigentes en Edomex (PRD, Podemos).</p>
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Boletas x Candidatura Indep.</label>
+                              <input type="number" min="0" className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-slate-800" value={folioConfig.boletasCandidaturaIndependiente} onChange={e => setFolioConfig({...folioConfig, boletasCandidaturaIndependiente: e.target.value === '' ? '' : parseInt(e.target.value)})} />
+                              <p className="text-[10px] text-slate-400 mt-1">Default: 0 (sin candidaturas independientes registradas en el corte actual).</p>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Secciones</p>
+                              <p className="text-xl font-black text-white">{totalesFolios.totalSecciones}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Casillas</p>
+                              <p className="text-xl font-black text-white">{totalesFolios.totalCasillas}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Ciudadanos</p>
+                              <p className="text-xl font-black text-white">{totalesFolios.totalCiudadanos.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                              <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Total Boletas</p>
+                              <p className="text-xl font-black text-pink-400">{totalesFolios.totalBoletas.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-slate-900 p-4 rounded-xl text-center col-span-2 sm:col-span-1">
+                              <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Folio Final</p>
+                              <p className="text-xl font-black text-pink-400">{totalesFolios.folioFinalDistrito.toLocaleString()}</p>
+                          </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-auto max-h-[500px]">
+                          <table className="w-full text-left border-collapse min-w-[900px]">
+                              <thead className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest border-b-8 border-pink-600">
+                                  <tr>
+                                      <th className="p-4">Municipio</th>
+                                      <th className="p-4">Sección</th>
+                                      <th className="p-4">Casilla</th>
+                                      <th className="p-4 text-right">Ciudadanos</th>
+                                      <th className="p-4 text-right">RPP Nac.</th>
+                                      <th className="p-4 text-right">RPP Loc.</th>
+                                      <th className="p-4 text-right">Cand. Ind.</th>
+                                      <th className="p-4 text-right">Total Boletas</th>
+                                      <th className="p-4 text-right">Folio Inicial</th>
+                                      <th className="p-4 text-right">Folio Final</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="text-xs font-bold divide-y divide-slate-100">
+                                  {filasFolios.map(f => (
+                                      <tr key={f.id} className={`hover:bg-slate-50 ${f.categoria === 'ESPECIAL' ? 'bg-yellow-100' : ''}`}>
+                                          <td className="p-4 text-slate-600">{f.municipio}</td>
+                                          <td className="p-4 text-slate-900">{f4(f.seccion)}</td>
+                                          <td className="p-4 text-slate-600">{f.nombreCasilla}</td>
+                                          <td className="p-4 text-right text-slate-900">{f.ciudadanos.toLocaleString()}</td>
+                                          <td className="p-4 text-right text-slate-500">{f.boletasRppNacionales}</td>
+                                          <td className="p-4 text-right text-slate-500">{f.boletasRppLocales}</td>
+                                          <td className="p-4 text-right text-slate-500">{f.boletasCandidaturaIndependiente}</td>
+                                          <td className="p-4 text-right text-pink-700 font-black">{f.totalBoletas.toLocaleString()}</td>
+                                          <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioInicial).padStart(7, '0')}</td>
+                                          <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioFinal).padStart(7, '0')}</td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+          </div>
+          )}
+
+          {proyeccionTab === 'listado' && (
+          <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+                  <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
+                      <div className="flex flex-col gap-5 text-left">
+                         {/* FILA 1 — título + las dos acciones que importan, mismo tamaño, mismo corte */}
+                         <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+                             <div className="text-left">
+                                 <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
+                                 <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
+                             </div>
+                             <div className="flex flex-wrap items-stretch gap-2.5">
+                                 <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                     <Plus className="w-6 h-6 text-yellow-400 shrink-0" />
+                                     <span className="text-sm font-black uppercase">Casillas Especiales</span>
+                                 </button>
+                                 <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                     <Download className="w-6 h-6 text-pink-200 shrink-0" />
+                                     <span className="text-left leading-tight">
+                                         <span className="block text-sm font-black uppercase">Proyección Oficial INE</span>
+                                         <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Envío oficial a Junta Local</span>
+                                     </span>
+                                 </button>
+                             </div>
+                         </div>
+
+                         {/* FILA 2 — barra de herramientas: buscar/filtrar a la izquierda, exports secundarios a la derecha */}
+                         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
+                             <div className="flex flex-wrap items-center gap-2">
+                                 <div className="relative">
+                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                     <input type="text" placeholder="Buscar sección, nomenclatura o tipo..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 text-slate-800" value={busquedaProyeccion} onChange={e => setBusquedaProyeccion(e.target.value)} />
+                                 </div>
+                                 <div className="flex items-center gap-1.5 bg-white border-2 border-slate-300 rounded-full pl-3 pr-1.5 py-1 focus-within:ring-2 focus-within:ring-pink-500">
+                                     <span className="text-[9px] font-black uppercase text-slate-400 tracking-wide">Corte</span>
+                                     <input type="text" value={fechaCorte} onChange={e => setFechaCorte(e.target.value)} placeholder="DD/MM/AAAA" className="w-24 py-1 text-xs font-black text-slate-800 outline-none text-center bg-transparent" />
+                                 </div>
+                                 <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
+                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'variacion' ? null : 'variacion')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'variacion' ? 'bg-orange-600 border-orange-600 text-white shadow-md' : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-50'}`}>
+                                     <AlertTriangle className="w-3.5 h-3.5" /> Variación ({countVariacion})
+                                 </button>
+                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
+                                     <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
+                                 </button>
+                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
+                                     <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
+                                 </button>
+                                 {filtroAlerta && (
+                                     <button onClick={() => setFiltroAlerta(null)} className="px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 border-slate-200 text-slate-500 hover:bg-slate-100 transition-all bg-white">
+                                         <X className="w-3.5 h-3.5" /> Quitar filtro
+                                     </button>
+                                 )}
+                             </div>
+                             <div className="flex items-center gap-2 pr-1">
+                                 <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all active:scale-95 relative z-40"><AlertTriangle className="w-3.5 h-3.5" /> Observaciones</button>
+                                 <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800 text-white active:scale-95'}`}><MapIcon className="w-3.5 h-3.5" /> QGIS</button>
+                             </div>
+                         </div>
+                      </div>
+
+                      {seccionesMostradas.length === 0 ? (
+                          <div className="p-16 text-center text-slate-400 italic font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
+                      ) : (
+                          <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-200 overflow-hidden overflow-x-auto text-left">
+                              <table className="w-full text-left border-collapse min-w-[1000px] text-left">
+                                  <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-pink-600 text-left">
+                                      <tr>
+                                          <th className="p-3 text-left">Sección</th>
+                                          <th className="p-3 text-left">Grupo</th>
+                                          <th className="p-3 text-left">Nomenclatura</th>
+                                          <th className="p-3 text-left">Padrón / Lista</th>
+                                          <th className="p-3 text-left">Proyección Detallada</th>
+                                          <th className="p-3 text-center text-left">Total Casillas</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody className="text-xs font-bold divide-y divide-slate-100 text-left">
+                                      {seccionesMostradas.map((grupo) => {
+                                          const isExpanded = !!seccionesExpandidas[grupo.seccion] || busquedaProyeccion.trim() !== '' || !!filtroAlerta;
+                                          return (
+                                              <React.Fragment key={grupo.seccion}>
+                                                  <tr onClick={() => toggleSeccion(grupo.seccion)} className={`cursor-pointer transition-colors ${isExpanded ? 'bg-pink-50' : 'hover:bg-slate-50'} ${grupo.tieneVariacion ? 'bg-red-50/50' : ''}`}>
+                                                      <td className="p-2.5" colSpan={4}>
+                                                          <div className="flex items-center gap-3 flex-wrap">
+                                                              {isExpanded ? <ChevronUp className="w-4 h-4 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
+                                                              <span className="font-black text-slate-900 text-sm">Sec {f4(grupo.seccion)}</span>
+                                                              <div className="flex flex-wrap gap-1">
+                                                                  {grupo.categorias.map(cat => (
+                                                                      <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-pink-100 text-pink-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
+                                                                  ))}
+                                                                  {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
+                                                                  {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
+                                                                  {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
+                                                              </div>
+                                                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
+                                                          </div>
+                                                      </td>
+                                                      <td className="p-2.5"></td>
+                                                      <td className="p-2.5 text-center">
+                                                          <div className="flex flex-col items-center justify-center">
+                                                              <span className="text-base font-black text-pink-700">P: {grupo.totalPadron}</span>
+                                                              <span className="text-xs font-bold text-slate-600 mt-0.5">L: {grupo.totalLista}</span>
+                                                          </div>
+                                                      </td>
+                                                  </tr>
+                                                  {isExpanded && grupo.rows.map((row, idx) => {
+                                                      const noInstala = row.distPadron.some(d => d.nombre === 'NO INSTALA') || row.distLista.some(d => d.nombre === 'NO INSTALA');
+                                                      return (
+                                                          <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-50/40' : row.categoria === 'ESPECIAL' ? 'bg-slate-50' : ''}`}>
+                                                              <td className="p-2.5"></td>
+                                                              <td className="p-2.5"><span className={`text-[9px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
+                                                              <td className="p-2.5">
+                                                                  <div className="flex flex-col gap-1">
+                                                                      {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
+                                                                      {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
+                                                                  </div>
+                                                              </td>
+                                                              <td className="p-2.5 text-slate-500 font-mono text-left">
+                                                                  <div className="flex flex-col gap-0.5">
+                                                                      <span className="text-slate-900 font-black text-sm">P: {Number(row.padronRef).toLocaleString()}</span>
+                                                                      <span className="text-slate-500 text-[11px] font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
+                                                                      {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
+                                                                          const dist = Math.min(
+                                                                              estaCercaDelCorte750(row.padronRef) ? distanciaAlCorte750(row.padronRef) : Infinity,
+                                                                              estaCercaDelCorte750(row.listaRef) ? distanciaAlCorte750(row.listaRef) : Infinity
+                                                                          );
+                                                                          const nivel = nivelRiesgoCorte750(dist);
+                                                                          const colorNivel = nivel === 'ALTO' ? 'bg-red-100 text-red-700' : nivel === 'MEDIO' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
+                                                                          return (
+                                                                              <span className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
+                                                                          );
+                                                                      })()}
+                                                                  </div>
+                                                              </td>
+                                                              <td className="p-2.5 text-left">
+                                                                  <div className="flex flex-col gap-1">
+                                                                      <div className="flex flex-wrap gap-1 text-left">
+                                                                          {row.distPadron.map((item, i) => {
+                                                                              const isNoInstala = item.nombre === 'NO INSTALA';
+                                                                              return (
+                                                                                  <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-pink-50 border-pink-300 text-pink-700 font-bold'}`}>
+                                                                                      <span className="font-black text-[9px] opacity-50">P:</span>
+                                                                                      <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
+                                                                                      {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
+                                                                                  </span>
+                                                                              );
+                                                                          })}
+                                                                      </div>
+                                                                      <div className="flex flex-wrap gap-1 text-left">
+                                                                          {row.distLista.map((item, i) => {
+                                                                              const isNoInstala = item.nombre === 'NO INSTALA';
+                                                                              return (
+                                                                                  <span key={`l-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
+                                                                                      <span className="font-black text-[9px] opacity-50">L:</span>
+                                                                                      <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
+                                                                                      {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
+                                                                                  </span>
+                                                                              );
+                                                                          })}
+                                                                      </div>
+                                                                  </div>
+                                                              </td>
+                                                              <td className="p-2.5 text-center">
+                                                                  <div className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 ${row.variacion ? 'bg-red-50 border-red-200' : noInstala ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                                      <span className={`text-sm font-black ${noInstala ? 'text-amber-800' : 'text-pink-700'}`}>P: {Number(row.countPadron)}</span>
+                                                                      <span className={`text-xs font-bold mt-0.5 ${noInstala ? 'text-amber-600' : 'text-slate-600'}`}>L: {Number(row.countLista)}</span>
+                                                                      {row.variacion && <AlertTriangle className="w-4 h-4 text-red-500 mt-1" title="Variación detectada entre Padrón y Lista" />}
+                                                                      {!row.variacion && noInstala && (
+                                                                          <div className="mt-1 flex items-center gap-1 px-2 py-1 rounded shadow-sm bg-amber-100 border border-amber-400 text-amber-900">
+                                                                              <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                                                                              <span className="text-[9px] font-black uppercase leading-none text-center">No Instala</span>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              </td>
+                                                          </tr>
+                                                      );
+                                                  })}
+                                              </React.Fragment>
+                                          );
+                                      })}
+                                  </tbody>
+                              </table>
+                          </div>
+                      )}
+                  </div>
+          </div>
+          )}
+
+          {proyeccionTab === 'ubicacion' && (
+          <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
+                  <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
+
+                      <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex items-center gap-6">
+                                  <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
+                                  <div>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
+                                      <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
+                                  </div>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
+                                  <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
+                                  <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
+                                      {limpiezaDomiciliosBloqueada ? <><Lock className="w-4 h-4" /> Limpieza Total</> : <><Unlock className="w-4 h-4" /> Limpieza Desbloqueada</>}
+                                  </button>
+                                  {!limpiezaDomiciliosBloqueada && (
+                                      <button onClick={limpiarTodosLosDomicilios} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><Trash2 className="w-4 h-4" /> Borrar Todos los Domicilios</button>
+                                  )}
+                              </div>
+                          </div>
+                          <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
+                      </div>
+
+                      {Object.keys(conteoTiposDomicilio).length > 0 && (
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
+                              <div className="flex flex-wrap gap-2">
+                                  {(() => {
+                                      const totalTipos = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
+                                      return Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
+                                          <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo} ({totalTipos > 0 ? (count / totalTipos * 100).toFixed(1) : '0.0'}%) · {seccionesPorTipoDomicilio[tipo] || 0} {(seccionesPorTipoDomicilio[tipo] || 0) === 1 ? 'sección' : 'secciones'}</button>
+                                      ));
+                                  })()}
+                              </div>
+                          </div>
+                      )}
+
+                      {reporteDiferenciaProyeccion && (
+                          <div className="rounded-2xl border-2 border-violet-300 bg-violet-50 overflow-hidden">
+                              <button onClick={() => setDiferenciaProyeccionExpandido(v => !v)} className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-violet-100/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                      {diferenciaProyeccionExpandido ? <ChevronUp className="w-5 h-5 text-violet-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-violet-400 flex-shrink-0" />}
+                                      <BarChart3 className="w-5 h-5 text-violet-600 flex-shrink-0" />
+                                      <span className="text-sm font-black uppercase tracking-wide text-violet-700">Diferencia de Proyección (última importación)</span>
+                                  </div>
+                                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>
+                                      {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? 'Sin diferencias' : `${reporteDiferenciaProyeccion.seccionesConDiferencia} sección(es) con diferencia`}
+                                  </span>
+                              </button>
+                              {diferenciaProyeccionExpandido && (
+                                  <div className="px-6 pb-6">
+                                      <div className="flex flex-wrap gap-2">
+                                          <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Instalado: {reporteDiferenciaProyeccion.totales.real}</span>
+                                          <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                          <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Lista: {reporteDiferenciaProyeccion.totales.proyectadoLista}</span>
+                                          <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 ${reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron === 0 ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : 'bg-red-100 border-red-300 text-red-700'}`}>Diferencia Total (vs Padrón): {reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron > 0 ? '+' : ''}{reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
+                                      </div>
+                                      {reporteDiferenciaProyeccion.seccionesConDiferencia === 0 ? (
+                                          <p className="text-xs mt-3 font-bold text-emerald-600 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Todas las secciones coinciden con la proyección del sistema.</p>
+                                      ) : (
+                                          <>
+                                              <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Esta misma tabla se incluye como segunda hoja al exportar el "Listado Tipos de Domicilio":</p>
+                                              <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
+                                                  <table className="w-full text-left border-collapse min-w-[500px]">
+                                                      <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
+                                                          <tr><th className="p-2">Sección</th><th className="p-2 text-center">Instalado</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
+                                                      </thead>
+                                                      <tbody className="text-xs font-bold divide-y divide-violet-100 bg-white">
+                                                          {reporteDiferenciaProyeccion.filas.filter(r => r.difPadron !== 0 || r.difLista !== 0).map(r => (
+                                                              <tr key={r.seccion}>
+                                                                  <td className="p-2 text-slate-800">Sec {r.seccion}</td>
+                                                                  <td className="p-2 text-center text-slate-600">{r.real}</td>
+                                                                  <td className="p-2 text-center text-slate-600">{r.proyectadoPadron}</td>
+                                                                  <td className="p-2 text-center text-slate-600">{r.proyectadoLista}</td>
+                                                                  <td className={`p-2 text-center ${r.difPadron === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difPadron > 0 ? '+' : ''}{r.difPadron}</td>
+                                                                  <td className={`p-2 text-center ${r.difLista === 0 ? 'text-slate-400' : 'text-red-600'}`}>{r.difLista > 0 ? '+' : ''}{r.difLista}</td>
+                                                              </tr>
+                                                          ))}
+                                                      </tbody>
+                                                  </table>
+                                              </div>
+                                          </>
+                                      )}
+                                  </div>
+                              )}
+                          </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div className="relative max-w-xs w-full">
+                              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2.5 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaUbicacion} onChange={e => setBusquedaUbicacion(e.target.value)} />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                              <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'completo' ? 'todas' : 'completo')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'completo' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>{seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length} Completas</button>
+                              <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'parcial' ? 'todas' : 'parcial')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'parcial' ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>{seccionesUbicacion.filter(s => s.estado === 'parcial').length} Parciales</button>
+                              <button onClick={() => setFiltroEstadoUbicacion(prev => prev === 'sin_asignar' ? 'todas' : 'sin_asignar')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroEstadoUbicacion === 'sin_asignar' ? 'bg-slate-700 text-white shadow-md ring-2 ring-slate-400' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length} Sin Asignar</button>
+                          </div>
+                      </div>
+
+                      <div className="space-y-4">
+                          {gruposUbicacionMostrados.map(grupo => {
+                              const isOpen = !!seccionesUbicacionExpandidas[grupo.seccion];
+                              const estiloEstado = grupo.estado === 'completo_unico' ? 'bg-emerald-100 text-emerald-700' : grupo.estado === 'completo_multiple' ? 'bg-sky-100 text-sky-700' : grupo.estado === 'parcial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600';
+                              const textoEstado = grupo.estado === 'completo_unico' ? 'Un domicilio para toda la sección' : grupo.estado === 'completo_multiple' ? `${grupo.domiciliosUnicos} domicilios distintos` : grupo.estado === 'parcial' ? `${grupo.asignadas}/${grupo.total} asignadas` : 'Sin asignar';
+                              return (
+                                  <div key={grupo.seccion} className="bg-white rounded-3xl shadow-sm border-2 border-slate-300 overflow-hidden">
+                                      <button onClick={() => setSeccionesUbicacionExpandidas(prev => ({ ...prev, [grupo.seccion]: !prev[grupo.seccion] }))} className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors">
+                                          <div className="flex items-center gap-3">
+                                              {isOpen ? <ChevronUp className="w-5 h-5 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+                                              <span className="text-base font-black uppercase text-slate-800">Sec {f4(grupo.seccion)}</span>
+                                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${estiloEstado}`}>{textoEstado}</span>
+                                          </div>
+                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{grupo.total} casilla{grupo.total !== 1 ? 's' : ''}</span>
+                                      </button>
+                                      {isOpen && (
+                                          <div className="px-6 pb-6 space-y-3">
+                                              <div className="flex justify-end gap-2">
+                                                  {grupo.totalFaltantesCompletables > 0 && (
+                                                      <button onClick={() => completarClustersAutomaticamente(grupo.clustersCompletables)} title="Copia el domicilio ya asignado a las casillas faltantes, sólo dentro del mismo grupo físico (básica+contiguas, cada extraordinaria o cada especial por separado)" className="text-[10px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Completar automáticamente ({grupo.totalFaltantesCompletables})</button>
+                                                  )}
+                                                  <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
+                                              </div>
+                                              {grupo.casillas.map(c => (
+                                                  <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-pink-50' : 'border-slate-200 bg-slate-50'}`}>
+                                                      <input type="checkbox" className="w-4 h-4 accent-pink-600" checked={seleccionUbicacion.includes(c.clave)} onChange={() => setSeleccionUbicacion(prev => prev.includes(c.clave) ? prev.filter(x => x !== c.clave) : [...prev, c.clave])} />
+                                                      <span className="bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
+                                                      <div className="flex-1 min-w-[200px]">
+                                                          {c.dom ? (
+                                                              <div className="text-xs">
+                                                                  <span className="font-black text-slate-800">{c.dom.tipoDomicilio || 'SIN TIPO'}</span>
+                                                                  <span className="text-slate-500"> — {c.dom.domicilio || 'sin dirección'}</span>
+                                                                  {c.dom.ubicacion && <p className="text-slate-400 text-[11px]">{c.dom.ubicacion}</p>}
+                                                              </div>
+                                                          ) : (
+                                                              <span className="text-xs font-bold text-slate-400 italic">Sin asignar</span>
+                                                          )}
+                                                      </div>
+                                                      <div className="flex gap-2">
+                                                          <button onClick={() => { setSeleccionUbicacion([c.clave]); setModalUbicacionConfig({ isOpen: true, claves: [c.clave], prefill: c.dom }); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Editar"><Pencil className="w-4 h-4" /></button>
+                                                          {grupo.casillas.some(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign) && (
+                                                              <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
+                                                          )}
+                                                          {c.asign && (
+                                                              <button onClick={() => borrarDomicilioDeCasilla(c.clave)} className="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-white transition-all" title="Borrar domicilio de esta casilla"><Trash2 className="w-4 h-4" /></button>
+                                                          )}
+                                                      </div>
+                                                  </div>
+                                              ))}
+                                          </div>
+                                      )}
+                                  </div>
+                              );
+                          })}
+                      </div>
+
+                      {seleccionUbicacion.length > 0 && !modalUbicacionConfig.isOpen && (
+                          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+                              <span className="text-xs font-black uppercase">{seleccionUbicacion.length} casilla(s) seleccionada(s)</span>
+                              <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
+                              <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+                          </div>
+                      )}
+
+                  </div>
+          </div>
+          )}
+      </div>
+    </div>
   );
 
   const renderExtraordinarias = () => (
-          <>
-            {(conflictosDiseno.total > 0 || detalleConflictosAbierto || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
-              <div className="lg:col-span-12 p-4 pb-0 text-left">
-                <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
-                <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
-              </div>
-            )}
-            <div className="lg:col-span-4 border-r border-slate-200 bg-white p-6 overflow-y-auto shadow-inner text-left">
-              <h2 className="text-xl font-black tracking-tighter uppercase italic text-pink-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
-              
-              <div className="bg-pink-50/50 p-6 rounded-3xl border-2 border-pink-200 space-y-6 shadow-sm text-left">
-                <div className="flex items-center justify-between border-b-2 border-pink-100 pb-3 text-left">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-pink-600 flex items-center gap-2 text-left"><Settings2 className="w-4 h-4 text-left" /> Mesa de Armado</h3>
-                </div>
-                <div className="space-y-5 text-left">
-                  {errorMessage && ( <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 shadow-sm text-left"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5 text-left" /><p className="text-xs font-bold text-red-800 leading-tight text-left">{errorMessage}</p><button onClick={()=>setErrorMessage(null)}><X className="w-4 h-4 text-red-400 text-left" /></button></div> )}
-                  {successMessage && ( <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-start gap-3 text-left shadow-sm"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-emerald-800 leading-tight text-left">{successMessage}</p><button onClick={()=>setSuccessMessage(null)}><X className="w-4 h-4 text-emerald-400" /></button></div> )}
+    <>
+      {(conflictosDiseno.total > 0 || detalleConflictosAbierto || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
+        <div className="lg:col-span-12 p-4 pb-0 text-left">
+          <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
+          <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+        </div>
+      )}
+      <div className="lg:col-span-4 border-r border-slate-200 bg-white p-6 overflow-y-auto shadow-inner text-left">
+        <h2 className="text-xl font-black tracking-tighter uppercase italic text-pink-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
 
-                  {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
-                  <div className="space-y-2.5 text-left">
-                    <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
-                    <div className="grid grid-cols-1 gap-2.5 text-left">
-                        <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-pink-50'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
-                            <div className="text-left">
-                                <p className="text-sm font-black uppercase text-left">Crear una casilla nueva</p>
-                                <p className={`text-[10px] font-bold text-left ${form.rol === 'sede' ? 'text-pink-100' : 'text-slate-400'}`}>Le pones un número (E1, E2...) y eliges su manzana sede</p>
-                            </div>
-                        </button>
-                        <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-pink-50'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
-                            <div className="text-left">
-                                <p className="text-sm font-black uppercase text-left">Agregar manzanas a una casilla ya creada</p>
-                                <p className={`text-[10px] font-bold text-left ${form.rol === 'alimentadora' ? 'text-pink-100' : 'text-slate-400'}`}>{sedesActivas.length === 0 ? 'Primero crea una casilla nueva (opción de arriba)' : 'Suma más manzanas a su Padrón y Lista'}</p>
-                            </div>
-                        </button>
-                    </div>
-                  </div>
+        <div className="bg-pink-50/50 p-6 rounded-3xl border-2 border-pink-200 space-y-6 shadow-sm text-left">
+          <div className="flex items-center justify-between border-b-2 border-pink-100 pb-3 text-left">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-pink-600 flex items-center gap-2 text-left"><Settings2 className="w-4 h-4 text-left" /> Mesa de Armado</h3>
+          </div>
+          <div className="space-y-5 text-left">
+            {errorMessage && ( <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 shadow-sm text-left"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5 text-left" /><p className="text-xs font-bold text-red-800 leading-tight text-left">{errorMessage}</p><button onClick={()=>setErrorMessage(null)}><X className="w-4 h-4 text-red-400 text-left" /></button></div> )}
+            {successMessage && ( <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-start gap-3 text-left shadow-sm"><CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-emerald-800 leading-tight text-left">{successMessage}</p><button onClick={()=>setSuccessMessage(null)}><X className="w-4 h-4 text-emerald-400" /></button></div> )}
 
-                  {/* PASO 2: depende de qué se eligió arriba */}
-                  {form.rol === 'sede' && (
-                    <div className="space-y-2.5 text-left">
-                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
-                            {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
-                        </select>
-                    </div>
-                  )}
-                  {form.rol === 'alimentadora' && (
-                    <div className="space-y-2.5 text-left">
-                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
-                        <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
-                            <option value="">-- Elige una casilla --</option>
-                            {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
-                        </select>
-                    </div>
-                  )}
-
-                  {/* PASO 3: localidad + manzanas, ya con la sección resuelta (fija si es alimentadora) */}
-                  {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
-                    <div className="space-y-5 text-left">
-                      <div className="space-y-2.5 text-left">
-                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
-                        <div className="grid grid-cols-2 gap-4 text-left">
-                            {form.rol === 'sede' ? (
-                                <div className="space-y-1.5 text-left">
-                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
-                                    <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
-                                        <option value="">-- SEC --</option>
-                                        {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
-                                    </select>
-                                </div>
-                            ) : (
-                                <div className="space-y-1.5 text-left">
-                                    <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
-                                    <div className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm font-black text-slate-500 text-left" title="Se fija sola: una casilla solo puede tener manzanas de su misma sección">Sec. {f4(form.seccionOrigen)} (fija)</div>
-                                </div>
-                            )}
-                            <div className="space-y-1.5 text-left">
-                                <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Localidad</label>
-                                <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" disabled={!form.seccionOrigen} value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
-                                    <option value="">-- LOC --</option>
-                                    {localidadesDisp.map(l => {
-                                        const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
-                                        return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
-                                    })}
-                                </select>
-                            </div>
-                        </div>
+            {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
+            <div className="space-y-2.5 text-left">
+              <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
+              <div className="grid grid-cols-1 gap-2.5 text-left">
+                  <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-pink-50'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
+                      <div className="text-left">
+                          <p className="text-sm font-black uppercase text-left">Crear una casilla nueva</p>
+                          <p className={`text-[10px] font-bold text-left ${form.rol === 'sede' ? 'text-pink-100' : 'text-slate-400'}`}>Le pones un número (E1, E2...) y eliges su manzana sede</p>
                       </div>
-
-                      {form.localidad && (
-                      <div className="space-y-2.5 text-left">
-                        <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
-                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
-                            const assign = getMzAssignment(m.id);
-                            const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
-                            let tileClasses;
-                            if (isSelected) tileClasses = 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800';
-                            else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
-                            else if (assign?.type === 'alimentadora') tileClasses = 'bg-pink-100 border-pink-300 text-pink-700 shadow-inner';
-                            else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
-                            return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
-                        })}</div>
+                  </button>
+                  <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-pink-50'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
+                      <div className="text-left">
+                          <p className="text-sm font-black uppercase text-left">Agregar manzanas a una casilla ya creada</p>
+                          <p className={`text-[10px] font-bold text-left ${form.rol === 'alimentadora' ? 'text-pink-100' : 'text-slate-400'}`}>{sedesActivas.length === 0 ? 'Primero crea una casilla nueva (opción de arriba)' : 'Suma más manzanas a su Padrón y Lista'}</p>
                       </div>
-                      )}
-
-                      {form.manzanasSeleccionadas.length > 0 && (
-                        <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Vas a hacer esto</p>
-                          <p className="text-sm font-bold leading-relaxed text-left">
-                            {form.rol === 'sede'
-                                ? <>Crear la casilla <span className="text-pink-300 font-black">{form.tipoElegido}</span> en la Sección <span className="text-pink-300 font-black">{f4(form.seccionOrigen)}</span>, con la manzana <span className="text-pink-300 font-black">{f4(form.manzanasSeleccionadas[0]?.manzana)}</span> como su sede.</>
-                                : <>Agregar <span className="text-pink-300 font-black">{form.manzanasSeleccionadas.length} manzana{form.manzanasSeleccionadas.length === 1 ? '' : 's'}</span> a la casilla <span className="text-pink-300 font-black">{sedesActivas.find(c => String(c.uid) === String(form.casillaUidDestino))?.tipo}</span> (Sección {f4(form.seccionOrigen)}).</>
-                            }
-                          </p>
-                          <div className="flex justify-between items-center border-t border-slate-700 pt-4 text-left">
-                             <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Suma de esta selección</p><h4 className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()} · L: {totalesSeleccion.lista.toLocaleString()}</h4></div>
-                          </div>
-                          <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  </button>
               </div>
             </div>
-            
-            <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
-              <div className="flex flex-wrap justify-between items-start gap-y-4 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
-                <div className="w-full flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap mb-1">
-                    {[
-                        { key: 'poligonos', label: 'Polígonos Guardados', icon: LayoutGrid },
-                        { key: 'basica', label: 'Sede de la Básica', icon: MapPin, badge: basicaSedeCandidatas.filter(s => !basicaSedePorSeccion[s.seccion]).length },
-                    ].map(tab => {
-                        const Icon = tab.icon;
-                        const isActive = extraordinariasTab === tab.key;
-                        return (
-                            <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
-                                <Icon className="w-3.5 h-3.5" /> {tab.label}
-                                {!!tab.badge && <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white text-pink-600' : 'bg-amber-100 text-amber-700'}`}>{tab.badge}</span>}
-                            </button>
-                        );
-                    })}
-                </div>
-                {extraordinariasTab === 'poligonos' && (
-                <div className="w-full flex flex-col gap-4 text-left">
-                  {/* FILA 1 — título + la única acción destacada: ¿qué sigue? */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 text-left">
-                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
-                     <button onClick={() => setModalSiguientePaso(true)} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
-                        <Flag className="w-6 h-6 text-pink-200 shrink-0" />
-                        <span className="text-left leading-tight">
-                            <span className="block text-sm font-black uppercase">¿Ya terminaste de armar?</span>
-                            <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Revisa qué sigue</span>
-                        </span>
-                     </button>
-                  </div>
 
-                  {/* FILA 2 — barra de herramientas: buscar/estado a la izquierda, validar a la derecha */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
-                    <div className="flex flex-wrap items-center gap-2 text-left">
-                      <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
-                      <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
-                      <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-pink-200 text-pink-700'}`}>
-                        <Hash className="w-3.5 h-3.5 text-left shrink-0" />
-                        <span className="text-[10px] font-black uppercase text-left tracking-wider">
-                          Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
-                        </span>
+            {/* PASO 2: depende de qué se eligió arriba */}
+            {form.rol === 'sede' && (
+              <div className="space-y-2.5 text-left">
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
+                  <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
+                      {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
+                  </select>
+              </div>
+            )}
+            {form.rol === 'alimentadora' && (
+              <div className="space-y-2.5 text-left">
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
+                  <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
+                      <option value="">-- Elige una casilla --</option>
+                      {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
+                  </select>
+              </div>
+            )}
+
+            {/* PASO 3: localidad + manzanas, ya con la sección resuelta (fija si es alimentadora) */}
+            {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
+              <div className="space-y-5 text-left">
+                <div className="space-y-2.5 text-left">
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
+                  <div className="grid grid-cols-2 gap-4 text-left">
+                      {form.rol === 'sede' ? (
+                          <div className="space-y-1.5 text-left">
+                              <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                              <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.seccionOrigen} onChange={e => setForm({...form, seccionOrigen: e.target.value, localidad: "", manzanasSeleccionadas: []})}>
+                                  <option value="">-- SEC --</option>
+                                  {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
+                              </select>
+                          </div>
+                      ) : (
+                          <div className="space-y-1.5 text-left">
+                              <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Sección</label>
+                              <div className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm font-black text-slate-500 text-left" title="Se fija sola: una casilla solo puede tener manzanas de su misma sección">Sec. {f4(form.seccionOrigen)} (fija)</div>
+                          </div>
+                      )}
+                      <div className="space-y-1.5 text-left">
+                          <label className="text-[10px] font-bold text-slate-400 ml-1 text-left">Localidad</label>
+                          <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800 disabled:bg-slate-100 disabled:text-slate-400" disabled={!form.seccionOrigen} value={form.localidad} onChange={e => setForm({...form, localidad: e.target.value, manzanasSeleccionadas: []})}>
+                              <option value="">-- LOC --</option>
+                              {localidadesDisp.map(l => {
+                                  const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
+                                  return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
+                              })}
+                          </select>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-left">
-                      <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-left active:scale-95 transition-all border-2 ${conflictosDiseno.total === 0 ? 'bg-white border-emerald-200 text-emerald-700' : 'bg-red-600 border-red-600 text-white shadow-sm'}`}>
-                        {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-3.5 h-3.5 text-left" /> : <AlertTriangle className="w-3.5 h-3.5 text-left" />}
-                        <span className="text-[10px] font-black uppercase text-left tracking-wider">
-                          Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
-                        </span>
-                        {detalleConflictosAbierto ? <ChevronUp className="w-3.5 h-3.5 text-left" /> : <ChevronDown className="w-3.5 h-3.5 text-left opacity-70" />}
-                      </button>
-                      <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
-                    </div>
                   </div>
+                </div>
+
+                {form.localidad && (
+                <div className="space-y-2.5 text-left">
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
+                      const assign = getMzAssignment(m.id);
+                      const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
+                      let tileClasses;
+                      if (isSelected) tileClasses = 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800';
+                      else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
+                      else if (assign?.type === 'alimentadora') tileClasses = 'bg-pink-100 border-pink-300 text-pink-700 shadow-inner';
+                      else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
+                      return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
+                  })}</div>
                 </div>
                 )}
-                {extraordinariasTab === 'basica' && (
-                <>
-                <div className="flex flex-col gap-2 text-left">
-                  <div className="flex items-center gap-4 text-left">
-                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
-                     <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
+
+                {form.manzanasSeleccionadas.length > 0 && (
+                  <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Vas a hacer esto</p>
+                    <p className="text-sm font-bold leading-relaxed text-left">
+                      {form.rol === 'sede'
+                          ? <>Crear la casilla <span className="text-pink-300 font-black">{form.tipoElegido}</span> en la Sección <span className="text-pink-300 font-black">{f4(form.seccionOrigen)}</span>, con la manzana <span className="text-pink-300 font-black">{f4(form.manzanasSeleccionadas[0]?.manzana)}</span> como su sede.</>
+                          : <>Agregar <span className="text-pink-300 font-black">{form.manzanasSeleccionadas.length} manzana{form.manzanasSeleccionadas.length === 1 ? '' : 's'}</span> a la casilla <span className="text-pink-300 font-black">{sedesActivas.find(c => String(c.uid) === String(form.casillaUidDestino))?.tipo}</span> (Sección {f4(form.seccionOrigen)}).</>
+                      }
+                    </p>
+                    <div className="flex justify-between items-center border-t border-slate-700 pt-4 text-left">
+                       <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Suma de esta selección</p><h4 className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()} · L: {totalesSeleccion.lista.toLocaleString()}</h4></div>
+                    </div>
+                    <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
                   </div>
-                  <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada y más de una manzana sobrante — elige cuál es la sede de su básica.</p>
-                </div>
-                <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ocultar confirmadas</span>
-                  <button type="button" onClick={() => setOcultarBasicaConfirmadas(v => !v)} className={`w-9 h-5 rounded-full relative transition-colors shrink-0 ${ocultarBasicaConfirmadas ? 'bg-pink-600' : 'bg-slate-300'}`}>
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ocultarBasicaConfirmadas ? 'translate-x-4' : ''}`}></span>
-                  </button>
-                </label>
-                </>
                 )}
               </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-              {extraordinariasTab === 'poligonos' && (
-              <div className="flex flex-col gap-3 pb-24 text-left">
-                {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
-                  sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
-                      const stats = calcularProyeccion(c);
-                      const isEspecial = String(c.tipo).startsWith('S');
-                      const isExpanded = casillasExpandidas.has(String(c.uid));
+      <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
+        <div className="flex flex-wrap justify-between items-start gap-y-4 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
+          <div className="w-full flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap mb-1">
+              {[
+                  { key: 'poligonos', label: 'Polígonos Guardados', icon: LayoutGrid },
+                  { key: 'basica', label: 'Sede de la Básica', icon: MapPin, badge: basicaSedeCandidatas.filter(s => !basicaSedePorSeccion[s.seccion]).length },
+              ].map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = extraordinariasTab === tab.key;
+                  return (
+                      <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                          <Icon className="w-3.5 h-3.5" /> {tab.label}
+                          {!!tab.badge && <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white text-pink-600' : 'bg-amber-100 text-amber-700'}`}>{tab.badge}</span>}
+                      </button>
+                  );
+              })}
+          </div>
+          {extraordinariasTab === 'poligonos' && (
+          <div className="w-full flex flex-col gap-4 text-left">
+            {/* FILA 1 — título + la única acción destacada: ¿qué sigue? */}
+            <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+               <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
+               <button onClick={() => setModalSiguientePaso(true)} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                  <Flag className="w-6 h-6 text-pink-200 shrink-0" />
+                  <span className="text-left leading-tight">
+                      <span className="block text-sm font-black uppercase">¿Ya terminaste de armar?</span>
+                      <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Revisa qué sigue</span>
+                  </span>
+               </button>
+            </div>
 
-                      return (
-                        <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
-                          <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center gap-2 text-left min-w-0">
-                                  <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
-                                  <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
-                                  {!isEspecial && (nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) && (
-                                      <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
-                                  )}
-                                  {!isExpanded && (
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate shrink-0">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
-                                  )}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                  {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
-                                  <button onClick={(e) => { e.stopPropagation(); if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
-                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                              </div>
+            {/* FILA 2 — barra de herramientas: buscar/estado a la izquierda, validar a la derecha */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
+              <div className="flex flex-wrap items-center gap-2 text-left">
+                <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
+                <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
+                <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-pink-200 text-pink-700'}`}>
+                  <Hash className="w-3.5 h-3.5 text-left shrink-0" />
+                  <span className="text-[10px] font-black uppercase text-left tracking-wider">
+                    Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-left">
+                <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-left active:scale-95 transition-all border-2 ${conflictosDiseno.total === 0 ? 'bg-white border-emerald-200 text-emerald-700' : 'bg-red-600 border-red-600 text-white shadow-sm'}`}>
+                  {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-3.5 h-3.5 text-left" /> : <AlertTriangle className="w-3.5 h-3.5 text-left" />}
+                  <span className="text-[10px] font-black uppercase text-left tracking-wider">
+                    Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
+                  </span>
+                  {detalleConflictosAbierto ? <ChevronUp className="w-3.5 h-3.5 text-left" /> : <ChevronDown className="w-3.5 h-3.5 text-left opacity-70" />}
+                </button>
+                <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
+              </div>
+            </div>
+          </div>
+          )}
+          {extraordinariasTab === 'basica' && (
+          <>
+          <div className="flex flex-col gap-2 text-left">
+            <div className="flex items-center gap-4 text-left">
+               <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
+               <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
+            </div>
+            <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada y más de una manzana sobrante — elige cuál es la sede de su básica.</p>
+          </div>
+          <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
+            <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ocultar confirmadas</span>
+            <button type="button" onClick={() => setOcultarBasicaConfirmadas(v => !v)} className={`w-9 h-5 rounded-full relative transition-colors shrink-0 ${ocultarBasicaConfirmadas ? 'bg-pink-600' : 'bg-slate-300'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ocultarBasicaConfirmadas ? 'translate-x-4' : ''}`}></span>
+            </button>
+          </label>
+          </>
+          )}
+        </div>
+
+        {extraordinariasTab === 'poligonos' && (
+        <div className="flex flex-col gap-3 pb-24 text-left">
+          {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
+            sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
+                const stats = calcularProyeccion(c);
+                const isEspecial = String(c.tipo).startsWith('S');
+                const isExpanded = casillasExpandidas.has(String(c.uid));
+
+                return (
+                  <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
+                    <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex items-center gap-2 text-left min-w-0">
+                            <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
+                            <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
+                            {!isEspecial && (nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) && (
+                                <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
+                            )}
+                            {!isExpanded && (
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate shrink-0">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
+                            <button onClick={(e) => { e.stopPropagation(); if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                            {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                        </div>
+                    </div>
+
+                    {isExpanded && (
+                    <div className="p-3 space-y-2.5 flex-1 text-left">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
+                          <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
+                          <div className="text-right">
+                              <span className="text-lg font-black italic tracking-tighter text-pink-600 text-left mr-2">P:{Number(stats.total).toLocaleString()}</span>
+                              <span className="text-sm font-bold text-slate-500 text-left">L:{Number(stats.totalLista).toLocaleString()}</span>
                           </div>
+                      </div>
 
-                          {isExpanded && (
-                          <div className="p-3 space-y-2.5 flex-1 text-left">
-                            <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
-                                <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
-                                <div className="text-right">
-                                    <span className="text-lg font-black italic tracking-tighter text-pink-600 text-left mr-2">P:{Number(stats.total).toLocaleString()}</span>
-                                    <span className="text-sm font-bold text-slate-500 text-left">L:{Number(stats.totalLista).toLocaleString()}</span>
+                      {isEspecial ? (
+                          <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border-2 border-slate-200 text-slate-600">
+                              <Star className="w-5 h-5 shrink-0 text-slate-400" />
+                              <p className="text-[10px] font-black uppercase">Casilla Especial sin recuento de manzanas.</p>
+                          </div>
+                      ) : (
+                          <>
+                              {stats.localidadesInvolucradasArray && stats.localidadesInvolucradasArray.length > 0 && (
+                                <div className="text-left">
+                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Localidades del Polígono ({stats.localidadesInvolucradasArray.length})</p>
+                                  <div className="flex flex-wrap gap-1.5 text-left">
+                                    {stats.localidadesInvolucradasArray.map((loc, i) => (
+                                      <span key={i} className="bg-violet-50 border-2 border-violet-200 text-violet-700 px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">{loc}</span>
+                                    ))}
+                                  </div>
                                 </div>
-                            </div>
+                              )}
+                              <div className="text-left">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
+                                <div className="flex flex-col gap-1.5 text-left">
+                                  <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
+                                      <span className="flex items-center gap-1.5 min-w-0 text-left">
+                                          <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
+                                          <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
+                                      </span>
+                                      <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
+                                  </div>
+                                  {(c.alimentadoras || []).length > 0 && (
+                                    <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
+                                        {c.alimentadoras.map((a, i) => {
+                                            const nombreLoc = nombreLocalidad(a.municipio, a.localidad) || a.nombreLocalidad;
+                                            return (
+                                            <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
+                                                <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
+                                                <div className="flex gap-2 items-center shrink-0 ml-2">
+                                                    <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
+                                                    <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
+                                                </div>
+                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
 
-                            {isEspecial ? (
-                                <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border-2 border-slate-200 text-slate-600">
-                                    <Star className="w-5 h-5 shrink-0 text-slate-400" />
-                                    <p className="text-[10px] font-black uppercase">Casilla Especial sin recuento de manzanas.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {stats.localidadesInvolucradasArray && stats.localidadesInvolucradasArray.length > 0 && (
-                                      <div className="text-left">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Localidades del Polígono ({stats.localidadesInvolucradasArray.length})</p>
-                                        <div className="flex flex-wrap gap-1.5 text-left">
-                                          {stats.localidadesInvolucradasArray.map((loc, i) => (
-                                            <span key={i} className="bg-violet-50 border-2 border-violet-200 text-violet-700 px-2 py-1 rounded-lg text-[10px] font-black shadow-sm">{loc}</span>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="text-left">
-                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
-                                      <div className="flex flex-col gap-1.5 text-left">
-                                        <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
-                                            <span className="flex items-center gap-1.5 min-w-0 text-left">
-                                                <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
-                                                <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
-                                            </span>
-                                            <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
-                                        </div>
-                                        {(c.alimentadoras || []).length > 0 && (
-                                          <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
-                                              {c.alimentadoras.map((a, i) => {
-                                                  const nombreLoc = nombreLocalidad(a.municipio, a.localidad) || a.nombreLocalidad;
+                              {(stats.totalMesasPadron > 1 || stats.totalMesasLista > 1 || stats.variacion) && (
+                              <div className={`rounded-xl p-2.5 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                                  <div className="flex justify-between items-center mb-1.5 text-left">
+                                      <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
+                                      {stats.variacion ? (
+                                          <div className="flex gap-1.5">
+                                              <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                              <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
+                                          </div>
+                                      ) : (
+                                          <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
+                                      )}
+                                  </div>
+                                  {stats.variacion ? (
+                                      <div className="flex flex-col gap-1">
+                                          <div className="flex flex-wrap gap-1 text-left">
+                                              {stats.distPadron.map((item, i) => {
+                                                  const isNoInstala = item.nombre === 'NO INSTALA';
                                                   return (
-                                                  <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
-                                                      <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
-                                                      <div className="flex gap-2 items-center shrink-0 ml-2">
-                                                          <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
-                                                          <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
+                                                      <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
+                                                          <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
+                                                          {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                          {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                                                       </div>
-                                                  </div>
                                                   );
                                               })}
                                           </div>
-                                        )}
+                                          <div className="flex flex-wrap gap-1 text-left">
+                                              {stats.distLista.map((item, i) => {
+                                                  const isNoInstala = item.nombre === 'NO INSTALA';
+                                                  return (
+                                                      <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                          <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
+                                                          {item.nombre} {(!isNoInstala) && `(${item.valor})`}
+                                                          {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                      </div>
+                                                  );
+                                              })}
+                                          </div>
                                       </div>
-                                    </div>
+                                  ) : (
+                                      <div className="flex flex-wrap gap-1 text-left">
+                                          {stats.distPadron.map((item, i) => {
+                                              const isNoInstala = item.nombre === 'NO INSTALA';
+                                              const listaItem = stats.distLista[i];
+                                              return (
+                                                  <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                      {item.nombre}
+                                                      {!isNoInstala && <span className="text-slate-400 font-bold not-italic">P:{item.valor} · L:{listaItem?.valor ?? item.valor}</span>}
+                                                      {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
+                                                  </div>
+                                              );
+                                          })}
+                                      </div>
+                                  )}
+                              </div>
+                              )}
+                          </>
+                      )}
+                    </div>
+                    )}
+                  </div>
+                );
+            })
+          )}
+        </div>
+        )}
 
-                                    {(stats.totalMesasPadron > 1 || stats.totalMesasLista > 1 || stats.variacion) && (
-                                    <div className={`rounded-xl p-2.5 border-2 relative shadow-sm text-left ${stats.variacion ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="flex justify-between items-center mb-1.5 text-left">
-                                            <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
-                                            {stats.variacion ? (
-                                                <div className="flex gap-1.5">
-                                                    <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
-                                                    <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
-                                            )}
-                                        </div>
-                                        {stats.variacion ? (
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex flex-wrap gap-1 text-left">
-                                                    {stats.distPadron.map((item, i) => {
-                                                        const isNoInstala = item.nombre === 'NO INSTALA';
-                                                        return (
-                                                            <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
-                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
-                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
-                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <div className="flex flex-wrap gap-1 text-left">
-                                                    {stats.distLista.map((item, i) => {
-                                                        const isNoInstala = item.nombre === 'NO INSTALA';
-                                                        return (
-                                                            <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
-                                                                <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
-                                                                {item.nombre} {(!isNoInstala) && `(${item.valor})`}
-                                                                {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-1 text-left">
-                                                {stats.distPadron.map((item, i) => {
-                                                    const isNoInstala = item.nombre === 'NO INSTALA';
-                                                    const listaItem = stats.distLista[i];
-                                                    return (
-                                                        <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
-                                                            {item.nombre}
-                                                            {!isNoInstala && <span className="text-slate-400 font-bold not-italic">P:{item.valor} · L:{listaItem?.valor ?? item.valor}</span>}
-                                                            {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                    )}
-                                </>
-                            )}
-                          </div>
+        {extraordinariasTab === 'basica' && (
+        <div className="flex flex-col gap-2 pb-24 text-left">
+          {basicaSedeCandidatas.length === 0 ? (
+            <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Ninguna sección necesita definir sede de básica todavía.</div>
+          ) : (() => {
+              const filtradas = basicaSedeCandidatas.filter(s => !busquedaBasicaSede.trim() || f4(s.seccion).includes(busquedaBasicaSede.trim()));
+              const pendientes = filtradas.filter(s => !basicaSedePorSeccion[s.seccion]);
+              const confirmadas = filtradas.filter(s => !!basicaSedePorSeccion[s.seccion]);
+              const visibles = ocultarBasicaConfirmadas ? pendientes : filtradas;
+              return (
+                <>
+                  {pendientes.length === 0 && confirmadas.length > 0 && (
+                    <div className="p-5 bg-emerald-50 border-2 border-emerald-200 rounded-2xl text-emerald-700 font-black text-sm flex items-center gap-2 mb-1">
+                      <CheckCircle2 className="w-5 h-5" /> Todas las secciones tienen su sede de básica confirmada.
+                    </div>
+                  )}
+                  {visibles.map(s => {
+                    const confirmada = !!basicaSedePorSeccion[s.seccion];
+                    // El <select> nunca escribe directo: solo "arma" una selección en borrador.
+                    // Así se puede confirmar explícitamente incluso la manzana que ya aparecía
+                    // por default (que si no, nunca dispara onChange por no cambiar de valor).
+                    const claveMostrada = seleccionBasicaTemp[s.seccion] ?? basicaSedePorSeccion[s.seccion] ?? claveManzana(s.manzanas[0]);
+                    const hayCambioPendiente = claveMostrada !== basicaSedePorSeccion[s.seccion];
+                    return (
+                      <div key={s.seccion} className={`flex flex-wrap items-center justify-between gap-3 bg-white border-2 rounded-xl px-4 py-2.5 shadow-sm text-left ${confirmada && !hayCambioPendiente ? 'border-slate-200' : 'border-amber-300'}`}>
+                        <div className="flex items-center gap-2.5 min-w-0 text-left">
+                          {confirmada && !hayCambioPendiente ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
+                          <p className="text-xs font-black uppercase text-slate-700 tracking-widest shrink-0">SEC. {f4(s.seccion)}</p>
+                          {!confirmada && !hayCambioPendiente && <span className="text-[9px] font-bold text-amber-600 uppercase truncate">Sin confirmar · usando Mz {f4(s.manzanas[0]?.manzana)} por default</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <select value={claveMostrada} onChange={e => setSeleccionBasicaTemp(prev => ({ ...prev, [s.seccion]: e.target.value }))} className="text-xs font-bold border-2 border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-pink-500 bg-slate-50 text-slate-700 max-w-[280px]">
+                            {s.manzanas.map((m, i) => {
+                              const clave = claveManzana(m);
+                              const nombreLoc = nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad;
+                              return <option key={i} value={clave}>Mz {f4(m.manzana)} · Loc {f4(m.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</option>;
+                            })}
+                          </select>
+                          {hayCambioPendiente ? (
+                            <button onClick={() => { setBasicaSedePorSeccion(prev => ({ ...prev, [s.seccion]: claveMostrada })); setSeleccionBasicaTemp(prev => { const n = { ...prev }; delete n[s.seccion]; return n; }); }}
+                              className="bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all">Confirmar</button>
+                          ) : (
+                            <span className="text-[9px] font-black uppercase text-emerald-600 px-2">Confirmada</span>
                           )}
                         </div>
-                      );
-                  })
-                )}
-              </div>
-              )}
-
-              {extraordinariasTab === 'basica' && (
-              <div className="flex flex-col gap-2 pb-24 text-left">
-                {basicaSedeCandidatas.length === 0 ? (
-                  <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Ninguna sección necesita definir sede de básica todavía.</div>
-                ) : (() => {
-                    const filtradas = basicaSedeCandidatas.filter(s => !busquedaBasicaSede.trim() || f4(s.seccion).includes(busquedaBasicaSede.trim()));
-                    const pendientes = filtradas.filter(s => !basicaSedePorSeccion[s.seccion]);
-                    const confirmadas = filtradas.filter(s => !!basicaSedePorSeccion[s.seccion]);
-                    const visibles = ocultarBasicaConfirmadas ? pendientes : filtradas;
-                    return (
-                      <>
-                        {pendientes.length === 0 && confirmadas.length > 0 && (
-                          <div className="p-5 bg-emerald-50 border-2 border-emerald-200 rounded-2xl text-emerald-700 font-black text-sm flex items-center gap-2 mb-1">
-                            <CheckCircle2 className="w-5 h-5" /> Todas las secciones tienen su sede de básica confirmada.
-                          </div>
-                        )}
-                        {visibles.map(s => {
-                          const confirmada = !!basicaSedePorSeccion[s.seccion];
-                          // El <select> nunca escribe directo: solo "arma" una selección en borrador.
-                          // Así se puede confirmar explícitamente incluso la manzana que ya aparecía
-                          // por default (que si no, nunca dispara onChange por no cambiar de valor).
-                          const claveMostrada = seleccionBasicaTemp[s.seccion] ?? basicaSedePorSeccion[s.seccion] ?? claveManzana(s.manzanas[0]);
-                          const hayCambioPendiente = claveMostrada !== basicaSedePorSeccion[s.seccion];
-                          return (
-                            <div key={s.seccion} className={`flex flex-wrap items-center justify-between gap-3 bg-white border-2 rounded-xl px-4 py-2.5 shadow-sm text-left ${confirmada && !hayCambioPendiente ? 'border-slate-200' : 'border-amber-300'}`}>
-                              <div className="flex items-center gap-2.5 min-w-0 text-left">
-                                {confirmada && !hayCambioPendiente ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
-                                <p className="text-xs font-black uppercase text-slate-700 tracking-widest shrink-0">SEC. {f4(s.seccion)}</p>
-                                {!confirmada && !hayCambioPendiente && <span className="text-[9px] font-bold text-amber-600 uppercase truncate">Sin confirmar · usando Mz {f4(s.manzanas[0]?.manzana)} por default</span>}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <select value={claveMostrada} onChange={e => setSeleccionBasicaTemp(prev => ({ ...prev, [s.seccion]: e.target.value }))} className="text-xs font-bold border-2 border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-pink-500 bg-slate-50 text-slate-700 max-w-[280px]">
-                                  {s.manzanas.map((m, i) => {
-                                    const clave = claveManzana(m);
-                                    const nombreLoc = nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad;
-                                    return <option key={i} value={clave}>Mz {f4(m.manzana)} · Loc {f4(m.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</option>;
-                                  })}
-                                </select>
-                                {hayCambioPendiente ? (
-                                  <button onClick={() => { setBasicaSedePorSeccion(prev => ({ ...prev, [s.seccion]: claveMostrada })); setSeleccionBasicaTemp(prev => { const n = { ...prev }; delete n[s.seccion]; return n; }); }}
-                                    className="bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all">Confirmar</button>
-                                ) : (
-                                  <span className="text-[9px] font-black uppercase text-emerald-600 px-2">Confirmada</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
+                      </div>
                     );
-                  })()}
-              </div>
-              )}
-            </div>
-          </>
+                  })}
+                </>
+              );
+            })()}
+        </div>
+        )}
+      </div>
+    </>
   );
 
   const renderHeader = () => (
