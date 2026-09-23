@@ -3796,251 +3796,7 @@ export default function App() {
           </div>
   );
 
-  const renderHeader = () => (
-    <header className="bg-white text-slate-800 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-600">
-      <div className="flex items-center gap-4">
-        <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
-        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200 ml-4 pointer-events-none">
-           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
-        </div>
-      </div>
-    </header>
-  );
-
-  if (view === 'welcome') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
-        <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
-            <div className="bg-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-500 relative overflow-hidden flex flex-col justify-center text-center">
-              <Cloud className="w-16 h-16 mx-auto mb-6 text-white" />
-              <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white">Proyector Cloud</h2>
-              <p className="text-pink-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic">v18.0 | Panel de Control</p>
-
-              <div className="space-y-4">
-                  <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
-                  <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
-                      let v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                      setDistritoInfo({...distritoInfo, numero: v});
-                  }}/>
-                  <p className="text-[10px] text-pink-200 italic">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
-                  {errorMessage && <p className="text-[10px] text-white bg-red-500/80 rounded-xl px-3 py-2 font-bold text-left">{errorMessage}</p>}
-                  <button onClick={() => {
-                      const numStr = normalizarDistrito(distritoInfo.numero);
-                      if (!numStr) { setErrorMessage('Escribe un número de distrito válido, del 01 al 40.'); return; }
-                      setErrorMessage(null);
-                      setDistritoInfo({ numero: numStr, estado: "MÉXICO" });
-                      localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
-                      setRawElectoralData([]);
-                      setView('upload');
-                  }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
-              </div>
-            </div>
-
-            <div className="bg-white/80 p-8 rounded-[3rem] shadow-xl border border-slate-200 flex flex-col text-left h-[500px]">
-               <h3 className="text-xl font-black mb-6 text-pink-600 flex items-center gap-2"><Database className="w-5 h-5"/> Directorio de Proyectos</h3>
-               
-               <div className="flex-1 overflow-y-auto pr-2 space-y-8 custom-scrollbar">
-                  <div>
-                    <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><Cloud className="w-4 h-4 text-pink-500"/> Respaldos en la Nube</h4>
-                    {dashboardData.loading ? <p className="text-sm text-slate-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/> Buscando...</p> : 
-                     dashboardData.cloud.length === 0 ? <p className="text-sm text-slate-400 italic">No hay distritos guardados en la nube.</p> :
-                     <div className="flex flex-wrap gap-2">
-                        {dashboardData.cloud.map(d => (
-                            <div key={`cloud-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-pink-200">
-                                <button onClick={() => loadDistrictFromDashboard(d, 'extraordinary')} className="bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 text-sm font-black transition-all flex items-center gap-2">
-                                    D{f4(d)} <ArrowRight className="w-4 h-4 opacity-50"/>
-                                </button>
-                                <button onClick={() => loadDistrictFromDashboard(d, 'final')} title="Ir directo a Proyección" className="bg-pink-50 hover:bg-slate-800 hover:text-white text-pink-700 px-3 py-2 text-sm font-black transition-all border-l border-pink-200 flex items-center justify-center">
-                                    <ChevronRight className="w-4 h-4"/>
-                                </button>
-                            </div>
-                        ))}
-                     </div>
-                    }
-                  </div>
-
-               </div>
-            </div>
-        </div>
-        <div className="mt-6 z-10 flex flex-wrap gap-3 justify-center">
-            <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
-            <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
-        </div>
-        <div className="mt-8 flex justify-center">
-            <div className="bg-gradient-to-r from-pink-600 to-pink-800 text-white px-6 py-3 rounded-2xl shadow-md text-center">
-                <p className="text-sm font-black italic tracking-tight">El INE, contigo siempre</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-pink-100 mt-0.5">Proceso Electoral Federal 2026-2027</p>
-            </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'upload') {
-    const resultadoComparacionJSX = comparacionAnterior && (
-        <div className="p-5 bg-white rounded-3xl border-2 border-pink-200 text-left animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-black text-pink-700 uppercase tracking-widest">Resultado de la Comparación</p>
-                <button onClick={() => setComparacionAnterior(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
-            </div>
-            <ul className="text-[11px] font-bold text-slate-600 space-y-1.5">
-                <li>Secciones: <span className="text-emerald-600">{comparacionAnterior.seccionesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.seccionesDesaparecidas.length} desaparecieron</span></li>
-                <li>Localidades: <span className="text-emerald-600">{comparacionAnterior.localidadesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.localidadesDesaparecidas.length} desaparecieron</span></li>
-                <li>Manzanas: <span className="text-emerald-600">{comparacionAnterior.manzanasNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.manzanasDesaparecidas.length} desaparecieron</span> · <span className="text-amber-600">{comparacionAnterior.manzanasCambiadas.length} cambiaron padrón/lista</span></li>
-            </ul>
-            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
-                <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Padrón Electoral</p>
-                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.padronAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.padronActual.toLocaleString()}</p>
-                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaPadron > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaPadron < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaPadron > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaPadron.toLocaleString()}</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lista Nominal</p>
-                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.listaAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.listaActual.toLocaleString()}</p>
-                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaLista > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaLista < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaLista > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaLista.toLocaleString()}</p>
-                </div>
-            </div>
-            <button onClick={exportarReporteComparacionPadron} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"><FileDown className="w-4 h-4" /> Descargar Reporte Excel</button>
-        </div>
-    );
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center">
-        <div className="max-w-md w-full bg-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-500 relative overflow-hidden text-center">
-          <button onClick={() => setView('welcome')} className="absolute top-6 left-6 text-pink-200 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
-          <Database className="w-12 h-12 mx-auto mb-4 text-white" />
-          <h2 className="text-2xl font-black mb-1 uppercase tracking-tighter text-white leading-tight">Carga de Padrón</h2>
-          <p className="text-pink-200 text-xs mb-8 uppercase tracking-[0.2em] font-bold italic">Distrito {f4(distritoInfo.numero)}</p>
-          {errorMessage && ( <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-1"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-red-700 leading-tight">{errorMessage}</p></div> )}
-
-          {rawElectoralData.length === 0 ? (
-            <div className="space-y-4">
-              <label className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-pink-400 rounded-3xl hover:bg-pink-700 cursor-pointer transition-all bg-pink-600 shadow-sm">
-                <FileSpreadsheet className="w-10 h-10 text-white mb-4" />
-                <span className="text-xs font-black uppercase tracking-widest text-pink-100">Seleccionar Padrón (.xlsx)</span>
-                <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
-              </label>
-
-              <div className="pt-4 mt-2 border-t border-pink-400/50 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
-                          {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
-                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
-                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('anterior', e)} />
-                      </label>
-                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
-                          {archivosComparacionLibre.actual ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
-                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
-                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('actual', e)} />
-                      </label>
-                  </div>
-                  {archivosComparacionLibre.anterior && archivosComparacionLibre.actual && (
-                      <button onClick={ejecutarComparacionLibre} disabled={comparandoPadron} className={`w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
-                          {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-                          <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar'}</span>
-                      </button>
-                  )}
-              </div>
-
-              {resultadoComparacionJSX}
-            </div>
-          ) : (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
-               <div className="p-6 bg-white border border-pink-200 rounded-3xl flex flex-col items-center shadow-sm">
-                   <CheckCircle2 className="w-12 h-12 text-pink-500 mb-2" />
-                   <h3 className="text-xl font-black text-pink-700 uppercase tracking-tighter italic">Padrón Cargado</h3>
-                   <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
-                       {rawElectoralData.length.toLocaleString()} Registros procesados
-                   </p>
-                   {!hayManzanas && (
-                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 font-bold uppercase tracking-widest mt-3 text-center">
-                           Sin datos de manzana · Extraordinarias y QGIS no aplican
-                       </p>
-                   )}
-               </div>
-               <p className="text-xs text-pink-100 font-bold uppercase tracking-widest pt-2">¿A dónde deseas ir?</p>
-               <div className="flex gap-2 w-full mt-2">
-                   <button onClick={() => setView('extraordinary')} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
-                       Extraordinarias <ArrowRight className="w-4 h-4 inline ml-1" />
-                   </button>
-                   <button onClick={() => setView('final')} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
-                       Proyección <ChevronRight className="w-4 h-4 inline ml-1" />
-                   </button>
-               </div>
-
-               <div className="pt-4 mt-2 border-t border-pink-400/50">
-                   <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
-                       {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-                       <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar con Corte Anterior'}</span>
-                       <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleCompararPadronAnterior} disabled={comparandoPadron} />
-                   </label>
-               </div>
-
-               {resultadoComparacionJSX}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col overflow-hidden text-left">
-      {renderHeader()}
-      
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-y-2 shadow-sm z-40 relative">
-        <div className="flex items-center gap-3">
-           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-              {NAV_SECCIONES.map(sec => {
-                  const Icon = sec.icon;
-                  const isActive = view === sec.key;
-                  return (
-                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
-                          <Icon className="w-3.5 h-3.5" /> {sec.label}
-                      </button>
-                  );
-              })}
-           </div>
-           <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {view === 'extraordinary' ? (
-            <div className="flex gap-2 mr-1 border-r border-slate-200 pr-4">
-               <button onClick={(e) => {
-                  e.stopPropagation();
-                  const currentRefs = casillasGlobales.map(c => {
-                    if (String(c.tipo).startsWith('S')) return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion } };
-                    return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion, l: c.sede.localidad, m: c.sede.manzana }, alimentadorasRefs: (c.alimentadoras || []).map(a => ({ s: a.seccion, l: a.localidad, m: a.manzana })) };
-                  });
-                  const data = {distrito: distritoInfo, casillas: currentRefs, basicaSedePorSeccion};
-                  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-                  downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
-               }} title="Respaldar JSON" className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-pink-200"><History className="w-3 h-3" /> Respaldo</button>
-               <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all shadow-sm border border-slate-200"><FileUp className="w-3 h-3" /> Cargar <input type="file" className="hidden" accept=".json" onChange={cargarRespaldoJSON} /></label>
-            </div>
-          ) : null}
-
-          <button onClick={(e) => {
-              e.stopPropagation();
-              setModalConfig({ 
-              isOpen: true, 
-              message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.', 
-              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); }
-          })}} className="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 transition-all text-left cursor-pointer ml-1 shadow-sm"><RotateCcw className="w-4 h-4 text-left" /></button>
-        </div>
-      </div>
-
-      <main className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 text-left bg-slate-50">
-        
-        {/* --- VISTA: EQUIPAMIENTO LOGÍSTICO (MÓDULO INDEPENDIENTE) --- */}
-        {view === 'equipamiento' && renderEquipamiento()}
-
-        {/* --- VISTA: CIERRE (CONSOLIDADO FINAL) --- */}
-        {view === 'final' && renderProyeccion()}
-
-        {/* --- VISTA: MESA DE DISEÑO (EXTRAORDINARIAS) --- */}
-        {view === 'extraordinary' && (
+  const renderExtraordinarias = () => (
           <>
             {(conflictosDiseno.total > 0 || detalleConflictosAbierto || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
               <div className="lg:col-span-12 p-4 pb-0 text-left">
@@ -4451,7 +4207,253 @@ export default function App() {
               )}
             </div>
           </>
-        )}
+  );
+
+  const renderHeader = () => (
+    <header className="bg-white text-slate-800 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-600">
+      <div className="flex items-center gap-4">
+        <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
+        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
+        <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200 ml-4 pointer-events-none">
+           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
+        </div>
+      </div>
+    </header>
+  );
+
+  if (view === 'welcome') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
+        <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
+            <div className="bg-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-500 relative overflow-hidden flex flex-col justify-center text-center">
+              <Cloud className="w-16 h-16 mx-auto mb-6 text-white" />
+              <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white">Proyector Cloud</h2>
+              <p className="text-pink-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic">v18.0 | Panel de Control</p>
+
+              <div className="space-y-4">
+                  <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
+                  <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      setDistritoInfo({...distritoInfo, numero: v});
+                  }}/>
+                  <p className="text-[10px] text-pink-200 italic">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
+                  {errorMessage && <p className="text-[10px] text-white bg-red-500/80 rounded-xl px-3 py-2 font-bold text-left">{errorMessage}</p>}
+                  <button onClick={() => {
+                      const numStr = normalizarDistrito(distritoInfo.numero);
+                      if (!numStr) { setErrorMessage('Escribe un número de distrito válido, del 01 al 40.'); return; }
+                      setErrorMessage(null);
+                      setDistritoInfo({ numero: numStr, estado: "MÉXICO" });
+                      localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
+                      setRawElectoralData([]);
+                      setView('upload');
+                  }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
+              </div>
+            </div>
+
+            <div className="bg-white/80 p-8 rounded-[3rem] shadow-xl border border-slate-200 flex flex-col text-left h-[500px]">
+               <h3 className="text-xl font-black mb-6 text-pink-600 flex items-center gap-2"><Database className="w-5 h-5"/> Directorio de Proyectos</h3>
+               
+               <div className="flex-1 overflow-y-auto pr-2 space-y-8 custom-scrollbar">
+                  <div>
+                    <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><Cloud className="w-4 h-4 text-pink-500"/> Respaldos en la Nube</h4>
+                    {dashboardData.loading ? <p className="text-sm text-slate-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/> Buscando...</p> : 
+                     dashboardData.cloud.length === 0 ? <p className="text-sm text-slate-400 italic">No hay distritos guardados en la nube.</p> :
+                     <div className="flex flex-wrap gap-2">
+                        {dashboardData.cloud.map(d => (
+                            <div key={`cloud-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-pink-200">
+                                <button onClick={() => loadDistrictFromDashboard(d, 'extraordinary')} className="bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 text-sm font-black transition-all flex items-center gap-2">
+                                    D{f4(d)} <ArrowRight className="w-4 h-4 opacity-50"/>
+                                </button>
+                                <button onClick={() => loadDistrictFromDashboard(d, 'final')} title="Ir directo a Proyección" className="bg-pink-50 hover:bg-slate-800 hover:text-white text-pink-700 px-3 py-2 text-sm font-black transition-all border-l border-pink-200 flex items-center justify-center">
+                                    <ChevronRight className="w-4 h-4"/>
+                                </button>
+                            </div>
+                        ))}
+                     </div>
+                    }
+                  </div>
+
+               </div>
+            </div>
+        </div>
+        <div className="mt-6 z-10 flex flex-wrap gap-3 justify-center">
+            <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
+            <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
+        </div>
+        <div className="mt-8 flex justify-center">
+            <div className="bg-gradient-to-r from-pink-600 to-pink-800 text-white px-6 py-3 rounded-2xl shadow-md text-center">
+                <p className="text-sm font-black italic tracking-tight">El INE, contigo siempre</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-pink-100 mt-0.5">Proceso Electoral Federal 2026-2027</p>
+            </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'upload') {
+    const resultadoComparacionJSX = comparacionAnterior && (
+        <div className="p-5 bg-white rounded-3xl border-2 border-pink-200 text-left animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-black text-pink-700 uppercase tracking-widest">Resultado de la Comparación</p>
+                <button onClick={() => setComparacionAnterior(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <ul className="text-[11px] font-bold text-slate-600 space-y-1.5">
+                <li>Secciones: <span className="text-emerald-600">{comparacionAnterior.seccionesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.seccionesDesaparecidas.length} desaparecieron</span></li>
+                <li>Localidades: <span className="text-emerald-600">{comparacionAnterior.localidadesNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.localidadesDesaparecidas.length} desaparecieron</span></li>
+                <li>Manzanas: <span className="text-emerald-600">{comparacionAnterior.manzanasNuevas.length} nuevas</span> · <span className="text-red-600">{comparacionAnterior.manzanasDesaparecidas.length} desaparecieron</span> · <span className="text-amber-600">{comparacionAnterior.manzanasCambiadas.length} cambiaron padrón/lista</span></li>
+            </ul>
+            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Padrón Electoral</p>
+                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.padronAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.padronActual.toLocaleString()}</p>
+                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaPadron > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaPadron < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaPadron > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaPadron.toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lista Nominal</p>
+                    <p className="text-sm font-black text-slate-800">{comparacionAnterior.totalesDistrito.listaAnterior.toLocaleString()} → {comparacionAnterior.totalesDistrito.listaActual.toLocaleString()}</p>
+                    <p className={`text-xs font-black ${comparacionAnterior.totalesDistrito.deltaLista > 0 ? 'text-emerald-600' : comparacionAnterior.totalesDistrito.deltaLista < 0 ? 'text-red-600' : 'text-slate-400'}`}>{comparacionAnterior.totalesDistrito.deltaLista > 0 ? '+' : ''}{comparacionAnterior.totalesDistrito.deltaLista.toLocaleString()}</p>
+                </div>
+            </div>
+            <button onClick={exportarReporteComparacionPadron} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md"><FileDown className="w-4 h-4" /> Descargar Reporte Excel</button>
+        </div>
+    );
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center">
+        <div className="max-w-md w-full bg-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-500 relative overflow-hidden text-center">
+          <button onClick={() => setView('welcome')} className="absolute top-6 left-6 text-pink-200 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
+          <Database className="w-12 h-12 mx-auto mb-4 text-white" />
+          <h2 className="text-2xl font-black mb-1 uppercase tracking-tighter text-white leading-tight">Carga de Padrón</h2>
+          <p className="text-pink-200 text-xs mb-8 uppercase tracking-[0.2em] font-bold italic">Distrito {f4(distritoInfo.numero)}</p>
+          {errorMessage && ( <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-1"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-red-700 leading-tight">{errorMessage}</p></div> )}
+
+          {rawElectoralData.length === 0 ? (
+            <div className="space-y-4">
+              <label className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-pink-400 rounded-3xl hover:bg-pink-700 cursor-pointer transition-all bg-pink-600 shadow-sm">
+                <FileSpreadsheet className="w-10 h-10 text-white mb-4" />
+                <span className="text-xs font-black uppercase tracking-widest text-pink-100">Seleccionar Padrón (.xlsx)</span>
+                <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
+              </label>
+
+              <div className="pt-4 mt-2 border-t border-pink-400/50 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                          {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
+                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('anterior', e)} />
+                      </label>
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                          {archivosComparacionLibre.actual ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
+                          <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('actual', e)} />
+                      </label>
+                  </div>
+                  {archivosComparacionLibre.anterior && archivosComparacionLibre.actual && (
+                      <button onClick={ejecutarComparacionLibre} disabled={comparandoPadron} className={`w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
+                          {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                          <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar'}</span>
+                      </button>
+                  )}
+              </div>
+
+              {resultadoComparacionJSX}
+            </div>
+          ) : (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
+               <div className="p-6 bg-white border border-pink-200 rounded-3xl flex flex-col items-center shadow-sm">
+                   <CheckCircle2 className="w-12 h-12 text-pink-500 mb-2" />
+                   <h3 className="text-xl font-black text-pink-700 uppercase tracking-tighter italic">Padrón Cargado</h3>
+                   <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
+                       {rawElectoralData.length.toLocaleString()} Registros procesados
+                   </p>
+                   {!hayManzanas && (
+                       <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 font-bold uppercase tracking-widest mt-3 text-center">
+                           Sin datos de manzana · Extraordinarias y QGIS no aplican
+                       </p>
+                   )}
+               </div>
+               <p className="text-xs text-pink-100 font-bold uppercase tracking-widest pt-2">¿A dónde deseas ir?</p>
+               <div className="flex gap-2 w-full mt-2">
+                   <button onClick={() => setView('extraordinary')} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
+                       Extraordinarias <ArrowRight className="w-4 h-4 inline ml-1" />
+                   </button>
+                   <button onClick={() => setView('final')} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
+                       Proyección <ChevronRight className="w-4 h-4 inline ml-1" />
+                   </button>
+               </div>
+
+               <div className="pt-4 mt-2 border-t border-pink-400/50">
+                   <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
+                       {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+                       <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar con Corte Anterior'}</span>
+                       <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleCompararPadronAnterior} disabled={comparandoPadron} />
+                   </label>
+               </div>
+
+               {resultadoComparacionJSX}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col overflow-hidden text-left">
+      {renderHeader()}
+      
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-y-2 shadow-sm z-40 relative">
+        <div className="flex items-center gap-3">
+           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              {NAV_SECCIONES.map(sec => {
+                  const Icon = sec.icon;
+                  const isActive = view === sec.key;
+                  return (
+                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                          <Icon className="w-3.5 h-3.5" /> {sec.label}
+                      </button>
+                  );
+              })}
+           </div>
+           <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {view === 'extraordinary' ? (
+            <div className="flex gap-2 mr-1 border-r border-slate-200 pr-4">
+               <button onClick={(e) => {
+                  e.stopPropagation();
+                  const currentRefs = casillasGlobales.map(c => {
+                    if (String(c.tipo).startsWith('S')) return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion } };
+                    return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion, l: c.sede.localidad, m: c.sede.manzana }, alimentadorasRefs: (c.alimentadoras || []).map(a => ({ s: a.seccion, l: a.localidad, m: a.manzana })) };
+                  });
+                  const data = {distrito: distritoInfo, casillas: currentRefs, basicaSedePorSeccion};
+                  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                  downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
+               }} title="Respaldar JSON" className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-pink-200"><History className="w-3 h-3" /> Respaldo</button>
+               <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all shadow-sm border border-slate-200"><FileUp className="w-3 h-3" /> Cargar <input type="file" className="hidden" accept=".json" onChange={cargarRespaldoJSON} /></label>
+            </div>
+          ) : null}
+
+          <button onClick={(e) => {
+              e.stopPropagation();
+              setModalConfig({ 
+              isOpen: true, 
+              message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.', 
+              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); }
+          })}} className="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 transition-all text-left cursor-pointer ml-1 shadow-sm"><RotateCcw className="w-4 h-4 text-left" /></button>
+        </div>
+      </div>
+
+      <main className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 text-left bg-slate-50">
+        
+        {/* --- VISTA: EQUIPAMIENTO LOGÍSTICO (MÓDULO INDEPENDIENTE) --- */}
+        {view === 'equipamiento' && renderEquipamiento()}
+
+        {/* --- VISTA: CIERRE (CONSOLIDADO FINAL) --- */}
+        {view === 'final' && renderProyeccion()}
+
+        {/* --- VISTA: MESA DE DISEÑO (EXTRAORDINARIAS) --- */}
+        {view === 'extraordinary' && renderExtraordinarias()}
       </main>
 
       <style>{`.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
