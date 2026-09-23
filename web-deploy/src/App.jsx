@@ -8,7 +8,7 @@ import {
   LayoutGrid, Calculator, ChevronLeft, Table as TableIcon,
   Layers, ListOrdered, ChevronDown, ChevronUp, Box, ShieldAlert,
   Hash, FileDown, MinusCircle, HardDrive, Star, Bookmark,
-  FileText, Building2, Home, Pencil, Copy, Lock, Unlock
+  FileText, Building2, Home, Pencil, Copy, Lock, Unlock, Flag, Send
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -332,10 +332,16 @@ export default function App() {
   // muy común al recargar con datos ya en localStorage), se saltaba el guardado y nunca se
   // reintentaba hasta la siguiente edición manual del usuario. Con useState sí dispara el efecto.
   const [isInitialLoadFinished, setIsInitialLoadFinished] = useState(false);
-  const lastSavedJson = useRef(""); 
+  const lastSavedJson = useRef("");
   const isLocalActionActive = useRef(false);
   const unlockTimerRef = useRef(null);
   const saveGenerationRef = useRef(0);
+  // Cola de guardado a la nube: nunca hay dos setDoc en vuelo al mismo tiempo. Si llega una
+  // edición mientras ya hay un guardado viajando (p. ej. con mala señal), solo se deja la más
+  // reciente en pendingSaveRef — en cuanto termine el guardado en curso, se manda esa, nunca al
+  // revés (evita que un guardado viejo y lento llegue después y borre confirmaciones nuevas).
+  const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef(null);
 
   const [distritoInfo, setDistritoInfo] = useState({ numero: "", estado: "MÉXICO" });
   const [casillasGlobales, setCasillasGlobales] = useState([]); 
@@ -358,6 +364,7 @@ export default function App() {
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false, message: '', onConfirm: null });
   const [modalEspecialConfig, setModalEspecialConfig] = useState({ isOpen: false });
+  const [modalSiguientePaso, setModalSiguientePaso] = useState(false);
   const [especialForm, setEspecialForm] = useState({ seccion: "", tipo: "S1" });
 
   const [equipConfig, setEquipConfig] = useState(DEFAULT_EQUIP_CONFIG);
@@ -373,7 +380,7 @@ export default function App() {
 
   const [seccionesExpandidas, setSeccionesExpandidas] = useState({});
   const toggleSeccion = (seccion) => setSeccionesExpandidas(prev => ({ ...prev, [seccion]: !prev[seccion] }));
-  const [proyeccionTab, setProyeccionTab] = useState('resumen'); // 'resumen' | 'folios' | 'listado' | 'ubicacion'
+  const [proyeccionTab, setProyeccionTab] = useState('listado'); // 'listado' | 'resumen' | 'folios' | 'ubicacion'
   const [busquedaProyeccion, setBusquedaProyeccion] = useState('');
   const [filtroAlerta, setFiltroAlerta] = useState(null); // null | 'variacion' | 'menos100'
   const [fechaCorte, setFechaCorte] = useState("");
@@ -387,6 +394,16 @@ export default function App() {
 
   const [domicilios, setDomicilios] = useState({});
   const [ubicacionCasillas, setUbicacionCasillas] = useState({});
+  // Manzana sede de la básica, por sección — solo aplica a secciones que ya tienen una
+  // extraordinaria armada (ahí es donde "cuál manzana queda como básica" deja de ser obvio).
+  // { [seccion]: claveManzana(m) }. Sin entrada = se usa la primera manzana sobrante por default.
+  const [basicaSedePorSeccion, setBasicaSedePorSeccion] = useState({});
+  const [extraordinariasTab, setExtraordinariasTab] = useState('poligonos'); // 'poligonos' | 'basica'
+  const [busquedaBasicaSede, setBusquedaBasicaSede] = useState('');
+  const [ocultarBasicaConfirmadas, setOcultarBasicaConfirmadas] = useState(false);
+  // Selección todavía no confirmada por sección (el <select> se puede mover libremente sin que
+  // eso ya cuente como confirmado; solo "Confirmar" escribe en basicaSedePorSeccion).
+  const [seleccionBasicaTemp, setSeleccionBasicaTemp] = useState({});
   const [seccionesUbicacionExpandidas, setSeccionesUbicacionExpandidas] = useState({});
   const [seleccionUbicacion, setSeleccionUbicacion] = useState([]);
   const [modalUbicacionConfig, setModalUbicacionConfig] = useState({ isOpen: false });
@@ -633,6 +650,10 @@ export default function App() {
           setMamparasPorCasilla(m ? JSON.parse(m) : {});
       } catch (e) { setMamparasPorCasilla({}); }
       try {
+          const bs = localStorage.getItem(`proyector_basicaSedePorSeccion_D${numStr}`);
+          setBasicaSedePorSeccion(bs ? JSON.parse(bs) : {});
+      } catch (e) { setBasicaSedePorSeccion({}); }
+      try {
           const f = localStorage.getItem(`proyector_folioConfig_D${numStr}`);
           setFolioConfig(f ? { ...DEFAULT_FOLIO_CONFIG, ...JSON.parse(f) } : DEFAULT_FOLIO_CONFIG);
       } catch (e) { setFolioConfig(DEFAULT_FOLIO_CONFIG); }
@@ -662,6 +683,11 @@ export default function App() {
       if (!distritoInfo.numero) return;
       try { localStorage.setItem(`proyector_mamparasPorCasilla_D${distritoInfo.numero}`, JSON.stringify(mamparasPorCasilla)); } catch (e) {}
   }, [mamparasPorCasilla, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try { localStorage.setItem(`proyector_basicaSedePorSeccion_D${distritoInfo.numero}`, JSON.stringify(basicaSedePorSeccion)); } catch (e) {}
+  }, [basicaSedePorSeccion, distritoInfo.numero]);
 
   useEffect(() => {
       if (!distritoInfo.numero) return;
@@ -1157,6 +1183,9 @@ export default function App() {
         isLocalActionActive.current = true;
         lastSavedJson.current = "";
         setCasillasGlobales(vinculadas);
+        // Respaldos de antes de esta función no traen basicaSedePorSeccion: se deja intacto lo
+        // que ya estaba cargado en vez de borrarlo, para no romper respaldos viejitos.
+        if (config.basicaSedePorSeccion) setBasicaSedePorSeccion(config.basicaSedePorSeccion);
         setImportJsonAvisos({ totalOriginal: casillasData.length, totalCargadas: vinculadas.length, noEncontradas });
         setSuccessMessage(`Restaurado: ${vinculadas.length} Polígonos cargados.${noEncontradas.length > 0 ? ` ⚠ ${noEncontradas.length} manzana(s) no se encontraron en el padrón actual.` : ''}`);
         setTimeout(() => setSuccessMessage(null), 4000);
@@ -1442,7 +1471,8 @@ export default function App() {
                 if (asignacionesMzs[mz.id].esSede) marcaSede = "*";
             } else {
                 marcaB = "B";
-                if (basicasMzsIds[0] === mz.id) marcaSede = "*";
+                const sedeElegida = basicaSedePorSeccion[secId];
+                if (sedeElegida ? claveManzana(mz) === sedeElegida : basicasMzsIds[0] === mz.id) marcaSede = "*";
             }
             const tipoCas = marcaB || marcaE;
             const manzanaRaw = mz.manzana || '9999';
@@ -1624,7 +1654,8 @@ export default function App() {
               if (asignacionesMzs[mz.id].esSede) marcaSede = "*";
           } else {
               marcaB = "B";
-              if (basicasMzsIds[0] === mz.id) marcaSede = "*"; 
+              const sedeElegida = basicaSedePorSeccion[secId];
+              if (sedeElegida ? claveManzana(mz) === sedeElegida : basicasMzsIds[0] === mz.id) marcaSede = "*";
           }
           ws3_data.push([
               String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(secId), f4(mz.localidad), mz.manzana ? f4(mz.manzana) : "9999",
@@ -2065,6 +2096,28 @@ export default function App() {
   }, [form.manzanasSeleccionadas]);
 
   const sedesActivas = useMemo(() => sortedCasillasGlobales.filter(c => c.sede !== null && !String(c.tipo).startsWith('S')), [sortedCasillasGlobales]);
+
+  // Por cada sección que ya tiene una extraordinaria armada, las manzanas que le quedaron a la
+  // básica (las que ninguna extraordinaria reclamó como sede o Mz Integrante). Solo se listan
+  // secciones con más de una manzana sobrante: con una sola no hay nada que decidir.
+  const basicaSedeCandidatas = useMemo(() => {
+    if (!rawElectoralData.length || sedesActivas.length === 0) return [];
+    const seccionesConExtra = [...new Set(sedesActivas.map(c => String(c.sede.seccion)))];
+    return seccionesConExtra.map(secId => {
+      const mzsSeccion = rawElectoralData.filter(m => String(m.seccion) === secId);
+      const reclamadas = new Set();
+      sedesActivas.filter(c => String(c.sede.seccion) === secId).forEach(c => {
+        reclamadas.add(claveManzana(c.sede));
+        (c.alimentadoras || []).forEach(a => reclamadas.add(claveManzana(a)));
+      });
+      const manzanas = mzsSeccion
+        .filter(m => !reclamadas.has(claveManzana(m)))
+        .sort((a, b) => String(a.localidad).localeCompare(String(b.localidad), undefined, { numeric: true }) || String(a.manzana).localeCompare(String(b.manzana), undefined, { numeric: true }));
+      return { seccion: secId, manzanas };
+    })
+      .filter(s => s.manzanas.length > 1)
+      .sort((a, b) => a.seccion.localeCompare(b.seccion, undefined, { numeric: true }));
+  }, [rawElectoralData, sedesActivas]);
 
   const exportarReporteConflictosDiseno = () => {
     if (!window.XLSX || conflictosDiseno.total === 0) return;
@@ -2865,6 +2918,7 @@ export default function App() {
             ubicacionCasillas: data.ubicacionCasillas || {},
             equipConfig: data.equipConfig || DEFAULT_EQUIP_CONFIG,
             mamparasPorCasilla: data.mamparasPorCasilla || {},
+            basicaSedePorSeccion: data.basicaSedePorSeccion || {},
             folioConfig: data.folioConfig || DEFAULT_FOLIO_CONFIG,
             fechaCorte: data.fechaCorte || "",
             cabeceraDistrital: data.cabeceraDistrital || "",
@@ -2889,6 +2943,7 @@ export default function App() {
             setUbicacionCasillas(remoto.ubicacionCasillas);
             setEquipConfig({ ...DEFAULT_EQUIP_CONFIG, ...remoto.equipConfig });
             setMamparasPorCasilla(remoto.mamparasPorCasilla);
+            setBasicaSedePorSeccion(remoto.basicaSedePorSeccion);
             setFolioConfig({ ...DEFAULT_FOLIO_CONFIG, ...remoto.folioConfig });
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
@@ -2902,6 +2957,32 @@ export default function App() {
 
     return () => unsubscribe();
   }, [user, distritoInfo.numero, rawElectoralData.length, view]);
+
+  // Vacía la cola de guardado uno a la vez (nunca dos setDoc en paralelo). Si mientras se estaba
+  // guardando ya se encoló algo más nuevo (pendingSaveRef), lo manda enseguida después, en vez de
+  // esperar otro debounce — así el guardado que gana siempre es el más reciente, nunca uno viejo
+  // que iba más lento por mala señal.
+  const flushPendingSave = async () => {
+    if (!pendingSaveRef.current || isSavingRef.current) return;
+    isSavingRef.current = true;
+    setSyncStatus('saving');
+    while (pendingSaveRef.current) {
+      const { payload, currentJson, distrito, distritoNumero } = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoNumero}`);
+        await setDoc(docRef, { distrito, ...payload, updatedAt: new Date().toISOString() });
+        lastSavedJson.current = currentJson;
+        setSyncStatus('synced');
+      } catch (err) { setSyncStatus('error'); }
+    }
+    isSavingRef.current = false;
+    // Se ancla la generación al momento real en que se terminó de guardar (no a cuando se
+    // programó este guardado): si para entonces ya hay una edición más nueva en curso, no se
+    // libera el seguro — esa edición se encarga de liberarlo cuando a ella le toque.
+    const generacionAlTerminar = saveGenerationRef.current;
+    setTimeout(() => { if (saveGenerationRef.current === generacionAlTerminar) isLocalActionActive.current = false; }, 300);
+  };
 
   useEffect(() => {
     if (!isCloudEnabled || !db || !user || !distritoInfo.numero || !isInitialLoadFinished) return;
@@ -2921,6 +3002,7 @@ export default function App() {
       ubicacionCasillas,
       equipConfig,
       mamparasPorCasilla,
+      basicaSedePorSeccion,
       folioConfig,
       fechaCorte,
       cabeceraDistrital,
@@ -2931,23 +3013,13 @@ export default function App() {
 
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
-    const miGeneracion = ++saveGenerationRef.current;
+    saveGenerationRef.current++;
+    pendingSaveRef.current = { payload, currentJson, distrito: distritoInfo, distritoNumero: distritoInfo.numero };
 
-    unlockTimerRef.current = setTimeout(async () => {
-      setSyncStatus('saving');
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`);
-      try {
-        await setDoc(docRef, { distrito: distritoInfo, ...payload, updatedAt: new Date().toISOString() });
-        lastSavedJson.current = currentJson;
-        setSyncStatus('synced');
-      } catch (err) { setSyncStatus('error'); }
-      // Solo libera el seguro si ninguna edición más nueva ya inició su propio guardado;
-      // si no, sería esa edición más nueva la que quedara "vulnerable" a un eco viejo de Firestore.
-      finally { setTimeout(() => { if (saveGenerationRef.current === miGeneracion) isLocalActionActive.current = false; }, 300); }
-    }, 1500);
+    unlockTimerRef.current = setTimeout(() => { flushPendingSave(); }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
-  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, distritoInfo.numero, user, isInitialLoadFinished]);
+  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, distritoInfo.numero, user, isInitialLoadFinished]);
 
   useEffect(() => {
     if (view === 'welcome') {
@@ -3188,7 +3260,7 @@ export default function App() {
                     if (String(c.tipo).startsWith('S')) return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion } };
                     return { tipo: c.tipo, uid: c.uid, sedeRef: { s: c.sede.seccion, l: c.sede.localidad, m: c.sede.manzana }, alimentadorasRefs: (c.alimentadoras || []).map(a => ({ s: a.seccion, l: a.localidad, m: a.manzana })) };
                   });
-                  const data = {distrito: distritoInfo, casillas: currentRefs};
+                  const data = {distrito: distritoInfo, casillas: currentRefs, basicaSedePorSeccion};
                   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
                   downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
                }} title="Respaldar JSON" className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-pink-200"><History className="w-3 h-3" /> Respaldo</button>
@@ -3637,9 +3709,9 @@ export default function App() {
 
                 <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
                     {[
+                        { key: 'listado', label: 'Listado de Casillas', icon: ListOrdered },
                         { key: 'resumen', label: 'Resumen Distrital', icon: Calculator },
                         { key: 'folios', label: 'Asignación de Folios', icon: Hash },
-                        { key: 'listado', label: 'Listado de Casillas', icon: ListOrdered },
                         { key: 'ubicacion', label: 'Tipos de Domicilios de Casillas', icon: Building2 },
                     ].map(tab => {
                         const Icon = tab.icon;
@@ -3838,43 +3910,62 @@ export default function App() {
                 {proyeccionTab === 'listado' && (
                 <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
                         <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
-                            <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
-                               <div className="text-left">
-                                   <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
-                                   <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
-                                   <div className="relative mt-3 max-w-xs">
-                                       <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                       <input type="text" placeholder="Buscar sección, nomenclatura o tipo..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-full focus:ring-2 focus:ring-pink-500 shadow-sm text-slate-800" value={busquedaProyeccion} onChange={e => setBusquedaProyeccion(e.target.value)} />
+                            <div className="flex flex-col gap-5 text-left">
+                               {/* FILA 1 — título + las dos acciones que importan, mismo tamaño, mismo corte */}
+                               <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+                                   <div className="text-left">
+                                       <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
+                                       <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
                                    </div>
-                                   <div className="flex flex-wrap gap-2 mt-3">
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'variacion' ? null : 'variacion')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 transition-all ${filtroAlerta === 'variacion' ? 'bg-orange-600 border-orange-600 text-white shadow-md' : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-50'}`}>
+                                   <div className="flex flex-wrap items-stretch gap-2.5">
+                                       <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                           <Plus className="w-6 h-6 text-yellow-400 shrink-0" />
+                                           <span className="text-sm font-black uppercase">Casillas Especiales</span>
+                                       </button>
+                                       <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                           <Download className="w-6 h-6 text-pink-200 shrink-0" />
+                                           <span className="text-left leading-tight">
+                                               <span className="block text-sm font-black uppercase">Proyección Oficial INE</span>
+                                               <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Envío oficial a Junta Local</span>
+                                           </span>
+                                       </button>
+                                   </div>
+                               </div>
+
+                               {/* FILA 2 — barra de herramientas: buscar/filtrar a la izquierda, exports secundarios a la derecha */}
+                               <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
+                                   <div className="flex flex-wrap items-center gap-2">
+                                       <div className="relative">
+                                           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                           <input type="text" placeholder="Buscar sección, nomenclatura o tipo..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 text-slate-800" value={busquedaProyeccion} onChange={e => setBusquedaProyeccion(e.target.value)} />
+                                       </div>
+                                       <div className="flex items-center gap-1.5 bg-white border-2 border-slate-300 rounded-full pl-3 pr-1.5 py-1 focus-within:ring-2 focus-within:ring-pink-500">
+                                           <span className="text-[9px] font-black uppercase text-slate-400 tracking-wide">Corte</span>
+                                           <input type="text" value={fechaCorte} onChange={e => setFechaCorte(e.target.value)} placeholder="DD/MM/AAAA" className="w-24 py-1 text-xs font-black text-slate-800 outline-none text-center bg-transparent" />
+                                       </div>
+                                       <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
+                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'variacion' ? null : 'variacion')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'variacion' ? 'bg-orange-600 border-orange-600 text-white shadow-md' : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-50'}`}>
                                            <AlertTriangle className="w-3.5 h-3.5" /> Variación ({countVariacion})
                                        </button>
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
+                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
                                            <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
                                        </button>
-                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
+                                       <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
                                            <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
                                        </button>
                                        {filtroAlerta && (
-                                           <button onClick={() => setFiltroAlerta(null)} className="px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border-2 border-slate-200 text-slate-500 hover:bg-slate-50 transition-all">
+                                           <button onClick={() => setFiltroAlerta(null)} className="px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 border-slate-200 text-slate-500 hover:bg-slate-100 transition-all bg-white">
                                                <X className="w-3.5 h-3.5" /> Quitar filtro
                                            </button>
                                        )}
                                    </div>
-                               </div>
-                               <div className="flex flex-wrap items-center gap-3 justify-end">
-                                   <div className="flex flex-col">
-                                       <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Corte de padrón</label>
-                                       <input type="text" value={fechaCorte} onChange={e => setFechaCorte(e.target.value)} placeholder="DD/MM/AAAA" className="px-3 py-2.5 bg-white border-2 border-slate-300 rounded-xl text-xs font-black text-slate-800 outline-none focus:ring-2 focus:ring-pink-500 w-32 text-center" />
+                                   <div className="flex items-center gap-2 pr-1">
+                                       <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all active:scale-95 relative z-40"><AlertTriangle className="w-3.5 h-3.5" /> Observaciones</button>
+                                       <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800 text-white active:scale-95'}`}><MapIcon className="w-3.5 h-3.5" /> QGIS</button>
                                    </div>
-                                   <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Star className="w-5 h-5 text-pink-500" /> Agregar Casillas Especiales</button>
-                                   <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><Bookmark className="w-5 h-5 text-pink-200" /> Proyección Oficial INE</button>
-                                   <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all relative z-40"><AlertTriangle className="w-5 h-5 text-violet-200" /> Reporte de Observaciones</button>
-                                   <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-pink-700 to-slate-900 hover:from-pink-800 hover:to-black text-white active:scale-95'}`}><Download className="w-5 h-5" /> QGIS</button>
                                </div>
                             </div>
-                            
+
                             {seccionesMostradas.length === 0 ? (
                                 <div className="p-16 text-center text-slate-400 italic font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
                             ) : (
@@ -4310,30 +4401,80 @@ export default function App() {
             
             <div className="lg:col-span-8 p-8 overflow-y-auto bg-slate-50 relative text-left">
               <div className="flex flex-wrap justify-between items-start gap-y-4 mb-8 px-2 sticky top-0 bg-slate-50/90 backdrop-blur z-40 pb-4 border-b-2 border-slate-200 text-left">
+                <div className="w-full flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap mb-1">
+                    {[
+                        { key: 'poligonos', label: 'Polígonos Guardados', icon: LayoutGrid },
+                        { key: 'basica', label: 'Sede de la Básica', icon: MapPin, badge: basicaSedeCandidatas.filter(s => !basicaSedePorSeccion[s.seccion]).length },
+                    ].map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = extraordinariasTab === tab.key;
+                        return (
+                            <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                                <Icon className="w-3.5 h-3.5" /> {tab.label}
+                                {!!tab.badge && <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white text-pink-600' : 'bg-amber-100 text-amber-700'}`}>{tab.badge}</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+                {extraordinariasTab === 'poligonos' && (
+                <div className="w-full flex flex-col gap-4 text-left">
+                  {/* FILA 1 — título + la única acción destacada: ¿qué sigue? */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 text-left">
+                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
+                     <button onClick={() => setModalSiguientePaso(true)} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                        <Flag className="w-6 h-6 text-pink-200 shrink-0" />
+                        <span className="text-left leading-tight">
+                            <span className="block text-sm font-black uppercase">¿Ya terminaste de armar?</span>
+                            <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Revisa qué sigue</span>
+                        </span>
+                     </button>
+                  </div>
+
+                  {/* FILA 2 — barra de herramientas: buscar/estado a la izquierda, validar a la derecha */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-left">
+                    <div className="flex flex-wrap items-center gap-2 text-left">
+                      <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
+                      <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
+                      <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-pink-200 text-pink-700'}`}>
+                        <Hash className="w-3.5 h-3.5 text-left shrink-0" />
+                        <span className="text-[10px] font-black uppercase text-left tracking-wider">
+                          Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-left">
+                      <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-left active:scale-95 transition-all border-2 ${conflictosDiseno.total === 0 ? 'bg-white border-emerald-200 text-emerald-700' : 'bg-red-600 border-red-600 text-white shadow-sm'}`}>
+                        {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-3.5 h-3.5 text-left" /> : <AlertTriangle className="w-3.5 h-3.5 text-left" />}
+                        <span className="text-[10px] font-black uppercase text-left tracking-wider">
+                          Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
+                        </span>
+                        {detalleConflictosAbierto ? <ChevronUp className="w-3.5 h-3.5 text-left" /> : <ChevronDown className="w-3.5 h-3.5 text-left opacity-70" />}
+                      </button>
+                      <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
+                    </div>
+                  </div>
+                </div>
+                )}
+                {extraordinariasTab === 'basica' && (
+                <>
                 <div className="flex flex-col gap-2 text-left">
                   <div className="flex items-center gap-4 text-left">
-                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
-                     <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
+                     <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
+                     <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
                   </div>
-                  <div className={`inline-flex items-center gap-2 w-max px-3 py-1.5 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-pink-50 text-pink-700 border border-pink-200'}`}>
-                    <Hash className="w-3.5 h-3.5 text-left shrink-0" />
-                    <span className="text-[10px] font-black uppercase text-left tracking-wider">
-                      Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
-                    </span>
-                  </div>
+                  <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada y más de una manzana sobrante — elige cuál es la sede de su básica.</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-left">
-                  <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-5 py-2 rounded-full flex items-center gap-2 shadow-sm text-left active:scale-95 transition-all ${conflictosDiseno.total === 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-red-600 text-white hover:bg-red-700'}`}>
-                    {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-4 h-4 text-left" /> : <AlertTriangle className="w-4 h-4 text-left" />}
-                    <span className="text-xs font-black uppercase text-left tracking-wider">
-                      Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
-                    </span>
-                    {detalleConflictosAbierto ? <ChevronUp className="w-4 h-4 text-left" /> : <ChevronDown className="w-4 h-4 text-left opacity-70" />}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ocultar confirmadas</span>
+                  <button type="button" onClick={() => setOcultarBasicaConfirmadas(v => !v)} className={`w-9 h-5 rounded-full relative transition-colors shrink-0 ${ocultarBasicaConfirmadas ? 'bg-pink-600' : 'bg-slate-300'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ocultarBasicaConfirmadas ? 'translate-x-4' : ''}`}></span>
                   </button>
-                  <button onClick={exportarValidacionManzanas} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-2 rounded-full flex items-center gap-2 shadow-md active:scale-95 transition-all text-left relative z-40"><FileDown className="w-4 h-4 text-left" /><span className="text-xs font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
-                </div>
+                </label>
+                </>
+                )}
               </div>
-              
+
+              {extraordinariasTab === 'poligonos' && (
               <div className="flex flex-col gap-3 pb-24 text-left">
                 {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
                   sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
@@ -4483,6 +4624,61 @@ export default function App() {
                   })
                 )}
               </div>
+              )}
+
+              {extraordinariasTab === 'basica' && (
+              <div className="flex flex-col gap-2 pb-24 text-left">
+                {basicaSedeCandidatas.length === 0 ? (
+                  <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Ninguna sección necesita definir sede de básica todavía.</div>
+                ) : (() => {
+                    const filtradas = basicaSedeCandidatas.filter(s => !busquedaBasicaSede.trim() || f4(s.seccion).includes(busquedaBasicaSede.trim()));
+                    const pendientes = filtradas.filter(s => !basicaSedePorSeccion[s.seccion]);
+                    const confirmadas = filtradas.filter(s => !!basicaSedePorSeccion[s.seccion]);
+                    const visibles = ocultarBasicaConfirmadas ? pendientes : filtradas;
+                    return (
+                      <>
+                        {pendientes.length === 0 && confirmadas.length > 0 && (
+                          <div className="p-5 bg-emerald-50 border-2 border-emerald-200 rounded-2xl text-emerald-700 font-black text-sm flex items-center gap-2 mb-1">
+                            <CheckCircle2 className="w-5 h-5" /> Todas las secciones tienen su sede de básica confirmada.
+                          </div>
+                        )}
+                        {visibles.map(s => {
+                          const confirmada = !!basicaSedePorSeccion[s.seccion];
+                          // El <select> nunca escribe directo: solo "arma" una selección en borrador.
+                          // Así se puede confirmar explícitamente incluso la manzana que ya aparecía
+                          // por default (que si no, nunca dispara onChange por no cambiar de valor).
+                          const claveMostrada = seleccionBasicaTemp[s.seccion] ?? basicaSedePorSeccion[s.seccion] ?? claveManzana(s.manzanas[0]);
+                          const hayCambioPendiente = claveMostrada !== basicaSedePorSeccion[s.seccion];
+                          return (
+                            <div key={s.seccion} className={`flex flex-wrap items-center justify-between gap-3 bg-white border-2 rounded-xl px-4 py-2.5 shadow-sm text-left ${confirmada && !hayCambioPendiente ? 'border-slate-200' : 'border-amber-300'}`}>
+                              <div className="flex items-center gap-2.5 min-w-0 text-left">
+                                {confirmada && !hayCambioPendiente ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
+                                <p className="text-xs font-black uppercase text-slate-700 tracking-widest shrink-0">SEC. {f4(s.seccion)}</p>
+                                {!confirmada && !hayCambioPendiente && <span className="text-[9px] font-bold text-amber-600 uppercase truncate">Sin confirmar · usando Mz {f4(s.manzanas[0]?.manzana)} por default</span>}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <select value={claveMostrada} onChange={e => setSeleccionBasicaTemp(prev => ({ ...prev, [s.seccion]: e.target.value }))} className="text-xs font-bold border-2 border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-pink-500 bg-slate-50 text-slate-700 max-w-[280px]">
+                                  {s.manzanas.map((m, i) => {
+                                    const clave = claveManzana(m);
+                                    const nombreLoc = nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad;
+                                    return <option key={i} value={clave}>Mz {f4(m.manzana)} · Loc {f4(m.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</option>;
+                                  })}
+                                </select>
+                                {hayCambioPendiente ? (
+                                  <button onClick={() => { setBasicaSedePorSeccion(prev => ({ ...prev, [s.seccion]: claveMostrada })); setSeleccionBasicaTemp(prev => { const n = { ...prev }; delete n[s.seccion]; return n; }); }}
+                                    className="bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all">Confirmar</button>
+                                ) : (
+                                  <span className="text-[9px] font-black uppercase text-emerald-600 px-2">Confirmada</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+              </div>
+              )}
             </div>
           </>
         )}
@@ -4514,6 +4710,39 @@ export default function App() {
             <div className="flex gap-3 justify-end">
               <button onClick={() => setModalEspecialConfig({ isOpen: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
               <button onClick={agregarCasillaEspecial} disabled={!especialForm.seccion || !especialForm.tipo} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><Star className="w-4 h-4 text-pink-500" /> Insertar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SIGUIENTE PASO (después de armar Extraordinarias) */}
+      {modalSiguientePaso && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="bg-pink-600 text-white p-2 rounded-xl shrink-0"><Flag className="w-5 h-5" /></div>
+              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">¿Ya terminaste de armar tus casillas?</h3>
+            </div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 ml-1">Esto sigue</p>
+
+            <div className="space-y-4 mb-8">
+              <div className="flex gap-3 bg-pink-50 border-2 border-pink-200 rounded-2xl p-4">
+                <Send className="w-5 h-5 text-pink-600 shrink-0 mt-0.5" />
+                <p className="text-sm font-bold text-slate-700 leading-snug">
+                  Ve a <span className="text-pink-700">Proyección → Listado de Casillas</span> y descarga el reporte <span className="text-pink-700">"Proyección Oficial INE"</span> — es el que se envía a la Junta Local.
+                </p>
+              </div>
+              <div className="flex gap-3 bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
+                <Star className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                <p className="text-sm font-bold text-slate-600 leading-snug">
+                  No olvides agregar ahí mismo tus <span className="text-slate-800">Casillas Especiales</span>, si todavía no lo has hecho.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setModalSiguientePaso(false)} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cerrar</button>
+              <button onClick={() => { setView('final'); setProyeccionTab('listado'); setModalSiguientePaso(false); }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><ArrowRight className="w-4 h-4" /> Ir a Listado de Casillas</button>
             </div>
           </div>
         </div>
