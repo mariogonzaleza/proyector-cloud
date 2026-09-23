@@ -1864,8 +1864,10 @@ export default function App() {
   const sedesActivas = useMemo(() => sortedCasillasGlobales.filter(c => c.sede !== null && !String(c.tipo).startsWith('S')), [sortedCasillasGlobales]);
 
   // Por cada sección que ya tiene una extraordinaria armada, las manzanas que le quedaron a la
-  // básica (las que ninguna extraordinaria reclamó como sede o Mz Integrante). Solo se listan
-  // secciones con más de una manzana sobrante: con una sola no hay nada que decidir.
+  // básica (las que ninguna extraordinaria reclamó como sede o Mz Integrante). Se listan todas
+  // las secciones con al menos una manzana sobrante — aunque solo quede una, se deja confirmar
+  // explícitamente (antes se ocultaban esas secciones asumiendo que "no había nada que decidir",
+  // pero eso las dejaba sin poder confirmarse nunca para el envío oficial).
   const basicaSedeCandidatas = useMemo(() => {
     if (!rawElectoralData.length || sedesActivas.length === 0) return [];
     const seccionesConExtra = [...new Set(sedesActivas.map(c => String(c.sede.seccion)))];
@@ -1881,7 +1883,7 @@ export default function App() {
         .sort((a, b) => String(a.localidad).localeCompare(String(b.localidad), undefined, { numeric: true }) || String(a.manzana).localeCompare(String(b.manzana), undefined, { numeric: true }));
       return { seccion: secId, manzanas };
     })
-      .filter(s => s.manzanas.length > 1)
+      .filter(s => s.manzanas.length > 0)
       .sort((a, b) => a.seccion.localeCompare(b.seccion, undefined, { numeric: true }));
   }, [rawElectoralData, sedesActivas]);
 
@@ -3988,7 +3990,7 @@ export default function App() {
                <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
                <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
             </div>
-            <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada y más de una manzana sobrante — elige cuál es la sede de su básica.</p>
+            <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada — elige y confirma cuál manzana sobrante es la sede de su básica.</p>
           </div>
           <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
             <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ocultar confirmadas</span>
