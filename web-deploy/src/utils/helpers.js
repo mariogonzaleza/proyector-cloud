@@ -148,3 +148,16 @@ export const normalizarCodigoCasillaINE = (codigo) => {
     const c = String(codigo || '').toUpperCase().trim().replace(/\s+/g, '');
     return c === 'B1' ? 'B' : c;
 };
+
+// Clasifica un código de casilla ya normalizado (vía normalizarCodigoCasillaINE) en una de las
+// 5 categorías del desglose de tipos de casilla (misma taxonomía que desgloseTiposCasilla en
+// App.jsx). Devuelve null si el código no coincide con ningún patrón reconocido.
+export const clasificarCategoriaCasillaINE = (codigoNormalizado) => {
+    const c = String(codigoNormalizado || '').toUpperCase().trim();
+    if (c === 'B') return 'BASICA';
+    if (/^C\d+$/.test(c)) return 'CONTIGUA';
+    if (/^E\d+$/.test(c)) return 'EXTRAORDINARIA';
+    if (/^E\d+C\d+$/.test(c)) return 'EXTRAORDINARIA_CONTIGUA';
+    if (/^S\d+$/.test(c)) return 'ESPECIAL';
+    return null;
+};

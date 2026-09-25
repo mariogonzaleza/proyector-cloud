@@ -23,7 +23,7 @@ import {
   p4, downloadBlob, estaCercaDelCorte750, distanciaAlCorte750, nivelRiesgoCorte750,
   calcularEquipamientoCasilla, formatearNombreFolio, f4, normalizarDistrito,
   obtenerFechaHoraArchivo, obtenerDistribucionArray, normalizarClave, claveManzana,
-  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE,
+  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE,
 } from './src/utils/helpers.js';
 
 // --- CONFIGURACIÓN DE ENTORNO ---
@@ -217,6 +217,22 @@ export default function App() {
   const [modalUbicacionConfig, setModalUbicacionConfig] = useState({ isOpen: false });
   const [busquedaUbicacion, setBusquedaUbicacion] = useState('');
   const [reporteDiferenciaProyeccion, setReporteDiferenciaProyeccion] = useState(null);
+  // Solo se guardan los datos crudos del archivo 2023-2024 cargado (conteo por tipo de casilla y
+  // secciones); el comparativo completo (conteoActual, diffs, secciones nuevas/desaparecidas) se
+  // recalcula en vivo contra la proyección actual vía un useMemo más abajo, para que si mañana
+  // cambia un corte de padrón el comparativo se actualice solo, sin tener que volver a cargar el
+  // archivo del SUC.
+  const [comparativo2024Base, setComparativo2024Base] = useState(null);
+  const [comparativo2024Expandido, setComparativo2024Expandido] = useState(false);
+  // Bitácora de cambios de domicilio (manual, botón de completar, Excel masivo, SUC). Se conserva
+  // para siempre (nunca se borra sola al salir/entrar) — solo se vacía si el usuario da "Limpieza
+  // Total". El único límite es de seguridad técnica: Firestore rechaza documentos de más de 1MB, y
+  // este historial comparte ese documento con TODO lo demás del distrito (domicilios, casillas,
+  // folios, etc.). HISTORIAL_CAMBIOS_MAX cubre miles de cambios reales de un proceso completo sin
+  // arriesgar que se rompa el guardado en la nube de todo el distrito.
+  const [historialCambiosDomicilio, setHistorialCambiosDomicilio] = useState([]);
+  const HISTORIAL_CAMBIOS_MAX = 800;
+  const [ubicacionVistaTab, setUbicacionVistaTab] = useState('listado'); // 'listado' | 'historial'
   const [filtroEstadoUbicacion, setFiltroEstadoUbicacion] = useState('todas'); // 'todas' | 'completo' | 'parcial' | 'sin_asignar'
   const [filtroTipoUbicacion, setFiltroTipoUbicacion] = useState('todos'); // 'todos' | <tipoDomicilio>
   const [seccionesVisiblesUbicacion, setSeccionesVisiblesUbicacion] = useState([]);
@@ -428,6 +444,14 @@ export default function App() {
           const r = localStorage.getItem(`proyector_reporteDiferenciaProyeccion_D${numStr}`);
           setReporteDiferenciaProyeccion(r ? JSON.parse(r) : null);
       } catch (e) { setReporteDiferenciaProyeccion(null); }
+      try {
+          const c24 = localStorage.getItem(`proyector_comparativo2024Base_D${numStr}`);
+          setComparativo2024Base(c24 ? JSON.parse(c24) : null);
+      } catch (e) { setComparativo2024Base(null); }
+      try {
+          const h = localStorage.getItem(`proyector_historialCambiosDomicilio_D${numStr}`);
+          setHistorialCambiosDomicilio(h ? JSON.parse(h) : []);
+      } catch (e) { setHistorialCambiosDomicilio([]); }
   };
 
   useEffect(() => {
@@ -472,6 +496,19 @@ export default function App() {
           else localStorage.removeItem(`proyector_reporteDiferenciaProyeccion_D${distritoInfo.numero}`);
       } catch (e) {}
   }, [reporteDiferenciaProyeccion, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try {
+          if (comparativo2024Base) localStorage.setItem(`proyector_comparativo2024Base_D${distritoInfo.numero}`, JSON.stringify(comparativo2024Base));
+          else localStorage.removeItem(`proyector_comparativo2024Base_D${distritoInfo.numero}`);
+      } catch (e) {}
+  }, [comparativo2024Base, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try { localStorage.setItem(`proyector_historialCambiosDomicilio_D${distritoInfo.numero}`, JSON.stringify(historialCambiosDomicilio)); } catch (e) {}
+  }, [historialCambiosDomicilio, distritoInfo.numero]);
 
   // ===================== PERSISTENCIA LOCAL DEL DISEÑO (EXTRAORDINARIAS) =====================
   // Antes esta configuración sólo se guardaba en Firestore (nube); en Modo Local nunca se
@@ -563,7 +600,105 @@ export default function App() {
           }));
   };
 
-  const handleImportarUbicacion = (e) => {
+  // Firma de contenido de un domicilio (o null si la casilla no tenía ninguno) — se usa para
+  // detectar si un domicilio REALMENTE cambió antes de registrarlo en la bitácora de cambios,
+  // así no se llena de entradas "sin cambio" cuando se reimporta un archivo que coincide con lo
+  // que ya había.
+  const firmaDomicilioContenido = (d) => d ? [d.domicilio, d.ubicacion, d.referencia, d.tipoDomicilio, d.nombrePropietario].map(v => String(v || '').trim().toUpperCase()).join('||') : '';
+
+  // Si el archivo trae dos filas para la misma sección+casilla (fila corregida sin borrar la
+  // original, error de captura, etc.), se queda solo con la ÚLTIMA — mismo criterio que ya
+  // ganaba en el bucle de asignación. Deduplicar ANTES de procesar evita que el "domicilio
+  // anterior" de la bitácora se contamine con el valor que la propia carga acaba de escribir, y
+  // evita inflar por accidente los conteos de Diferencia de Proyección / Comparativo 2023-2024.
+  const dedupeFilasPorClave = (filas) => {
+      const porClave = new Map();
+      filas.forEach(f => { porClave.set(claveCasillaUbicacion(f.seccion, f.casillaCodigo), f); });
+      return [...porClave.values()];
+  };
+
+  // Agrega entradas a la bitácora de cambios de domicilio (más recientes primero). El recorte a
+  // HISTORIAL_CAMBIOS_MAX (protege el tamaño del documento de Firestore) SOLO quita historial
+  // viejo, nunca entradas de la carga que se acaba de registrar — así el aviso "se actualizaron X
+  // domicilios" siempre coincide con lo que queda visible en "Última Actualización" y su Excel,
+  // aunque X sea mayor al máximo (una carga excepcionalmente grande puede dejar el historial
+  // temporalmente por encima del tope; el siguiente cambio ya lo vuelve a recortar).
+  const registrarCambiosDomicilio = (cambios) => {
+      if (!cambios || cambios.length === 0) return;
+      const fecha = new Date().toISOString();
+      setHistorialCambiosDomicilio(prev => {
+          const nuevos = cambios.map(c => ({ id: `chg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, fecha, ...c }));
+          const espacioParaViejos = Math.max(0, HISTORIAL_CAMBIOS_MAX - nuevos.length);
+          return [...nuevos, ...prev.slice(0, espacioParaViejos)];
+      });
+  };
+
+  // Aviso post-carga con cuántos domicilios cambiaron y en qué secciones/casillas, agrupado por
+  // sección para que sea legible incluso con archivos grandes.
+  const mostrarResumenCambiosDomicilio = (cambios) => {
+      const porSeccion = {};
+      cambios.forEach(c => { (porSeccion[c.seccion] = porSeccion[c.seccion] || []).push(c.casilla); });
+      const grupos = Object.entries(porSeccion).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+      const maxGrupos = 15;
+      const resumen = grupos.slice(0, maxGrupos).map(([sec, casillas]) => `Sección ${sec}: ${casillas.join(', ')}`).join(' · ');
+      const extra = grupos.length > maxGrupos ? ` · y ${grupos.length - maxGrupos} sección(es) más` : '';
+      setModalConfig({ isOpen: true, message: `Se actualizaron ${cambios.length} domicilio(s). ${resumen}${extra}`, onConfirm: () => {} });
+  };
+
+  // Lógica compartida entre los dos botones de importar: dado el archivo ya parseado y
+  // deduplicado, arma/actualiza domicilios y asignaciones, registra los cambios en la bitácora, y
+  // — solo cuando actualizarReportes es true (el SUC) — recalcula Diferencia de Proyección y la
+  // base del Comparativo vs Proceso 2023-2024.
+  const procesarImportacionDomicilios = (filas, { origen, actualizarReportes }) => {
+      const clavesValidas = new Set(todasLasCasillasEquipamiento.map(c => claveCasillaUbicacion(c.seccion, c.nombre)));
+      const domiciliosExistentesPorFirma = new Map(Object.entries(domicilios).map(([id, d]) => [firmaDomicilioContenido(d), id]));
+
+      const nuevosDomicilios = { ...domicilios };
+      const nuevasAsignaciones = { ...ubicacionCasillas };
+      const cambios = [];
+
+      filas.forEach(f => {
+          const clave = claveCasillaUbicacion(f.seccion, f.casillaCodigo);
+          if (!clavesValidas.has(clave)) return;
+
+          const antesId = ubicacionCasillas[clave]?.domicilioId;
+          const antes = antesId ? domicilios[antesId] : null;
+
+          const firma = firmaDomicilioContenido(f);
+          let domicilioId = domiciliosExistentesPorFirma.get(firma);
+          if (!domicilioId) {
+              domicilioId = `dom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+              nuevosDomicilios[domicilioId] = {
+                  tipoDomicilio: f.tipoDomicilio, domicilio: f.domicilio, ubicacion: f.ubicacion, referencia: f.referencia,
+                  nombrePropietario: f.nombrePropietario,
+              };
+              domiciliosExistentesPorFirma.set(firma, domicilioId);
+          }
+          nuevasAsignaciones[clave] = { domicilioId };
+
+          if (firmaDomicilioContenido(antes) !== firma) {
+              const [seccionClave, casillaClave] = clave.split('-');
+              cambios.push({ clave, seccion: seccionClave, casilla: casillaClave, origen, antes, despues: nuevosDomicilios[domicilioId] });
+          }
+      });
+
+      setDomicilios(nuevosDomicilios);
+      setUbicacionCasillas(nuevasAsignaciones);
+      if (actualizarReportes) {
+          setReporteDiferenciaProyeccion(generarReporteDiferenciaProyeccion(filas));
+          setComparativo2024Base(generarComparativo2024Base(filas));
+      }
+      registrarCambiosDomicilio(cambios);
+      if (cambios.length > 0) mostrarResumenCambiosDomicilio(cambios);
+  };
+
+  // Importar Listado SUC: la carga "oficial" y completa. Se usa con el Listado de Ubicación de
+  // Casillas real que emite el sistema del INE (SUC) — sea el del proceso 2023-2024 o, más
+  // adelante, el real de este proceso — y de una sola vez asigna/actualiza TODOS los domicilios
+  // que coincidan con la proyección actual, recalcula la Diferencia de Proyección y recalcula la
+  // base del Comparativo vs Proceso 2023-2024. Es una acción deliberada (se sube el archivo del
+  // SUC, no la plantilla propia del día a día), por eso está separada de handleImportarDomicilios.
+  const handleImportarListadoSUC = (e) => {
       const inputElement = e.target;
       const file = inputElement.files[0];
       if (!file) return;
@@ -572,35 +707,31 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
           try {
-              const filas = parsearUbicacionCasillas(event.target.result);
-              const clavesValidas = new Set(todasLasCasillasEquipamiento.map(c => claveCasillaUbicacion(c.seccion, c.nombre)));
+              const filas = dedupeFilasPorClave(parsearUbicacionCasillas(event.target.result));
+              procesarImportacionDomicilios(filas, { origen: 'suc', actualizarReportes: true });
+              setErrorMessage(null);
+          } catch (err) { setErrorMessage(err.message || "El archivo no tiene un formato de ubicación de casillas válido."); }
+          finally { inputElement.value = null; }
+      };
+      reader.readAsArrayBuffer(file);
+  };
 
-              const firmaDomicilio = (f) => [f.domicilio, f.ubicacion, f.referencia, f.tipoDomicilio, f.nombrePropietario].map(v => String(v).trim().toUpperCase()).join('||');
-              const domiciliosExistentesPorFirma = new Map(Object.entries(domicilios).map(([id, d]) => [firmaDomicilio(d), id]));
+  // Importar Listado (plano): actualiza domicilios (nuevos o ya asignados — si cambiaste dónde se
+  // instala una casilla, esto sí lo sobrescribe) a partir de tu propia plantilla del día a día. NO
+  // recalcula Diferencia de Proyección ni el Comparativo vs Proceso 2023-2024 — esos reportes solo
+  // se tocan con "Importar Listado SUC", para no pisar por accidente el comparativo histórico con
+  // una recarga rutinaria.
+  const handleImportarDomicilios = (e) => {
+      const inputElement = e.target;
+      const file = inputElement.files[0];
+      if (!file) return;
+      if (isXlsxLibLoading) { setErrorMessage("La librería de Excel aún está cargando. Intenta de nuevo."); inputElement.value = null; return; }
 
-              const nuevosDomicilios = { ...domicilios };
-              const nuevasAsignaciones = { ...ubicacionCasillas };
-
-              filas.forEach(f => {
-                  const clave = claveCasillaUbicacion(f.seccion, f.casillaCodigo);
-                  if (!clavesValidas.has(clave)) return;
-
-                  const firma = firmaDomicilio(f);
-                  let domicilioId = domiciliosExistentesPorFirma.get(firma);
-                  if (!domicilioId) {
-                      domicilioId = `dom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-                      nuevosDomicilios[domicilioId] = {
-                          tipoDomicilio: f.tipoDomicilio, domicilio: f.domicilio, ubicacion: f.ubicacion, referencia: f.referencia,
-                          nombrePropietario: f.nombrePropietario,
-                      };
-                      domiciliosExistentesPorFirma.set(firma, domicilioId);
-                  }
-                  nuevasAsignaciones[clave] = { domicilioId };
-              });
-
-              setDomicilios(nuevosDomicilios);
-              setUbicacionCasillas(nuevasAsignaciones);
-              setReporteDiferenciaProyeccion(generarReporteDiferenciaProyeccion(filas));
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const filas = dedupeFilasPorClave(parsearUbicacionCasillas(event.target.result));
+              procesarImportacionDomicilios(filas, { origen: 'excel', actualizarReportes: false });
               setErrorMessage(null);
           } catch (err) { setErrorMessage(err.message || "El archivo no tiene un formato de ubicación de casillas válido."); }
           finally { inputElement.value = null; }
@@ -610,25 +741,49 @@ export default function App() {
 
   const asignarDomicilioAClaves = (claves, datosDomicilio) => {
       const domicilioId = `dom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setDomicilios(prev => ({ ...prev, [domicilioId]: {
+      const nuevoDomicilio = {
           tipoDomicilio: datosDomicilio.tipoDomicilio, domicilio: datosDomicilio.domicilio, ubicacion: datosDomicilio.ubicacion,
           referencia: datosDomicilio.referencia, nombrePropietario: datosDomicilio.nombrePropietario,
-      } }));
+      };
+      const firmaDespues = firmaDomicilioContenido(nuevoDomicilio);
+      const cambios = [];
+      claves.forEach(clave => {
+          const antesId = ubicacionCasillas[clave]?.domicilioId;
+          const antes = antesId ? domicilios[antesId] : null;
+          if (firmaDomicilioContenido(antes) === firmaDespues) return;
+          const [seccionClave, casillaClave] = clave.split('-');
+          cambios.push({ clave, seccion: seccionClave, casilla: casillaClave, origen: 'manual', antes, despues: nuevoDomicilio });
+      });
+
+      setDomicilios(prev => ({ ...prev, [domicilioId]: nuevoDomicilio }));
       setUbicacionCasillas(prev => {
           const next = { ...prev };
           claves.forEach(clave => { next[clave] = { domicilioId }; });
           return next;
       });
+      registrarCambiosDomicilio(cambios);
   };
 
   const copiarDomicilioDeCasilla = (claveOrigen, clavesDestino) => {
       const asignOrigen = ubicacionCasillas[claveOrigen];
       if (!asignOrigen) return;
+      const domicilioOrigen = domicilios[asignOrigen.domicilioId] || null;
+      const firmaDespues = firmaDomicilioContenido(domicilioOrigen);
+      const cambios = [];
+      clavesDestino.forEach(clave => {
+          const antesId = ubicacionCasillas[clave]?.domicilioId;
+          const antes = antesId ? domicilios[antesId] : null;
+          if (firmaDomicilioContenido(antes) === firmaDespues) return;
+          const [seccionClave, casillaClave] = clave.split('-');
+          cambios.push({ clave, seccion: seccionClave, casilla: casillaClave, origen: 'completar', antes, despues: domicilioOrigen });
+      });
+
       setUbicacionCasillas(prev => {
           const next = { ...prev };
           clavesDestino.forEach(clave => { next[clave] = { ...asignOrigen }; });
           return next;
       });
+      registrarCambiosDomicilio(cambios);
   };
 
   const exportarPlantillaUbicacion = () => {
@@ -650,7 +805,7 @@ export default function App() {
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: h.length > 20 ? 34 : 16 }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
@@ -668,6 +823,45 @@ export default function App() {
           const estiloHeaderDif = { fill: { patternType: 'solid', fgColor: { rgb: '7C3AED' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
           for (let c = 0; c < headersDif.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDif[addr]) wsDif[addr].s = estiloHeaderDif; }
           window.XLSX.utils.book_append_sheet(wb, wsDif, 'Diferencia de Proyección');
+      }
+
+      if (comparativo2024) {
+          const headersComp = ['Tipo de Casilla', 'Proceso 2023-2024', 'Este proceso', 'Diferencia'];
+          const c24 = comparativo2024.conteo2024, cAct = comparativo2024.conteoActual, dif = comparativo2024.diffs;
+          const rowsComp = [
+              headersComp,
+              ['Básicas', c24.basicas, cAct.basicas, dif.basicas],
+              ['Contiguas', c24.contiguas, cAct.contiguas, dif.contiguas],
+              ['Extraordinarias', c24.extraordinarias, cAct.extraordinarias, dif.extraordinarias],
+              ['Extraordinarias Contiguas', c24.extraordinariasContiguas, cAct.extraordinariasContiguas, dif.extraordinariasContiguas],
+              ['Especiales', c24.especiales, cAct.especiales, dif.especiales],
+              [],
+              ['Secciones en Proceso 2023-2024', comparativo2024.totalSecciones2024, 'Secciones hoy', comparativo2024.totalSeccionesActual],
+              [],
+              [`Secciones nuevas (${comparativo2024.seccionesNuevas.length})`, comparativo2024.seccionesNuevas.join(', ')],
+              [`Secciones desaparecidas (${comparativo2024.seccionesDesaparecidas.length})`, comparativo2024.seccionesDesaparecidas.join(', ')],
+          ];
+          const wsComp = window.XLSX.utils.aoa_to_sheet(rowsComp);
+          wsComp['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }, { wch: 12 }];
+          const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '0284C7' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          for (let c = 0; c < headersComp.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsComp[addr]) wsComp[addr].s = estiloHeaderComp; }
+          window.XLSX.utils.book_append_sheet(wb, wsComp, 'Comparativo 2023-2024');
+      }
+
+      if (historialCambiosDomicilio.length > 0) {
+          const origenLabelExport = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC' };
+          const headersHist = ['Sección', 'Casilla', 'Fecha y Hora', 'Origen', 'Domicilio Anterior', 'Ubicación Anterior', 'Referencia Anterior', 'Tipo Domicilio Anterior', 'Propietario Anterior', 'Domicilio Nuevo', 'Ubicación Nueva', 'Referencia Nueva', 'Tipo Domicilio Nuevo', 'Propietario Nuevo'];
+          const rowsHist = [headersHist, ...historialCambiosDomicilio.map(c => [
+              c.seccion, c.casilla, new Date(c.fecha).toLocaleString('es-MX'), origenLabelExport[c.origen] || c.origen,
+              c.antes?.domicilio || '', c.antes?.ubicacion || '', c.antes?.referencia || '', c.antes?.tipoDomicilio || '', c.antes?.nombrePropietario || '',
+              c.despues?.domicilio || '', c.despues?.ubicacion || '', c.despues?.referencia || '', c.despues?.tipoDomicilio || '', c.despues?.nombrePropietario || '',
+          ])];
+          const wsHist = window.XLSX.utils.aoa_to_sheet(rowsHist);
+          wsHist['!cols'] = headersHist.map(h => ({ wch: h.length > 18 ? 26 : 16 }));
+          const estiloHeaderHist = { fill: { patternType: 'solid', fgColor: { rgb: '1E293B' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          for (let c = 0; c < headersHist.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsHist[addr]) wsHist[addr].s = estiloHeaderHist; }
+          wsHist['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowsHist.length - 1, c: headersHist.length - 1 } }) };
+          window.XLSX.utils.book_append_sheet(wb, wsHist, 'Última Actualización');
       }
 
       window.XLSX.writeFile(wb, `Plantilla_Ubicacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
@@ -689,7 +883,7 @@ export default function App() {
       }
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 4, 22)) }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasConFormula, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
@@ -802,7 +996,7 @@ export default function App() {
     const c = comparacionAnterior;
     const wb = window.XLSX.utils.book_new();
 
-    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
     const aplicarEstiloHoja = (ws, numCols, numRows, colorFilas) => {
         for (let cc = 0; cc < numCols; cc++) {
             const addr = window.XLSX.utils.encode_cell({ r: 0, c: cc });
@@ -1160,7 +1354,7 @@ export default function App() {
     });
 
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
 
     // Hoja Resumen
     const wsResumenData = [
@@ -1322,10 +1516,10 @@ export default function App() {
     ws1['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }, { hpt: 13 }, { hpt: 15 }, { hpt: 13 }, { hpt: 13 }];
 
     const estiloTituloS = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '9680B4' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
-    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '9680B4' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
-    const estiloHeaderTotalS = { fill: { patternType: 'solid', fgColor: { rgb: '7030A0' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
+    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
+    const estiloHeaderTotalS = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 8 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalGrandeS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
@@ -1386,8 +1580,8 @@ export default function App() {
     ws2['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }];
 
     const estiloTituloC = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: '58357E' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: '38363A' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     if (ws2['A1']) ws2['A1'].s = estiloTituloC;
     ['A3','B3','C3','D3','E3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPrincipalC; });
     ['G3','H3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPadronListaC; });
@@ -1434,7 +1628,7 @@ export default function App() {
     ws3['!cols'] = [{wch:10}, {wch:15}, {wch:11}, {wch:10}, {wch:11}, {wch:10}, {wch:9}, {wch:15}, {wch:3.5}, {wch:9}, {wch:16}, {wch:16}];
     ws3['!rows'] = [{ hpt: 26 }];
 
-    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderBasicaE = { fill: { patternType: 'solid', fgColor: { rgb: '4472C4' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderExtraordinariaE = { fill: { patternType: 'solid', fgColor: { rgb: '65BFCB' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderManzanaSedeE = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }, font: { bold: false, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
@@ -1457,14 +1651,14 @@ export default function App() {
     if (!window.XLSX) return;
 
     const wb = window.XLSX.utils.book_new();
-    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const dataCellStyle = { alignment: { horizontal: 'center' } };
     const estiloVariacion = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
     const estiloMenos100 = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
-    const estiloCerca750 = { fill: { patternType: 'solid', fgColor: { rgb: 'D9D2E9' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloCerca750 = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
     const estiloRiesgoAlto = { fill: { patternType: 'solid', fgColor: { rgb: 'FF8080' } }, font: { bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center' } };
     const estiloRiesgoMedio = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC28A' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
-    const estiloRiesgoBajo = { fill: { patternType: 'solid', fgColor: { rgb: 'E4DFEC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoBajo = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
 
     // --- HOJA 1: RESUMEN ---
     const cercaCorte750 = filasObservadas.filter(f => f.esCercaCorte750);
@@ -1527,7 +1721,7 @@ export default function App() {
     const margin = 40;
     let y;
 
-    doc.setFillColor(73, 39, 111);
+    doc.setFillColor(42, 40, 44);
     doc.rect(0, 0, pageWidth, 90, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -1549,7 +1743,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Casilla', 'Padrón', 'Lista Nominal']],
       body: [
         ['Total de Casillas', totalCasillasDistrito.totalPadron, totalCasillasDistrito.totalLista],
@@ -1579,7 +1773,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
       head: [['Municipio', 'Casillas', '% del Distrito']],
       body: municipiosDelDistrito.map(m => [m.nombre, String(m.casillas), `${m.porcentaje.toFixed(1)}%`]),
     });
@@ -1592,7 +1786,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [73, 39, 111], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
       head: [['Observación', 'Secciones Detectadas']],
       body: [
         ['Variación Padrón/Lista', String(countVariacion)],
@@ -1625,7 +1819,7 @@ export default function App() {
 
     tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [239, 68, 68], filasVariacion, [], () => []);
     tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [217, 119, 6], filasMenos100, [], () => []);
-    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [150, 128, 180], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
+    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [130, 138, 145], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
 
     // --- 4. Estado de Ubicación de Casillas ---
     if (y > pageHeight - 150) { doc.addPage(); y = 50; }
@@ -1657,12 +1851,57 @@ export default function App() {
     const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [103, 64, 146], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 71], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Domicilio', 'Domicilios', '% del Total', 'Secciones']],
       body: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => [
         tipo, String(count), totalDomicilios > 0 ? `${(count / totalDomicilios * 100).toFixed(1)}%` : '0.0%', String(seccionesPorTipoDomicilio[tipo] || 0)
       ]),
     });
+    y = doc.lastAutoTable.finalY + 24;
+
+    // --- 6. Comparativo vs Proceso 2023-2024 ---
+    if (comparativo2024) {
+      if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      doc.text('6. Comparativo vs Proceso 2023-2024', margin, y);
+      y += 8;
+      const dif = comparativo2024.diffs;
+      const fmtDif = (n) => `${n > 0 ? '+' : ''}${n}`;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+        head: [['Tipo de Casilla', 'Proceso 2023-2024', 'Este proceso', 'Diferencia']],
+        body: [
+          ['Básicas', String(comparativo2024.conteo2024.basicas), String(comparativo2024.conteoActual.basicas), fmtDif(dif.basicas)],
+          ['Contiguas', String(comparativo2024.conteo2024.contiguas), String(comparativo2024.conteoActual.contiguas), fmtDif(dif.contiguas)],
+          ['Extraordinarias', String(comparativo2024.conteo2024.extraordinarias), String(comparativo2024.conteoActual.extraordinarias), fmtDif(dif.extraordinarias)],
+          ['Extraordinarias Contiguas', String(comparativo2024.conteo2024.extraordinariasContiguas), String(comparativo2024.conteoActual.extraordinariasContiguas), fmtDif(dif.extraordinariasContiguas)],
+          ['Especiales', String(comparativo2024.conteo2024.especiales), String(comparativo2024.conteoActual.especiales), fmtDif(dif.especiales)],
+        ],
+      });
+      y = doc.lastAutoTable.finalY + 12;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 5 },
+        body: [
+          ['Secciones en Proceso 2023-2024', String(comparativo2024.totalSecciones2024), 'Secciones hoy', String(comparativo2024.totalSeccionesActual)],
+        ],
+      });
+      y = doc.lastAutoTable.finalY + 12;
+
+      if (comparativo2024.seccionesNuevas.length > 0 || comparativo2024.seccionesDesaparecidas.length > 0) {
+        if (y > pageHeight - 100) { doc.addPage(); y = 50; }
+        doc.autoTable({
+          startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+          styles: { fontSize: 8, cellPadding: 6 }, headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+          head: [['Cambio', 'Secciones']],
+          body: [
+            ...(comparativo2024.seccionesNuevas.length > 0 ? [[`Nuevas (${comparativo2024.seccionesNuevas.length})`, comparativo2024.seccionesNuevas.join(', ')]] : []),
+            ...(comparativo2024.seccionesDesaparecidas.length > 0 ? [[`Desaparecidas (${comparativo2024.seccionesDesaparecidas.length})`, comparativo2024.seccionesDesaparecidas.join(', ')]] : []),
+          ],
+        });
+      }
+    }
 
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -1718,8 +1957,8 @@ export default function App() {
 
   const exportarReporteEquipamientoMCU = () => {
     if (!window.XLSX) return;
-    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
+    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
     const dataCellStyle = { font: { sz: 10 }, alignment: { horizontal: 'center' } };
 
     const wb = window.XLSX.utils.book_new();
@@ -1890,7 +2129,7 @@ export default function App() {
   const exportarReporteConflictosDiseno = () => {
     if (!window.XLSX || conflictosDiseno.total === 0) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const seccionesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => String(m.seccion).trim()))];
     const localidadesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => `${f4(m.seccion)}-${f4(m.localidad)}`))];
@@ -1921,7 +2160,7 @@ export default function App() {
   const exportarReporteImportacionJSON = () => {
     if (!window.XLSX || !importJsonAvisos) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const wsResumenData = [
         ['REPORTE DE IMPORTACIÓN DE RESPALDO', ''],
@@ -2159,15 +2398,15 @@ export default function App() {
 
     const totalesRowIdx = dataStartRow + filasFolios.length;
     const filaTotal = totalesRowIdx + 1;
-    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
+    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
     ['A', 'B', 'C', 'D'].forEach(col => { if (ws[`${col}${filaTotal}`]) ws[`${col}${filaTotal}`].s = estiloTotalRosa; });
     if (ws[`H${filaTotal}`]) ws[`H${filaTotal}`].s = { numFmt: '#,##0', font: { name: FUENTE, sz: 9 }, alignment: { horizontal: 'center' } };
 
     const headerStyleBase = { font: { name: FUENTE, sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
-    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '49276F' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
     const headerRppLocal = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '6FC5E6' } } };
-    const headerCandIndep = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'D1BDEF' } } };
+    const headerCandIndep = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } } };
     const headerStylesPorCol = { A: headerRosa, B: headerRosa, C: headerRosa, D: headerRosa, E: headerRppNacional, F: headerRppLocal, G: headerCandIndep, H: headerRosa, I: headerRosa, J: headerRosa, K: headerRosa };
     Object.entries(headerStylesPorCol).forEach(([col, estilo]) => {
         const cell = ws[`${col}4`];
@@ -2194,7 +2433,7 @@ export default function App() {
     });
     const wsPlantilla = window.XLSX.utils.aoa_to_sheet(rowsPlantilla);
     wsPlantilla['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
-    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: '674092' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     ['A', 'B', 'C', 'D', 'E'].forEach(col => { const cell = wsPlantilla[`${col}1`]; if (cell) cell.s = headerPlantilla; });
     filasFolios.forEach((f, idx) => {
         const r = idx + 2;
@@ -2342,6 +2581,66 @@ export default function App() {
       return { basicas, contiguas, extraordinarias, extraordinariasContiguas, especiales };
   }, [consolidadoB_C, casillasGlobales]);
 
+  // Extrae del Listado de Ubicación de Casillas real del proceso 2023-2024 (archivo aparte,
+  // descargado del propio sistema del INE de ese proceso — no tiene relación con el Listado que
+  // se importa para asignar domicilios de este proceso) solo los datos CRUDOS e inmutables: el
+  // conteo por tipo de casilla y qué secciones tenía. Se procesan todas las filas del archivo,
+  // sin filtrar contra la proyección actual, para poder detectar tanto secciones nuevas como
+  // desaparecidas más abajo. No incluye nada de "hoy" — eso se calcula en vivo en el useMemo
+  // comparativo2024, para que se actualice solo si la proyección cambia después.
+  const generarComparativo2024Base = (filasImportadas) => {
+      const conteo2024 = { basicas: 0, contiguas: 0, extraordinarias: 0, extraordinariasContiguas: 0, especiales: 0 };
+      const secciones2024 = new Set();
+      const codigosNoReconocidos = new Set();
+      filasImportadas.forEach(f => {
+          secciones2024.add(f4(f.seccion));
+          const cat = clasificarCategoriaCasillaINE(f.casillaCodigo);
+          if (cat === 'BASICA') conteo2024.basicas += 1;
+          else if (cat === 'CONTIGUA') conteo2024.contiguas += 1;
+          else if (cat === 'EXTRAORDINARIA') conteo2024.extraordinarias += 1;
+          else if (cat === 'EXTRAORDINARIA_CONTIGUA') conteo2024.extraordinariasContiguas += 1;
+          else if (cat === 'ESPECIAL') conteo2024.especiales += 1;
+          // Código que no coincide con ningún patrón conocido (B, C#, E#, E#C#, S#): no se puede
+          // clasificar, así que no entra a ningún contador — se avisa para que no quede escondido.
+          else codigosNoReconocidos.add(`Sección ${f4(f.seccion)}: "${f.casillaCodigo}"`);
+      });
+      return {
+          fechaCargaSUC: new Date().toISOString(),
+          conteo2024,
+          secciones2024: [...secciones2024].sort(),
+          codigosNoReconocidos: [...codigosNoReconocidos].sort(),
+      };
+  };
+
+  // Comparativo vs 2023-2024 recalculado en vivo: combina los datos crudos guardados de 2024
+  // (comparativo2024Base, que solo cambia si se vuelve a cargar el SUC) con la proyección ACTUAL
+  // (desgloseTiposCasilla, seccionesAgrupadas). Así, si mañana cambia un corte de padrón y sube o
+  // baja el número de casillas proyectadas, este comparativo se actualiza solo, sin necesidad de
+  // volver a subir el archivo 2024.
+  const comparativo2024 = useMemo(() => {
+      if (!comparativo2024Base) return null;
+      const secciones2024Set = new Set(comparativo2024Base.secciones2024);
+      const seccionesActuales = new Set(seccionesAgrupadas.map(g => f4(g.seccion)));
+      const seccionesNuevas = [...seccionesActuales].filter(s => !secciones2024Set.has(s)).sort();
+      const seccionesDesaparecidas = [...secciones2024Set].filter(s => !seccionesActuales.has(s)).sort();
+
+      const conteoActual = { ...desgloseTiposCasilla };
+      const diffs = {};
+      Object.keys(conteoActual).forEach(k => { diffs[k] = conteoActual[k] - comparativo2024Base.conteo2024[k]; });
+
+      return {
+          fechaCargaSUC: comparativo2024Base.fechaCargaSUC,
+          totalSecciones2024: secciones2024Set.size,
+          totalSeccionesActual: seccionesActuales.size,
+          seccionesNuevas,
+          seccionesDesaparecidas,
+          conteo2024: comparativo2024Base.conteo2024,
+          conteoActual,
+          diffs,
+          codigosNoReconocidos: comparativo2024Base.codigosNoReconocidos || [],
+      };
+  }, [comparativo2024Base, seccionesAgrupadas, desgloseTiposCasilla]);
+
   const totalCasillasDistrito = useMemo(() => {
     let bcPadron = 0; let bcLista = 0;
     consolidadoB_C.forEach(r => { bcPadron += r.countPadron; bcLista += r.countLista; });
@@ -2451,11 +2750,12 @@ export default function App() {
   const limpiarTodosLosDomicilios = () => {
       setModalConfig({
           isOpen: true,
-          message: 'Esto borrará TODOS los domicilios y ubicaciones asignadas del distrito (todas las secciones). No se puede deshacer. ¿Continuar?',
+          message: 'Esto borrará TODOS los domicilios y ubicaciones asignadas del distrito (todas las secciones), y también el historial de "Última Actualización". No se puede deshacer. ¿Continuar?',
           onConfirm: () => {
               isLocalActionActive.current = true;
               setDomicilios({});
               setUbicacionCasillas({});
+              setHistorialCambiosDomicilio([]);
               setLimpiezaDomiciliosBloqueada(true);
           }
       });
@@ -2691,6 +2991,8 @@ export default function App() {
             fechaCorte: data.fechaCorte || "",
             cabeceraDistrital: data.cabeceraDistrital || "",
             reporteDiferenciaProyeccion: data.reporteDiferenciaProyeccion || null,
+            comparativo2024Base: data.comparativo2024Base || null,
+            historialCambiosDomicilio: data.historialCambiosDomicilio || [],
           };
           const cloudJson = JSON.stringify(remoto);
 
@@ -2716,6 +3018,8 @@ export default function App() {
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
             if (remoto.reporteDiferenciaProyeccion) setReporteDiferenciaProyeccion(remoto.reporteDiferenciaProyeccion);
+            if (remoto.comparativo2024Base) setComparativo2024Base(remoto.comparativo2024Base);
+            if (remoto.historialCambiosDomicilio.length > 0) setHistorialCambiosDomicilio(remoto.historialCambiosDomicilio);
           }
         } catch (err) { console.error("Error leyendo de Firestore", err); }
       }
@@ -2775,6 +3079,8 @@ export default function App() {
       fechaCorte,
       cabeceraDistrital,
       reporteDiferenciaProyeccion,
+      comparativo2024Base,
+      historialCambiosDomicilio,
     };
     const currentJson = JSON.stringify(payload);
     if (currentJson === lastSavedJson.current) return;
@@ -2787,7 +3093,7 @@ export default function App() {
     unlockTimerRef.current = setTimeout(() => { flushPendingSave(); }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
-  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, distritoInfo.numero, user, isInitialLoadFinished]);
+  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, comparativo2024Base, historialCambiosDomicilio, distritoInfo.numero, user, isInitialLoadFinished]);
 
   useEffect(() => {
     if (view === 'welcome') {
@@ -3337,6 +3643,32 @@ export default function App() {
                               <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
                           </div>
                       </div>
+                      {comparativo2024 && (
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-sky-200 px-6 py-5">
+                              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-sky-500">Comparativo vs Proceso 2023-2024</p>
+                                  <div className="flex flex-wrap gap-2">
+                                      <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">+{comparativo2024.seccionesNuevas.length} secciones nuevas</span>
+                                      <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">-{comparativo2024.seccionesDesaparecidas.length} secciones desaparecidas</span>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                  {[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extra. Contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => (
+                                      <div key={key} className="flex flex-col justify-center items-center">
+                                          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">{label}</p>
+                                          <h5 className="text-2xl font-black italic text-slate-800">{comparativo2024.conteoActual[key]}</h5>
+                                          <span className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${comparativo2024.diffs[key] === 0 ? 'bg-slate-100 text-slate-500' : comparativo2024.diffs[key] > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{comparativo2024.diffs[key] > 0 ? '+' : ''}{comparativo2024.diffs[key]} vs 2024</span>
+                                      </div>
+                                  ))}
+                              </div>
+                              {comparativo2024.codigosNoReconocidos.length > 0 && (
+                                  <div className="mt-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
+                                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                      <p className="text-xs font-bold text-amber-800">{comparativo2024.codigosNoReconocidos.length} código(s) de casilla del archivo 2023-2024 no se reconocieron y no entraron en el conteo por tipo.</p>
+                                  </div>
+                              )}
+                          </div>
+                      )}
                   </div>
           </div>
           )}
@@ -3637,7 +3969,8 @@ export default function App() {
                                   </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
-                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarUbicacion} /></label>
+                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Listado oficial del SUC (INE): asigna/actualiza TODOS los domicilios que coincidan, y recalcula Diferencia de Proyección y Comparativo vs Proceso 2023-2024"><BarChart3 className="w-4 h-4" /> Importar Listado SUC<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarListadoSUC} /></label>
+                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Uso diario con tu propia plantilla: actualiza domicilios (nuevos o ya asignados). No toca la Diferencia de Proyección ni el Comparativo 2023-2024"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarDomicilios} /></label>
                                   <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
                                   <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
                                       {limpiezaDomiciliosBloqueada ? <><Lock className="w-4 h-4" /> Limpieza Total</> : <><Unlock className="w-4 h-4" /> Limpieza Desbloqueada</>}
@@ -3647,9 +3980,57 @@ export default function App() {
                                   )}
                               </div>
                           </div>
-                          <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">Sube el "Listado de Ubicación de Casillas" oficial (desglosado por casilla) de un proceso anterior para pre-asignar domicilios automáticamente por Sección + Casilla, o exporta la plantilla del sistema, complétala y vuelve a subirla para actualizar en lote.</p>
+                          <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">"Importar Listado SUC" es para el Listado de Ubicación de Casillas oficial del sistema del INE (del proceso 2023-2024 o el real de este proceso): con una sola carga asigna todos los domicilios que coincidan y recalcula Diferencia de Proyección y Comparativo vs 2023-2024. "Importar Listado" es para tu propia plantilla del día a día: exporta "Listado Tipos de Domicilio", complétala y vuelve a subirla — actualiza domicilios nuevos o ya asignados (por ejemplo, si una casilla cambió de sede), sin tocar los demás reportes. Cada carga te avisa cuántos domicilios cambiaron, y el detalle queda en la pestaña "Última Actualización".</p>
                       </div>
 
+                      <div className="flex gap-2">
+                          <button onClick={() => setUbicacionVistaTab('listado')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${ubicacionVistaTab === 'listado' ? 'bg-pink-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Listado de Domicilios</button>
+                          <button onClick={() => setUbicacionVistaTab('historial')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${ubicacionVistaTab === 'historial' ? 'bg-pink-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Última Actualización{historialCambiosDomicilio.length > 0 && <span className={`px-2 py-0.5 rounded-full text-[9px] ${ubicacionVistaTab === 'historial' ? 'bg-white/25' : 'bg-slate-300'}`}>{historialCambiosDomicilio.length}</span>}</button>
+                      </div>
+
+                      {ubicacionVistaTab === 'historial' ? (
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 overflow-hidden">
+                              {historialCambiosDomicilio.length === 0 ? (
+                                  <p className="text-sm font-bold text-slate-400 text-center py-12">Todavía no hay cambios de domicilio registrados en este distrito.</p>
+                              ) : (
+                                  <>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 pt-5">Esta misma bitácora se incluye como hoja adicional (con filtros) al exportar "Listado Tipos de Domicilio"</p>
+                                  <div className="overflow-x-auto">
+                                      <table className="w-full text-left border-collapse min-w-[760px]">
+                                          <thead className="bg-slate-800 text-white text-[9px] font-black uppercase">
+                                              <tr>
+                                                  <th className="p-3">Sección</th>
+                                                  <th className="p-3">Casilla</th>
+                                                  <th className="p-3">Fecha y hora</th>
+                                                  <th className="p-3">Origen</th>
+                                                  <th className="p-3">Domicilio anterior</th>
+                                                  <th className="p-3">Domicilio nuevo</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody className="text-xs font-bold divide-y divide-slate-100">
+                                              {historialCambiosDomicilio.map(c => {
+                                                  const origenLabel = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC' }[c.origen] || c.origen;
+                                                  const origenColor = { manual: 'bg-slate-100 text-slate-700', completar: 'bg-violet-100 text-violet-700', excel: 'bg-amber-100 text-amber-700', suc: 'bg-sky-100 text-sky-700' }[c.origen] || 'bg-slate-100 text-slate-700';
+                                                  const textoDom = (d) => d ? (d.domicilio || d.ubicacion || '(sin domicilio)') : '— (sin domicilio)';
+                                                  return (
+                                                      <tr key={c.id}>
+                                                          <td className="p-3 text-slate-800">{c.seccion}</td>
+                                                          <td className="p-3 text-slate-800">{c.casilla}</td>
+                                                          <td className="p-3 text-slate-500">{new Date(c.fecha).toLocaleString('es-MX')}</td>
+                                                          <td className="p-3"><span className={`px-2 py-1 rounded-full text-[9px] uppercase ${origenColor}`}>{origenLabel}</span></td>
+                                                          <td className="p-3 text-slate-500 max-w-[220px] truncate" title={textoDom(c.antes)}>{textoDom(c.antes)}</td>
+                                                          <td className="p-3 text-slate-800 max-w-[220px] truncate" title={textoDom(c.despues)}>{textoDom(c.despues)}</td>
+                                                      </tr>
+                                                  );
+                                              })}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                                  </>
+                              )}
+                          </div>
+                      ) : (
+                      <>
                       {Object.keys(conteoTiposDomicilio).length > 0 && (
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
                               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
@@ -3678,6 +4059,7 @@ export default function App() {
                               </button>
                               {diferenciaProyeccionExpandido && (
                                   <div className="px-6 pb-6">
+                                      <p className="text-xs font-bold text-violet-500 mb-3">Compara CANTIDADES: cuántas casillas trae el archivo importado vs. cuántas calcula tu proyección actual (Padrón/Lista), sección por sección. Es un chequeo dentro de este mismo proceso, no contra 2023-2024.</p>
                                       <div className="flex flex-wrap gap-2">
                                           <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Total Instalado: {reporteDiferenciaProyeccion.totales.real}</span>
                                           <span className="bg-white border-2 border-violet-200 text-violet-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Proyectado Padrón: {reporteDiferenciaProyeccion.totales.proyectadoPadron}</span>
@@ -3709,6 +4091,69 @@ export default function App() {
                                                   </table>
                                               </div>
                                           </>
+                                      )}
+                                  </div>
+                              )}
+                          </div>
+                      )}
+
+                      {comparativo2024 && (
+                          <div className="rounded-2xl border-2 border-sky-300 bg-sky-50 overflow-hidden">
+                              <button onClick={() => setComparativo2024Expandido(v => !v)} className="w-full flex items-center justify-between gap-4 px-6 py-4 hover:bg-sky-100/50 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                      {comparativo2024Expandido ? <ChevronUp className="w-5 h-5 text-sky-600 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-sky-400 flex-shrink-0" />}
+                                      <BarChart3 className="w-5 h-5 text-sky-600 flex-shrink-0" />
+                                      <span className="text-sm font-black uppercase tracking-wide text-sky-700">Comparativo vs Proceso 2023-2024</span>
+                                  </div>
+                                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 bg-white border-sky-300 text-sky-700">
+                                      +{comparativo2024.seccionesNuevas.length} nuevas · -{comparativo2024.seccionesDesaparecidas.length} desaparecidas
+                                  </span>
+                              </button>
+                              {comparativo2024Expandido && (
+                                  <div className="px-6 pb-6 space-y-4">
+                                      <p className="text-xs font-bold text-sky-500">Compara ESTRUCTURA: qué tipos de casilla (Básicas, Contiguas, Extraordinarias, Especiales) y qué secciones había en el proceso 2023-2024 contra lo que tienes armado hoy. Es un comparativo histórico entre dos procesos, no de cantidades dentro de este mismo proceso. Esta misma información se incluye como hoja adicional al exportar "Listado Tipos de Domicilio", en el Resumen Distrital, y en su PDF.</p>
+                                      {comparativo2024.codigosNoReconocidos.length > 0 && (
+                                          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
+                                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                              <p className="text-xs font-bold text-amber-800">{comparativo2024.codigosNoReconocidos.length} código(s) de casilla del archivo 2023-2024 no se reconocieron y no entraron en el conteo por tipo: {comparativo2024.codigosNoReconocidos.join(' · ')}</p>
+                                          </div>
+                                      )}
+                                      <div className="flex flex-wrap gap-2">
+                                          <span className="bg-white border-2 border-sky-200 text-sky-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Secciones 2024: {comparativo2024.totalSecciones2024}</span>
+                                          <span className="bg-white border-2 border-sky-200 text-sky-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Secciones hoy: {comparativo2024.totalSeccionesActual}</span>
+                                          <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">+{comparativo2024.seccionesNuevas.length} secciones nuevas</span>
+                                          <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">-{comparativo2024.seccionesDesaparecidas.length} secciones desaparecidas</span>
+                                      </div>
+
+                                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                          {[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extra. Contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => (
+                                              <div key={key} className="bg-white rounded-xl border-2 border-sky-200 px-3 py-3 flex flex-col items-center">
+                                                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">{label}</p>
+                                                  <p className="text-lg font-black italic text-slate-800 mt-0.5">{comparativo2024.conteoActual[key]} <span className="text-xs text-slate-400 font-bold">vs {comparativo2024.conteo2024[key]}</span></p>
+                                                  <span className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${comparativo2024.diffs[key] === 0 ? 'bg-slate-100 text-slate-500' : comparativo2024.diffs[key] > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{comparativo2024.diffs[key] > 0 ? '+' : ''}{comparativo2024.diffs[key]}</span>
+                                              </div>
+                                          ))}
+                                      </div>
+
+                                      {(comparativo2024.seccionesNuevas.length > 0 || comparativo2024.seccionesDesaparecidas.length > 0) && (
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                              {comparativo2024.seccionesNuevas.length > 0 && (
+                                                  <div className="bg-white rounded-xl border-2 border-emerald-200 p-3">
+                                                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-2">Secciones nuevas ({comparativo2024.seccionesNuevas.length})</p>
+                                                      <div className="flex flex-wrap gap-1.5">
+                                                          {comparativo2024.seccionesNuevas.map(s => <span key={s} className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-bold">{s}</span>)}
+                                                      </div>
+                                                  </div>
+                                              )}
+                                              {comparativo2024.seccionesDesaparecidas.length > 0 && (
+                                                  <div className="bg-white rounded-xl border-2 border-red-200 p-3">
+                                                      <p className="text-[9px] font-black uppercase tracking-widest text-red-600 mb-2">Secciones desaparecidas ({comparativo2024.seccionesDesaparecidas.length})</p>
+                                                      <div className="flex flex-wrap gap-1.5">
+                                                          {comparativo2024.seccionesDesaparecidas.map(s => <span key={s} className="bg-red-50 text-red-700 px-2 py-1 rounded-lg text-[10px] font-bold">{s}</span>)}
+                                                      </div>
+                                                  </div>
+                                              )}
+                                          </div>
                                       )}
                                   </div>
                               )}
@@ -3789,6 +4234,8 @@ export default function App() {
                               <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
                               <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
                           </div>
+                      )}
+                      </>
                       )}
 
                   </div>
@@ -4230,7 +4677,7 @@ export default function App() {
         <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
         <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
         <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200 ml-4 pointer-events-none">
-           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
+           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : syncStatus === 'error' ? ( <><AlertTriangle className="w-3 h-3 text-red-500" title="No se pudo guardar en la nube — revisa tu conexión o el tamaño del distrito" /><span className="text-[8px] font-black uppercase text-red-600">Error al guardar</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
         </div>
       </div>
     </header>

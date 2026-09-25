@@ -6,12 +6,20 @@
     <title>Proyector Cloud v18.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Identidad INE 2026: la paleta magenta/rosa anterior queda descontinuada.
-      // Se remapea la escala "pink" de Tailwind (usada en toda la app) a los lilas
-      // institucionales, así todo botón/encabezado/acento se actualiza desde un
-      // solo lugar sin tocar cada clase suelta. Los 4 tonos oficiales del manual
-      // quedan en sus posiciones exactas: 200=Lila claro, 400=Lila, 600=Lila
-      // institucional (color dominante), 800=Lila oscuro.
+      // Identidad INE (Manual de Identidad Institucional aprobado, actualización de
+      // sept. 2026): el lila queda descontinuado, sustituido por una paleta de
+      // grises ("se compone de tonos grises como colores primarios, lo que sustituye
+      // al sistema anterior"). Se remapea la escala "pink" de Tailwind (usada en toda
+      // la app) a los grises institucionales, así todo botón/encabezado/acento se
+      // actualiza desde un solo lugar sin tocar cada clase suelta. Los 3 tonos
+      // oficiales con nombre propio del manual quedan en sus posiciones exactas:
+      // 200=Gris claro, 400=Gris medio, 600=Gris Oxford (color dominante). El resto
+      // de paradas (50-100, 300, 500, 700-950) son interpolaciones para mantener una
+      // rampa continua, igual que en el remapeo anterior.
+      // Nota: el HEX de Gris Oxford impreso en el manual (#454277) tiene una errata
+      // de dedazo — no coincide con su propio RGB (69,66,71) ni con la muestra de
+      // color del documento. El valor correcto, verificado contra el RGB/CMYK y la
+      // muestra visual, es #454247.
       tailwind.config = {
         theme: {
           extend: {
@@ -20,20 +28,24 @@
             },
             colors: {
               pink: {
-                50: '#F5F1FA',
-                100: '#E9DFF5',
-                200: '#D1BDEF',  // Lila claro (oficial)
-                300: '#B79FDE',
-                400: '#9680B4',  // Lila (oficial)
-                500: '#7D5EA0',
-                600: '#674092',  // Lila institucional (oficial) — color dominante
-                700: '#58357E',
-                800: '#49276F',  // Lila oscuro (oficial)
-                900: '#331B4D',
-                950: '#1F1030',
+                50: '#F6F6F6',
+                100: '#EAEAEB',
+                200: '#C5C9CC',  // Gris claro (oficial)
+                300: '#A6ABAF',
+                400: '#828A91',  // Gris medio (oficial)
+                500: '#65696D',
+                600: '#454247',  // Gris Oxford (oficial) — color dominante
+                700: '#38363A',
+                800: '#2A282C',
+                900: '#1C1B1E',
+                950: '#100F11',
               },
               azul: {
-                DEFAULT: '#383B7E', // Azul institucional — texto y jerarquía secundaria
+                // Azul institucional retirado: el manual nuevo ya no contempla azul
+                // ("para textos, se deberán considerar los colores gris oxford y
+                // negro"). Se repunta a Gris Oxford para no tener que tocar cada
+                // clase "azul" suelta en el código.
+                DEFAULT: '#454247',
               },
             },
           },
