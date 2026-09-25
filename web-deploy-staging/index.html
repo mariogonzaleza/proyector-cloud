@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🧪 PRUEBAS — Proyector Cloud v18.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Identidad INE (Manual de Identidad Institucional aprobado, actualización de
+      // sept. 2026): el lila queda descontinuado, sustituido por una paleta de
+      // grises ("se compone de tonos grises como colores primarios, lo que sustituye
+      // al sistema anterior"). Se remapea la escala "pink" de Tailwind (usada en toda
+      // la app) a los grises institucionales, así todo botón/encabezado/acento se
+      // actualiza desde un solo lugar sin tocar cada clase suelta. Los 3 tonos
+      // oficiales con nombre propio del manual quedan en sus posiciones exactas:
+      // 200=Gris claro, 400=Gris medio, 600=Gris Oxford (color dominante). El resto
+      // de paradas (50-100, 300, 500, 700-950) son interpolaciones para mantener una
+      // rampa continua, igual que en el remapeo anterior.
+      // Nota: el HEX de Gris Oxford impreso en el manual (#454277) tiene una errata
+      // de dedazo — no coincide con su propio RGB (69,66,71) ni con la muestra de
+      // color del documento. El valor correcto, verificado contra el RGB/CMYK y la
+      // muestra visual, es #454247.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Arial', 'Helvetica', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            colors: {
+              pink: {
+                50: '#F6F6F6',
+                100: '#EAEAEB',
+                200: '#C5C9CC',  // Gris claro (oficial)
+                300: '#A6ABAF',
+                400: '#828A91',  // Gris medio (oficial)
+                500: '#65696D',
+                600: '#454247',  // Gris Oxford (oficial) — color dominante
+                700: '#38363A',
+                800: '#2A282C',
+                900: '#1C1B1E',
+                950: '#100F11',
+              },
+              azul: {
+                // Azul institucional retirado: el manual nuevo ya no contempla azul
+                // ("para textos, se deberán considerar los colores gris oxford y
+                // negro"). Se repunta a Gris Oxford para no tener que tocar cada
+                // clase "azul" suelta en el código.
+                DEFAULT: '#454247',
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.3.1",
+          "react-dom": "https://esm.sh/react-dom@18.3.1",
+          "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+          "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+          "lucide-react": "https://esm.sh/lucide-react@0.469.0?external=react,react-dom",
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+    <script>
+      // Configuración de Firebase — proyecto "proyector-voe-pruebas", COMPLETAMENTE
+      // separado del proyecto real "proyector-voe". Nada de lo que se guarde aquí
+      // toca los datos de producción.
+      window.__firebase_config = {
+        apiKey: "AIzaSyAoP4tGd_lVKBJH50EUtszZar_RlLRxGf0",
+        authDomain: "proyector-voe-pruebas.firebaseapp.com",
+        projectId: "proyector-voe-pruebas",
+        storageBucket: "proyector-voe-pruebas.firebasestorage.app",
+        messagingSenderId: "308951722403",
+        appId: "1:308951722403:web:d4f61f345c5261aebc1216"
+      };
+      window.__app_id = "proyector-cloud-v18";
+    </script>
+    <style>
+      /* Franja fija que deja claro en todo momento que esto NO es producción. */
+      #franja-pruebas {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
+        background: repeating-linear-gradient(45deg, #b45309, #b45309 12px, #92400e 12px, #92400e 24px);
+        color: #fff; font: 700 11px/1 Arial, sans-serif; text-align: center;
+        padding: 4px 0; letter-spacing: 0.08em; text-transform: uppercase;
+        pointer-events: none;
+      }
+      body { padding-top: 22px; }
+    </style>
+  </head>
+  <body>
+    <div id="franja-pruebas">🧪 Ambiente de pruebas — proyector-voe-pruebas — no es producción</div>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react" data-type="module" src="./src/App.jsx"></script>
+  </body>
+</html>

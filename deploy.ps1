@@ -9,6 +9,9 @@ Copy-Item -Path (Join-Path $root "src\App.jsx") -Destination (Join-Path $root "w
 # antes solo se copiaban index.html y App.jsx, así que cualquier archivo en src/data quedaba desactualizado
 # en cada despliegue sin que nada lo avisara.
 Copy-Item -Path (Join-Path $root "src\data\*") -Destination (Join-Path $root "web-deploy\src\data\") -Recurse -Force
+# Sincroniza src/utils (helpers.js, etc.) — se quedó fuera de este script cuando se creó ese
+# directorio, causando el mismo tipo de despliegue roto por archivo faltante que ya pasó con src/data.
+Copy-Item -Path (Join-Path $root "src\utils\*") -Destination (Join-Path $root "web-deploy\src\utils\") -Recurse -Force
 
 Write-Output "Archivos sincronizados a web-deploy/. Desplegando..."
 

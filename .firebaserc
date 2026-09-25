@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "proyector-voe"
+    "default": "proyector-voe",
+    "pruebas": "proyector-voe-pruebas"
   }
 }

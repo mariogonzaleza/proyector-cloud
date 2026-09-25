@@ -7,6 +7,7 @@
 !.firebaserc
 !.claude/*.json
 !firebase.json
+!firebase.staging.json
 
 # Scripts de verificación / basura de scratch
 verify_*.py
