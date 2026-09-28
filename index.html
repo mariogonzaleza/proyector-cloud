@@ -6,20 +6,8 @@
     <title>Proyector Cloud v18.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Identidad INE (Manual de Identidad Institucional aprobado, actualización de
-      // sept. 2026): el lila queda descontinuado, sustituido por una paleta de
-      // grises ("se compone de tonos grises como colores primarios, lo que sustituye
-      // al sistema anterior"). Se remapea la escala "pink" de Tailwind (usada en toda
-      // la app) a los grises institucionales, así todo botón/encabezado/acento se
-      // actualiza desde un solo lugar sin tocar cada clase suelta. Los 3 tonos
-      // oficiales con nombre propio del manual quedan en sus posiciones exactas:
-      // 200=Gris claro, 400=Gris medio, 600=Gris Oxford (color dominante). El resto
-      // de paradas (50-100, 300, 500, 700-950) son interpolaciones para mantener una
-      // rampa continua, igual que en el remapeo anterior.
-      // Nota: el HEX de Gris Oxford impreso en el manual (#454277) tiene una errata
-      // de dedazo — no coincide con su propio RGB (69,66,71) ni con la muestra de
-      // color del documento. El valor correcto, verificado contra el RGB/CMYK y la
-      // muestra visual, es #454247.
+      // Paleta basada en el Manual de Identidad INE (revisión 24-sept-2026); ver
+      // detalle de cada escala en el bloque "colors" abajo.
       tailwind.config = {
         theme: {
           extend: {
@@ -27,25 +15,97 @@
               sans: ['Arial', 'Helvetica', 'ui-sans-serif', 'system-ui', 'sans-serif'],
             },
             colors: {
+              // Paleta propia de Proyector Cloud, derivada del Manual INE (sept-2026)
+              // pero con el Beige llevado a color principal de acción — la herramienta
+              // es interna, así que se prioriza que no se vea plana.
+              //
+              // "pink" es la clave que usa TODO el código para el color principal
+              // (~160 usos: botones, pestañas activas, títulos, iconos). Ahora es una
+              // rampa dorado/bronce anclada en el Beige oficial (#C5A989 en 400). La
+              // parada 600 (fondo de botones con texto blanco) es un bronce profundo
+              // con contraste 4.9:1 contra blanco — cumple el mínimo de 4.5:1.
               pink: {
+                50: '#FBF7F0',
+                100: '#F5ECDD',
+                200: '#EADAC0',
+                300: '#DCC39F',
+                400: '#C5A989',  // Beige (oficial)
+                500: '#AD8A63',
+                600: '#8B6B47',  // Bronce — color principal de acción
+                700: '#735737',
+                800: '#5C452C',
+                900: '#463421',
+                950: '#2E2216',
+              },
+              // Gris institucional (Gris Oxford #454248 en 600): se usa a propósito
+              // para superficies "de peso" — encabezados grandes, tarjeta de inicio —
+              // donde el carbón contra el dorado da la combinación clásica negro + oro.
+              oxford: {
                 50: '#F6F6F6',
                 100: '#EAEAEB',
                 200: '#C5C9CC',  // Gris claro (oficial)
                 300: '#A6ABAF',
                 400: '#828A91',  // Gris medio (oficial)
                 500: '#65696D',
-                600: '#454247',  // Gris Oxford (oficial) — color dominante
+                600: '#454248',  // Gris Oxford (oficial)
                 700: '#38363A',
                 800: '#2A282C',
                 900: '#1C1B1E',
                 950: '#100F11',
               },
               azul: {
-                // Azul institucional retirado: el manual nuevo ya no contempla azul
-                // ("para textos, se deberán considerar los colores gris oxford y
-                // negro"). Se repunta a Gris Oxford para no tener que tocar cada
-                // clase "azul" suelta en el código.
-                DEFAULT: '#454247',
+                DEFAULT: '#454248', // Azul institucional retirado → Gris Oxford
+              },
+              beige: {
+                50: '#FAF8F6',
+                100: '#F2ECE5',
+                200: '#E5D8CA',
+                300: '#D6C3AC',
+                400: '#C5A989',  // Beige (oficial)
+                500: '#B28F73',
+                600: '#8C775F',
+                700: '#72604C',
+                800: '#5B4D3B',
+                900: '#45382B',
+                950: '#2E241A',
+              },
+              grisCalido: {
+                DEFAULT: '#DDD4CE', // Gris cálido (oficial)
+              },
+              // "violet" era el acento del sistema lila viejo (botón Observaciones,
+              // chip "Cerca del corte", tarjeta de Diferencia de Proyección). Se remapea
+              // al carbón institucional para que la app quede en dos familias: carbón +
+              // dorado (verde/ámbar/rojo quedan solo para estados).
+              violet: {
+                50: '#F6F6F6',
+                100: '#EAEAEB',
+                200: '#C5C9CC',
+                300: '#A6ABAF',
+                400: '#828A91',
+                500: '#65696D',
+                600: '#454248',
+                700: '#38363A',
+                800: '#2A282C',
+                900: '#1C1B1E',
+                950: '#100F11',
+              },
+              // "slate" es el neutro de texto/bordes/fondos (~600 usos). Rampa cálida:
+              // el 50 es un crema visible (fondo de todas las pantallas) para que las
+              // tarjetas blancas resalten encima; el 200 (bordes) lleva tinte dorado.
+              // Los tonos de texto (500+) conservan contraste ≥4.5:1 contra blanco. El extremo
+              // oscuro (800-950) se aclaró hacia Gris Oxford para no tener "negros".
+              slate: {
+                50: '#F8F4EE',
+                100: '#F1EBE2',
+                200: '#E6DDD0',
+                300: '#D4C8B7',
+                400: '#A89C8C',
+                500: '#7A6F62',
+                600: '#5F5A55',
+                700: '#524E4A',
+                800: '#46433F',  // ~Gris Oxford: el tono más oscuro de uso normal
+                900: '#3B3835',
+                950: '#2A2826',
               },
             },
           },

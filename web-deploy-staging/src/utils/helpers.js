@@ -161,3 +161,19 @@ export const clasificarCategoriaCasillaINE = (codigoNormalizado) => {
     if (/^S\d+$/.test(c)) return 'ESPECIAL';
     return null;
 };
+
+// El Manual de Identidad INE pide Arial como tipografía primaria en todo material institucional.
+// Se aplica a TODAS las celdas de cada hoja justo antes de exportar (Excel usa otra fuente por
+// defecto si la celda no la especifica). Crea objetos de estilo nuevos para no mutar estilos
+// compartidos entre celdas.
+export const aplicarFuenteInstitucional = (wb) => {
+  wb.SheetNames.forEach(nombre => {
+    const ws = wb.Sheets[nombre];
+    Object.keys(ws).forEach(addr => {
+      if (addr[0] === '!') return;
+      const celda = ws[addr];
+      celda.s = { ...(celda.s || {}), font: { ...((celda.s && celda.s.font) || {}), name: 'Arial' } };
+    });
+  });
+  return wb;
+};

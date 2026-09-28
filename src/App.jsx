@@ -23,7 +23,7 @@ import {
   p4, downloadBlob, estaCercaDelCorte750, distanciaAlCorte750, nivelRiesgoCorte750,
   calcularEquipamientoCasilla, formatearNombreFolio, f4, normalizarDistrito,
   obtenerFechaHoraArchivo, obtenerDistribucionArray, normalizarClave, claveManzana,
-  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE,
+  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional,
 } from './src/utils/helpers.js';
 
 // --- CONFIGURACIÓN DE ENTORNO ---
@@ -805,7 +805,7 @@ export default function App() {
       });
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: h.length > 20 ? 34 : 16 }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
@@ -820,7 +820,7 @@ export default function App() {
           rowsDif.push(['TOTAL', reporteDiferenciaProyeccion.totales.real, reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.proyectadoLista, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoPadron, reporteDiferenciaProyeccion.totales.real - reporteDiferenciaProyeccion.totales.proyectadoLista]);
           const wsDif = window.XLSX.utils.aoa_to_sheet(rowsDif);
           wsDif['!cols'] = headersDif.map(h => ({ wch: h.length > 20 ? 30 : 16 }));
-          const estiloHeaderDif = { fill: { patternType: 'solid', fgColor: { rgb: '7C3AED' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          const estiloHeaderDif = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
           for (let c = 0; c < headersDif.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDif[addr]) wsDif[addr].s = estiloHeaderDif; }
           window.XLSX.utils.book_append_sheet(wb, wsDif, 'Diferencia de Proyección');
       }
@@ -843,7 +843,7 @@ export default function App() {
           ];
           const wsComp = window.XLSX.utils.aoa_to_sheet(rowsComp);
           wsComp['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }, { wch: 12 }];
-          const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '0284C7' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
           for (let c = 0; c < headersComp.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsComp[addr]) wsComp[addr].s = estiloHeaderComp; }
           window.XLSX.utils.book_append_sheet(wb, wsComp, 'Comparativo 2023-2024');
       }
@@ -858,13 +858,13 @@ export default function App() {
           ])];
           const wsHist = window.XLSX.utils.aoa_to_sheet(rowsHist);
           wsHist['!cols'] = headersHist.map(h => ({ wch: h.length > 18 ? 26 : 16 }));
-          const estiloHeaderHist = { fill: { patternType: 'solid', fgColor: { rgb: '1E293B' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+          const estiloHeaderHist = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
           for (let c = 0; c < headersHist.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsHist[addr]) wsHist[addr].s = estiloHeaderHist; }
           wsHist['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowsHist.length - 1, c: headersHist.length - 1 } }) };
           window.XLSX.utils.book_append_sheet(wb, wsHist, 'Última Actualización');
       }
 
-      window.XLSX.writeFile(wb, `Plantilla_Ubicacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+      window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Plantilla_Ubicacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   // Plantilla vacía en el formato que el sistema espera para cargar el padrón de un distrito
@@ -883,12 +883,12 @@ export default function App() {
       }
       const ws = window.XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = headers.map(h => ({ wch: Math.max(12, Math.min(h.length + 4, 22)) }));
-      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+      const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
       for (let c = 0; c < headers.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (ws[addr]) ws[addr].s = estiloHeader; }
       ws['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasConFormula, c: headers.length - 1 } }) };
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(wb, ws, 'Padrón');
-      window.XLSX.writeFile(wb, `Plantilla_Padron_${obtenerFechaHoraArchivo()}.xlsx`);
+      window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Plantilla_Padron_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const compararPadrones = (anterior, actual) => {
@@ -996,7 +996,7 @@ export default function App() {
     const c = comparacionAnterior;
     const wb = window.XLSX.utils.book_new();
 
-    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderComp = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
     const aplicarEstiloHoja = (ws, numCols, numRows, colorFilas) => {
         for (let cc = 0; cc < numCols; cc++) {
             const addr = window.XLSX.utils.encode_cell({ r: 0, c: cc });
@@ -1060,7 +1060,7 @@ export default function App() {
         for (let cc = 0; cc < 7; cc++) {
             const addr = window.XLSX.utils.encode_cell({ r, c: cc });
             if (!wsDeltaSec[addr]) continue;
-            if (esTotal) { wsDeltaSec[addr].s = { font: { bold: true }, fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, alignment: { horizontal: 'center' } }; continue; }
+            if (esTotal) { wsDeltaSec[addr].s = { font: { bold: true }, fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, alignment: { horizontal: 'center' } }; continue; }
             if (cc === 3 || cc === 6) {
                 const val = wsDeltaSec[addr].v;
                 const color = val > 0 ? 'C6EFCE' : val < 0 ? 'FFC7CE' : null;
@@ -1108,7 +1108,7 @@ export default function App() {
     }
     window.XLSX.utils.book_append_sheet(wb, wsMz, 'Manzanas');
 
-    window.XLSX.writeFile(wb, `Comparacion_Padron_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Comparacion_Padron_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const cargarRespaldoJSON = (e) => {
@@ -1354,7 +1354,7 @@ export default function App() {
     });
 
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderVal = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
 
     // Hoja Resumen
     const wsResumenData = [
@@ -1377,7 +1377,7 @@ export default function App() {
     const filaHeaderResumen = 10;
     for (let c = 0; c < 6; c++) { const addr = window.XLSX.utils.encode_cell({ r: filaHeaderResumen, c }); if (wsResumen[addr]) wsResumen[addr].s = estiloHeaderVal; }
     for (let r = filaHeaderResumen + 1; r < wsResumenData.length; r++) {
-        if (wsResumenData[r][2] > 0) { const addr = window.XLSX.utils.encode_cell({ r, c: 2 }); if (wsResumen[addr]) wsResumen[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } }; }
+        if (wsResumenData[r][2] > 0) { const addr = window.XLSX.utils.encode_cell({ r, c: 2 }); if (wsResumen[addr]) wsResumen[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true }, alignment: { horizontal: 'center' } }; }
     }
     window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
@@ -1398,7 +1398,7 @@ export default function App() {
     wsDetalle['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: headers.length - 1 } }) };
     window.XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Manzanas');
 
-    window.XLSX.writeFile(wb, `Validacion_Manzanas_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Validacion_Manzanas_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const exportarQGIS = () => {
@@ -1515,11 +1515,11 @@ export default function App() {
     ws1['!cols'] = [{wch:11.3}, {wch:13.5}, {wch:13.5}, {wch:11}, {wch:11}, {wch:14.5}, {wch:7.5}, {wch:11.5}, {wch:11.5}, {wch:11.5}, {wch:11.5}, {wch:3.5}, {wch:11.5}];
     ws1['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }, { hpt: 13 }, { hpt: 15 }, { hpt: 13 }, { hpt: 13 }];
 
-    const estiloTituloS = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
-    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
-    const estiloHeaderTotalS = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloTituloS = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalS = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: '000000' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { top: { style: 'medium' }, bottom: { style: 'thin' } } };
+    const estiloSubHeaderTipoCasillaS = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: false, sz: 8, color: { rgb: '000000' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: { bottom: { style: 'medium' } } };
+    const estiloHeaderTotalS = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 8 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloFilaTotalGrandeS = { fill: { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } }, font: { bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
@@ -1579,9 +1579,9 @@ export default function App() {
     ws2['!cols'] = [{wch:11.3}, {wch:13.5}, {wch:13.5}, {wch:11}, {wch:11}, {wch:3.5}, {wch:15}, {wch:15}];
     ws2['!rows'] = [{ hpt: 27.65 }, { hpt: 27.65 }];
 
-    const estiloTituloC = { fill: { patternType: 'solid', fgColor: { rgb: 'DBDBDB' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: '38363A' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloTituloC = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true, sz: 11 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalC = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPadronListaC = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true, sz: 10, color: { rgb: '000000' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     if (ws2['A1']) ws2['A1'].s = estiloTituloC;
     ['A3','B3','C3','D3','E3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPrincipalC; });
     ['G3','H3'].forEach(addr => { if (ws2[addr]) ws2[addr].s = estiloHeaderPadronListaC; });
@@ -1628,7 +1628,7 @@ export default function App() {
     ws3['!cols'] = [{wch:10}, {wch:15}, {wch:11}, {wch:10}, {wch:11}, {wch:10}, {wch:9}, {wch:15}, {wch:3.5}, {wch:9}, {wch:16}, {wch:16}];
     ws3['!rows'] = [{ hpt: 26 }];
 
-    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloHeaderPrincipalE = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderBasicaE = { fill: { patternType: 'solid', fgColor: { rgb: '4472C4' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderExtraordinariaE = { fill: { patternType: 'solid', fgColor: { rgb: '65BFCB' } }, font: { bold: false, sz: 9, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const estiloHeaderManzanaSedeE = { fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }, font: { bold: false, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
@@ -1644,20 +1644,20 @@ export default function App() {
     }
 
     window.XLSX.utils.book_append_sheet(wb, ws3, "Extraordinarias");
-    window.XLSX.writeFile(wb, `Proyeccion_corte_D${distritoInfo.numero}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Proyeccion_corte_D${distritoInfo.numero}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const exportarReporteObservaciones = () => {
     if (!window.XLSX) return;
 
     const wb = window.XLSX.utils.book_new();
-    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerStyle = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     const dataCellStyle = { alignment: { horizontal: 'center' } };
-    const estiloVariacion = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
-    const estiloMenos100 = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
-    const estiloCerca750 = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
-    const estiloRiesgoAlto = { fill: { patternType: 'solid', fgColor: { rgb: 'FF8080' } }, font: { bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center' } };
-    const estiloRiesgoMedio = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC28A' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloVariacion = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloMenos100 = { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloCerca750 = { fill: { patternType: 'solid', fgColor: { rgb: 'B2B2B2' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoAlto = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center' } };
+    const estiloRiesgoMedio = { fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
     const estiloRiesgoBajo = { fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
 
     // --- HOJA 1: RESUMEN ---
@@ -1709,19 +1709,21 @@ export default function App() {
     wsDetalle['!autofilter'] = { ref: window.XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: headers.length - 1 } }) };
     window.XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
 
-    window.XLSX.writeFile(wb, `Reporte_Observaciones_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Reporte_Observaciones_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const exportarInformeEjecutivoPDF = () => {
     if (!window.jspdf || isPdfLibLoading) { setErrorMessage("La librería de PDF aún está cargando. Intenta de nuevo."); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    // Manual INE: textos en Gris Oxford, líneas en Gris claro, filas alternas en Gris cálido.
+    doc.autoTableSetDefaults({ styles: { textColor: [69, 66, 72], lineColor: [197, 201, 204] }, alternateRowStyles: { fillColor: [221, 212, 206] } });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 40;
     let y;
 
-    doc.setFillColor(42, 40, 44);
+    doc.setFillColor(69, 66, 72);
     doc.rect(0, 0, pageWidth, 90, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -1734,7 +1736,7 @@ export default function App() {
     doc.setFontSize(9);
     doc.text(`Corte de padrón: ${fechaCorte || 'N/A'}  ·  Generado: ${new Date().toLocaleString('es-MX')}`, margin, 78);
 
-    doc.setTextColor(20, 20, 20);
+    doc.setTextColor(0, 0, 0);
     y = 115;
 
     // --- 1. Resumen General ---
@@ -1743,7 +1745,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Casilla', 'Padrón', 'Lista Nominal']],
       body: [
         ['Total de Casillas', totalCasillasDistrito.totalPadron, totalCasillasDistrito.totalLista],
@@ -1773,7 +1775,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
       head: [['Municipio', 'Casillas', '% del Distrito']],
       body: municipiosDelDistrito.map(m => [m.nombre, String(m.casillas), `${m.porcentaje.toFixed(1)}%`]),
     });
@@ -1786,7 +1788,7 @@ export default function App() {
     y += 8;
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [42, 40, 44], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
       head: [['Observación', 'Secciones Detectadas']],
       body: [
         ['Variación Padrón/Lista', String(countVariacion)],
@@ -1804,21 +1806,22 @@ export default function App() {
       if (filas.length === 0) return;
       if (y > pageHeight - 100) { doc.addPage(); y = 50; }
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-      doc.setTextColor(color[0], color[1], color[2]);
+      doc.setTextColor(69, 66, 72);
       doc.text(titulo, margin, y);
-      doc.setTextColor(20, 20, 20);
+      doc.setTextColor(0, 0, 0);
       y += 6;
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 4 }, headStyles: { fillColor: color, textColor: 255, fontStyle: 'bold' },
+        // Texto blanco solo sobre Gris Oxford; sobre Beige/Gris medio no alcanza el contraste del manual.
+        styles: { fontSize: 8, cellPadding: 4 }, headStyles: { fillColor: color, textColor: color[0] < 100 ? 255 : [0, 0, 0], fontStyle: 'bold' },
         head: [['Sección', 'Categoría', 'Padrón', 'Lista', ...colExtraHead]],
         body: filas.map(f => [f4(f.seccion), f.categoria, String(f.padronRef), String(f.listaRef), ...colExtraBody(f)]),
       });
       y = doc.lastAutoTable.finalY + 16;
     };
 
-    tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [239, 68, 68], filasVariacion, [], () => []);
-    tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [217, 119, 6], filasMenos100, [], () => []);
+    tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [69, 66, 72], filasVariacion, [], () => []);
+    tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [197, 169, 137], filasMenos100, [], () => []);
     tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [130, 138, 145], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
 
     // --- 4. Estado de Ubicación de Casillas ---
@@ -1833,7 +1836,7 @@ export default function App() {
     const pct = (n) => totalSeccionesUbicacion > 0 ? `${(n / totalSeccionesUbicacion * 100).toFixed(1)}%` : '0.0%';
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [130, 138, 145], textColor: [0, 0, 0], fontStyle: 'bold' },
       head: [['Estado del Domicilio', 'Secciones', '% del Distrito']],
       body: [
         ['Completo', String(completas), pct(completas)],
@@ -1851,7 +1854,7 @@ export default function App() {
     const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
     doc.autoTable({
       startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 71], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
       head: [['Tipo de Domicilio', 'Domicilios', '% del Total', 'Secciones']],
       body: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => [
         tipo, String(count), totalDomicilios > 0 ? `${(count / totalDomicilios * 100).toFixed(1)}%` : '0.0%', String(seccionesPorTipoDomicilio[tipo] || 0)
@@ -1869,7 +1872,7 @@ export default function App() {
       const fmtDif = (n) => `${n > 0 ? '+' : ''}${n}`;
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
         head: [['Tipo de Casilla', 'Proceso 2023-2024', 'Este proceso', 'Diferencia']],
         body: [
           ['Básicas', String(comparativo2024.conteo2024.basicas), String(comparativo2024.conteoActual.basicas), fmtDif(dif.basicas)],
@@ -1893,7 +1896,7 @@ export default function App() {
         if (y > pageHeight - 100) { doc.addPage(); y = 50; }
         doc.autoTable({
           startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-          styles: { fontSize: 8, cellPadding: 6 }, headStyles: { fillColor: [2, 132, 199], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 8, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
           head: [['Cambio', 'Secciones']],
           body: [
             ...(comparativo2024.seccionesNuevas.length > 0 ? [[`Nuevas (${comparativo2024.seccionesNuevas.length})`, comparativo2024.seccionesNuevas.join(', ')]] : []),
@@ -1907,7 +1910,7 @@ export default function App() {
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.setTextColor(150);
+      doc.setTextColor(130, 138, 145);
       doc.text(`Proyector Cloud · Distrito ${f4(distritoInfo.numero)} · Página ${i} de ${totalPages}`, margin, pageHeight - 20);
     }
 
@@ -1957,8 +1960,8 @@ export default function App() {
 
   const exportarReporteEquipamientoMCU = () => {
     if (!window.XLSX) return;
-    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
+    const headerStyleIne = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const totalesRowStyle = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center' } };
     const dataCellStyle = { font: { sz: 10 }, alignment: { horizontal: 'center' } };
 
     const wb = window.XLSX.utils.book_new();
@@ -2032,7 +2035,7 @@ export default function App() {
     for (let c = 0; c < headersDom.length; c++) { const addr = window.XLSX.utils.encode_cell({ r: totalRowIdxDom, c }); if (wsDom[addr]) wsDom[addr].s = totalesRowStyle; }
     window.XLSX.utils.book_append_sheet(wb, wsDom, "Domicilios");
 
-    window.XLSX.writeFile(wb, `Reporte Equipamiento MCU Distrito ${f4(distritoInfo.numero)} ${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Reporte Equipamiento MCU Distrito ${f4(distritoInfo.numero)} ${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const sortedCasillasGlobales = useMemo(() => {
@@ -2129,7 +2132,7 @@ export default function App() {
   const exportarReporteConflictosDiseno = () => {
     if (!window.XLSX || conflictosDiseno.total === 0) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderConf = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const seccionesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => String(m.seccion).trim()))];
     const localidadesAfectadas = [...new Set(conflictosDiseno.desaparecidas.map(m => `${f4(m.seccion)}-${f4(m.localidad)}`))];
@@ -2151,16 +2154,16 @@ export default function App() {
     const wsDesap = window.XLSX.utils.aoa_to_sheet(hojaDesap);
     wsDesap['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
     for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDesap[addr]) wsDesap[addr].s = estiloHeaderConf; }
-    for (let r = 1; r < hojaDesap.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesap[addr]) wsDesap[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFC7CE' } }, alignment: { horizontal: 'center' } }; } }
+    for (let r = 1; r < hojaDesap.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesap[addr]) wsDesap[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, alignment: { horizontal: 'center' } }; } }
     window.XLSX.utils.book_append_sheet(wb, wsDesap, 'Manzanas Desaparecidas');
 
-    window.XLSX.writeFile(wb, `Conflictos_Diseno_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Conflictos_Diseno_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const exportarReporteImportacionJSON = () => {
     if (!window.XLSX || !importJsonAvisos) return;
     const wb = window.XLSX.utils.book_new();
-    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
+    const estiloHeaderImp = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' } };
 
     const wsResumenData = [
         ['REPORTE DE IMPORTACIÓN DE RESPALDO', ''],
@@ -2180,10 +2183,10 @@ export default function App() {
     const wsNoEnc = window.XLSX.utils.aoa_to_sheet(hojaNoEnc);
     wsNoEnc['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
     for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsNoEnc[addr]) wsNoEnc[addr].s = estiloHeaderImp; }
-    for (let r = 1; r < hojaNoEnc.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsNoEnc[addr]) wsNoEnc[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'FFEB9C' } }, alignment: { horizontal: 'center' } }; } }
+    for (let r = 1; r < hojaNoEnc.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsNoEnc[addr]) wsNoEnc[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, alignment: { horizontal: 'center' } }; } }
     window.XLSX.utils.book_append_sheet(wb, wsNoEnc, 'Manzanas No Encontradas');
 
-    window.XLSX.writeFile(wb, `Aviso_Importacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Aviso_Importacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const consolidadoB_C = useMemo(() => {
@@ -2374,7 +2377,7 @@ export default function App() {
     ];
     ws['!rows'] = { 3: { hpt: 40 } };
 
-    const FUENTE = 'Aptos Narrow';
+    const FUENTE = 'Arial';
 
     if (ws['A1']) ws['A1'].s = { font: { name: FUENTE, sz: 11, bold: true } };
     if (ws['A2']) ws['A2'].s = { font: { name: FUENTE, sz: 11, bold: true } };
@@ -2398,13 +2401,13 @@ export default function App() {
 
     const totalesRowIdx = dataStartRow + filasFolios.length;
     const filaTotal = totalesRowIdx + 1;
-    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
+    const estiloTotalRosa = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { name: FUENTE, sz: 9, color: { rgb: 'FFFFFF' }, bold: true }, alignment: { horizontal: 'center' } };
     ['A', 'B', 'C', 'D'].forEach(col => { if (ws[`${col}${filaTotal}`]) ws[`${col}${filaTotal}`].s = estiloTotalRosa; });
     if (ws[`H${filaTotal}`]) ws[`H${filaTotal}`].s = { numFmt: '#,##0', font: { name: FUENTE, sz: 9 }, alignment: { horizontal: 'center' } };
 
     const headerStyleBase = { font: { name: FUENTE, sz: 10, bold: true }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
-    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '2A282C' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRosa = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { ...headerStyleBase.font, color: { rgb: 'FFFFFF' } } };
+    const headerRppNacional = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '828A91' } }, font: { ...headerStyleBase.font, color: { rgb: '000000' } } };
     const headerRppLocal = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: '6FC5E6' } } };
     const headerCandIndep = { ...headerStyleBase, fill: { patternType: 'solid', fgColor: { rgb: 'C5C9CC' } } };
     const headerStylesPorCol = { A: headerRosa, B: headerRosa, C: headerRosa, D: headerRosa, E: headerRppNacional, F: headerRppLocal, G: headerCandIndep, H: headerRosa, I: headerRosa, J: headerRosa, K: headerRosa };
@@ -2433,7 +2436,7 @@ export default function App() {
     });
     const wsPlantilla = window.XLSX.utils.aoa_to_sheet(rowsPlantilla);
     wsPlantilla['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
-    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: '454247' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const headerPlantilla = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { name: FUENTE, sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
     ['A', 'B', 'C', 'D', 'E'].forEach(col => { const cell = wsPlantilla[`${col}1`]; if (cell) cell.s = headerPlantilla; });
     filasFolios.forEach((f, idx) => {
         const r = idx + 2;
@@ -2448,7 +2451,7 @@ export default function App() {
     });
     window.XLSX.utils.book_append_sheet(wb, wsPlantilla, 'Plantilla Boletas');
 
-    window.XLSX.writeFile(wb, `Asignacion_Folios_Distrito_${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`, { cellStyles: true });
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Asignacion_Folios_Distrito_${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`, { cellStyles: true });
   };
 
   const seccionesAgrupadas = useMemo(() => {
@@ -3121,13 +3124,14 @@ export default function App() {
     <div className="lg:col-span-12 overflow-y-auto p-10 text-left">
       <div className="max-w-7xl mx-auto space-y-8 pb-24">
 
-        <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
+        <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white shadow-xl">
+            <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
             <div className="flex items-center gap-6">
-                <div className="p-4 rounded-2xl bg-white/20 shadow-inner">
+                <div className="p-4 rounded-2xl bg-white/20 shadow-inner ring-1 ring-beige-300/30">
                     <Box className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                    <p className="text-xs font-black uppercase tracking-[0.4em] text-pink-200">
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-beige-200">
                         Proyección Logística (Modelo de Casilla Única INE · PEC 2026-2027)
                     </p>
                     <h4 className="text-3xl font-black italic tracking-tighter mt-1 text-white">Módulo de Equipamiento</h4>
@@ -3159,7 +3163,7 @@ export default function App() {
                 const Icon = tab.icon;
                 const isActive = equipTab === tab.key;
                 return (
-                    <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                    <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                         <Icon className="w-3.5 h-3.5" /> {tab.label}
                     </button>
                 );
@@ -3196,7 +3200,7 @@ export default function App() {
             </div>
 
             <div className="mt-8 pt-6 border-t-2 border-slate-100">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-pink-500" /> Representaciones y Elecciones Locales</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-beige-600" /> Representaciones y Elecciones Locales</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Partidos Nacionales</label>
@@ -3238,7 +3242,7 @@ export default function App() {
             </div>
 
             <div className="mt-8 pt-6 border-t-2 border-slate-100">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-pink-500" /> Equipamiento Mobiliario</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2 mb-4"><LayoutGrid className="w-4 h-4 text-beige-600" /> Equipamiento Mobiliario</h3>
                 <div className="border-2 p-4 rounded-2xl bg-slate-50 border-slate-200 max-w-md">
                     <p className="text-[11px] text-slate-500 mb-3">Check para cambiar mesa para urna(s) por silla.</p>
                     <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-slate-200">
@@ -3317,14 +3321,14 @@ export default function App() {
 
             {/* MATERIAL ELECTORAL */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-300 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-2 h-full bg-slate-800"></div>
+                <div className="absolute top-0 left-0 w-2 h-full bg-oxford-500"></div>
                 <h3 className="text-base font-black uppercase text-slate-800 mb-4">Material Electoral</h3>
 
-                <div className="bg-pink-50 p-4 rounded-xl border-2 border-pink-200 mb-4">
-                    <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-pink-200 pb-1">Aporta INE</p>
+                <div className="bg-beige-100 p-4 rounded-xl border-2 border-beige-300 mb-4">
+                    <p className="text-[10px] text-pink-600 font-black uppercase tracking-widest mb-2 border-b-2 border-beige-300 pb-1">Aporta INE</p>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Mampara</p>
+                            <p className="text-[9px] text-beige-600 font-black uppercase tracking-widest mb-1.5">Con Mampara</p>
                             <ul className="text-sm text-slate-600 font-bold space-y-1.5">
                                 <li>Mamparas: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.mamparas}</span></li>
                                 <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.urnasFederales}</span></li>
@@ -3333,8 +3337,8 @@ export default function App() {
                                 <li>Marc. Cred.: <span className="text-slate-900 ml-1">{paqueteMampara.materialIne.marcadorasCredenciales}</span></li>
                             </ul>
                         </div>
-                        <div className="border-l-2 border-pink-200 pl-4">
-                            <p className="text-[9px] text-pink-500 font-black uppercase tracking-widest mb-1.5">Con Cancel</p>
+                        <div className="border-l-2 border-beige-300 pl-4">
+                            <p className="text-[9px] text-beige-600 font-black uppercase tracking-widest mb-1.5">Con Cancel</p>
                             <ul className="text-sm text-slate-600 font-bold space-y-1.5">
                                 <li>Cancel: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.canceles}</span></li>
                                 <li>Urna Fed: <span className="text-slate-900 ml-1">{paqueteCancel.materialIne.urnasFederales}</span></li>
@@ -3370,7 +3374,7 @@ export default function App() {
               <div className="flex flex-wrap gap-2">
                   {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
                   <div className="flex gap-2 mr-2 pr-2 border-r border-slate-200">
-                       <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-pink-600 hover:bg-pink-800 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
+                       <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 hover:from-oxford-500 hover:to-oxford-700 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
                        <label className="text-xs font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer border-2 border-slate-200"><FileUp className="w-4 h-4" /> Cargar<input type="file" className="hidden" accept=".json" onChange={importarRespaldoEquipamiento} /></label>
                   </div>
                   {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
@@ -3388,7 +3392,7 @@ export default function App() {
                       return (
                           <button key={g.seccion} onClick={() => {
                               setSeleccionAsignacion(prev => todasSeleccionadas ? prev.filter(id => !g.ids.includes(id)) : [...new Set([...prev, ...g.ids])]);
-                          }} className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase border-2 transition-colors ${todasSeleccionadas ? 'bg-pink-600 border-pink-700 text-white' : algunaSeleccionada ? 'bg-white border-pink-400 text-pink-600' : 'bg-white border-slate-200 text-slate-600 hover:border-pink-300'}`}>
+                          }} className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase border-2 transition-colors ${todasSeleccionadas ? 'bg-pink-600 border-pink-700 text-white' : algunaSeleccionada ? 'bg-white border-pink-400 text-pink-600' : 'bg-white border-slate-200 text-slate-600 hover:border-beige-400'}`}>
                               SEC {f4(g.seccion)} ({g.ids.length}){algunaSeleccionada && ` · ${seleccionadas}/${g.ids.length}`}
                           </button>
                       );
@@ -3427,7 +3431,7 @@ export default function App() {
               })}
           </div>
           {seleccionAsignacion.length > 0 && (
-              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-oxford-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
                   <span className="text-xs font-black uppercase">{seleccionAsignacion.length} casilla(s) seleccionada(s)</span>
                   <button onClick={() => marcarSeleccionAsignacion('cancel')} className="bg-white text-slate-800 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Cancel</button>
                   <button onClick={() => marcarSeleccionAsignacion('mampara')} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Marcar como Mampara</button>
@@ -3442,19 +3446,20 @@ export default function App() {
         {equipTab === 'volumen' && (
         <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
           <div className="px-4 sm:px-8 pt-8 pb-8">
-        <div className="bg-pink-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-800 text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-oxford-600 via-oxford-600 to-pink-700 p-8 rounded-3xl shadow-xl border-b-8 border-pink-500 text-white">
+            <div className="absolute -right-16 -top-20 w-80 h-80 rounded-full bg-pink-400/25 blur-3xl pointer-events-none" />
             <div className="flex justify-end mb-6">
-                <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-pink-50 text-pink-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
+                <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-beige-100 text-oxford-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Mobiliario y Sillas</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-400/30 pb-2">Mobiliario y Sillas</p>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
+                        <div className="relative bg-white/5 p-5 rounded-2xl text-center border-2 border-pink-400/30 shadow-sm">
                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Tablones/Mesas</p>
                             <p className="text-3xl font-black text-white">{equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()}</p>
                         </div>
-                        <div className="bg-pink-800 p-5 rounded-2xl text-center border-2 border-pink-700 shadow-sm">
+                        <div className="relative bg-white/5 p-5 rounded-2xl text-center border-2 border-pink-400/30 shadow-sm">
                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Sillas</p>
                             <p className="text-3xl font-black text-white">{equipamientoDistrital.sillas.total.toLocaleString()}</p>
                         </div>
@@ -3462,20 +3467,20 @@ export default function App() {
                     <p className="text-[10px] text-slate-400 mt-3 font-bold">Desglose sillas: FMDCU {equipamientoDistrital.sillas.fmdcu.toLocaleString()} · RPP Nacionales {equipamientoDistrital.sillas.nacionales.toLocaleString()} · RPP Locales {equipamientoDistrital.sillas.locales.toLocaleString()} · Mamparas {equipamientoDistrital.sillas.mamparas.toLocaleString()}{equipConfig.sillasParaUrna && ` · Urna ${equipamientoDistrital.sillas.urna.toLocaleString()}`}</p>
 
                     {preciosRentaDesbloqueado && (
-                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 shadow-sm mt-4">
+                        <div className="relative bg-white/5 p-5 rounded-2xl border-2 border-pink-400/30 shadow-sm mt-4">
                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Unlock className="w-3 h-3" /> Costo Total de Renta (Mobiliario)</p>
                             <p className="text-2xl font-black text-white">${costoRentaMobiliario.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             <p className="text-[10px] text-slate-400 mt-1">Mesas: {equipamientoDistrital.mobiliario.tablonesMesas.toLocaleString()} × ${costoRentaMobiliario.precioMesa.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalMesas.toLocaleString(undefined, { minimumFractionDigits: 2 })} · Sillas: {equipamientoDistrital.sillas.total.toLocaleString()} × ${costoRentaMobiliario.precioSilla.toLocaleString(undefined, { minimumFractionDigits: 2 })} = ${costoRentaMobiliario.totalSillas.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
                     )}
 
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Accesibilidad</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-400/30 pb-2">Accesibilidad</p>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
+                        <div className="relative bg-white/5 p-5 rounded-2xl border-2 border-pink-400/30 flex flex-col justify-center items-center shadow-sm">
                             <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Mamparas Especiales (por domicilio)</span>
                             <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.total.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-5 rounded-2xl border-2 border-pink-700 flex flex-col justify-center items-center shadow-sm">
+                        <div className="relative bg-white/5 p-5 rounded-2xl border-2 border-pink-400/30 flex flex-col justify-center items-center shadow-sm">
                             <span className="text-[10px] font-bold text-slate-300 uppercase text-center mb-1">Domicilios Detectados</span>
                             <span className="text-2xl font-black text-white">{mamparasAccesibilidadPorDomicilio.totalDomicilios.toLocaleString()}</span>
                         </div>
@@ -3483,47 +3488,47 @@ export default function App() {
                 </div>
 
                 <div>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta INE</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mb-4 border-b-2 border-pink-400/30 pb-2">Material Electoral — Aporta INE</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Canceles</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.canceles.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Mamparas</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.mamparas.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Urnas Fed</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.urnasFederales.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Boletas</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadoresBoletas.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Marc. Cred</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.marcadorasCredenciales.toLocaleString()}</span>
                         </div>
-                        <div className="bg-pink-800 p-4 rounded-xl border-2 border-pink-700 flex justify-between items-center shadow-sm">
+                        <div className="relative bg-white/5 p-4 rounded-xl border-2 border-pink-400/30 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-slate-300 uppercase">Líq. Indeleble</span>
                             <span className="text-base font-black text-white">{equipamientoDistrital.materialIne.liquidosIndelebles.toLocaleString()}</span>
                         </div>
                     </div>
 
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-800 pb-2">Material Electoral — Aporta OPL / IEEM</p>
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-pink-400 mt-6 mb-4 border-b-2 border-pink-400/30 pb-2">Material Electoral — Aporta OPL / IEEM</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                        <div className="bg-white p-4 rounded-xl border-2 border-beige-400 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-pink-600 uppercase">Urnas Locales</span>
-                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
+                            <span className="text-base font-black text-oxford-700">{equipamientoDistrital.materialOpl.urnasLocales.toLocaleString()}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                        <div className="bg-white p-4 rounded-xl border-2 border-beige-400 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-pink-600 uppercase">Base P/Urna</span>
-                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
+                            <span className="text-base font-black text-oxford-700">{equipamientoDistrital.materialOpl.basesPortaUrna.toLocaleString()}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border-2 border-pink-300 flex justify-between items-center shadow-sm">
+                        <div className="bg-white p-4 rounded-xl border-2 border-beige-400 flex justify-between items-center shadow-sm">
                             <span className="text-[11px] font-bold text-pink-600 uppercase">Cancel IEEM</span>
-                            <span className="text-base font-black text-pink-700">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
+                            <span className="text-base font-black text-oxford-700">{equipamientoDistrital.materialOpl.cancelPorCasilla.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -3552,7 +3557,7 @@ export default function App() {
                   const Icon = tab.icon;
                   const isActive = proyeccionTab === tab.key;
                   return (
-                      <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {tab.label}
                       </button>
                   );
@@ -3562,14 +3567,15 @@ export default function App() {
           {proyeccionTab === 'resumen' && (
           <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
                   <div className="p-8 space-y-6">
-                      <div className="p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-r from-pink-600 to-pink-800">
+                      <div className="relative overflow-hidden p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600">
+                          <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
                           <div className="flex flex-wrap items-center justify-between gap-4 text-left">
                               <div className="flex items-center gap-4 text-left">
-                                  <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white">
+                                  <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white ring-1 ring-beige-300/30">
                                       <Calculator className="w-8 h-8" />
                                   </div>
                                   <div className="text-left">
-                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-pink-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-beige-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
                                       <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
                                   </div>
                               </div>
@@ -3599,47 +3605,47 @@ export default function App() {
                               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Municipios que conforman el distrito ({municipiosDelDistrito.length})</p>
                               <div className="flex flex-wrap gap-2">
                                   {municipiosDelDistrito.map(m => (
-                                      <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-pink-50 text-pink-700">
+                                      <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-beige-100 text-oxford-700">
                                           <span className="text-[10px] font-black uppercase">{m.nombre}</span>
-                                          <span className="text-[9px] font-bold text-pink-500 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
+                                          <span className="text-[9px] font-bold text-beige-600 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
                                       </div>
                                   ))}
                               </div>
                           </div>
                       )}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Total de Secciones</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Total de Secciones</p>
                               <h5 className="text-3xl font-black italic text-slate-800">{sections.length}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
                               <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Padrón Electoral</p>
                               <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
                               <p className="text-[11px] font-black text-violet-600 uppercase tracking-widest mb-1">Lista Nominal</p>
                               <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
                           </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Básicas</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Básicas</p>
                               <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Contiguas</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Contiguas</p>
                               <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Extraordinarias</p>
                               <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
                               <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
                           </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Especiales</p>
+                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
+                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Especiales</p>
                               <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
                           </div>
                       </div>
@@ -3655,7 +3661,7 @@ export default function App() {
                               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                                   {[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extra. Contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => (
                                       <div key={key} className="flex flex-col justify-center items-center">
-                                          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">{label}</p>
+                                          <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1 text-center">{label}</p>
                                           <h5 className="text-2xl font-black italic text-slate-800">{comparativo2024.conteoActual[key]}</h5>
                                           <span className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${comparativo2024.diffs[key] === 0 ? 'bg-slate-100 text-slate-500' : comparativo2024.diffs[key] > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{comparativo2024.diffs[key] > 0 ? '+' : ''}{comparativo2024.diffs[key]} vs 2024</span>
                                       </div>
@@ -3708,23 +3714,23 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                          <div className="bg-oxford-500 p-4 rounded-xl text-center">
                               <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Secciones</p>
                               <p className="text-xl font-black text-white">{totalesFolios.totalSecciones}</p>
                           </div>
-                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                          <div className="bg-oxford-500 p-4 rounded-xl text-center">
                               <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Casillas</p>
                               <p className="text-xl font-black text-white">{totalesFolios.totalCasillas}</p>
                           </div>
-                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                          <div className="bg-oxford-500 p-4 rounded-xl text-center">
                               <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-1">Ciudadanos</p>
                               <p className="text-xl font-black text-white">{totalesFolios.totalCiudadanos.toLocaleString()}</p>
                           </div>
-                          <div className="bg-slate-900 p-4 rounded-xl text-center">
+                          <div className="bg-oxford-500 p-4 rounded-xl text-center">
                               <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Total Boletas</p>
                               <p className="text-xl font-black text-pink-400">{totalesFolios.totalBoletas.toLocaleString()}</p>
                           </div>
-                          <div className="bg-slate-900 p-4 rounded-xl text-center col-span-2 sm:col-span-1">
+                          <div className="bg-oxford-500 p-4 rounded-xl text-center col-span-2 sm:col-span-1">
                               <p className="text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">Folio Final</p>
                               <p className="text-xl font-black text-pink-400">{totalesFolios.folioFinalDistrito.toLocaleString()}</p>
                           </div>
@@ -3732,7 +3738,7 @@ export default function App() {
 
                       <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-auto max-h-[500px]">
                           <table className="w-full text-left border-collapse min-w-[900px]">
-                              <thead className="bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest border-b-8 border-pink-600">
+                              <thead className="bg-oxford-500 text-white text-[11px] font-black uppercase tracking-widest border-b-8 border-pink-600">
                                   <tr>
                                       <th className="p-4">Municipio</th>
                                       <th className="p-4">Sección</th>
@@ -3756,7 +3762,7 @@ export default function App() {
                                           <td className="p-4 text-right text-slate-500">{f.boletasRppNacionales}</td>
                                           <td className="p-4 text-right text-slate-500">{f.boletasRppLocales}</td>
                                           <td className="p-4 text-right text-slate-500">{f.boletasCandidaturaIndependiente}</td>
-                                          <td className="p-4 text-right text-pink-700 font-black">{f.totalBoletas.toLocaleString()}</td>
+                                          <td className="p-4 text-right text-oxford-700 font-black">{f.totalBoletas.toLocaleString()}</td>
                                           <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioInicial).padStart(7, '0')}</td>
                                           <td className="p-4 text-right text-slate-500 font-mono">{String(f.folioFinal).padStart(7, '0')}</td>
                                       </tr>
@@ -3779,7 +3785,7 @@ export default function App() {
                                  <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
                              </div>
                              <div className="flex flex-wrap items-stretch gap-2.5">
-                                 <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                 <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-oxford-500 hover:bg-oxford-600 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
                                      <Plus className="w-6 h-6 text-yellow-400 shrink-0" />
                                      <span className="text-sm font-black uppercase">Casillas Especiales</span>
                                  </button>
@@ -3811,7 +3817,7 @@ export default function App() {
                                  <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
                                      <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
                                  </button>
-                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-violet-600 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
+                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-oxford-500 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
                                      <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
                                  </button>
                                  {filtroAlerta && (
@@ -3821,8 +3827,8 @@ export default function App() {
                                  )}
                              </div>
                              <div className="flex items-center gap-2 pr-1">
-                                 <button onClick={exportarReporteObservaciones} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all active:scale-95 relative z-40"><AlertTriangle className="w-3.5 h-3.5" /> Observaciones</button>
-                                 <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-800 text-white active:scale-95'}`}><MapIcon className="w-3.5 h-3.5" /> QGIS</button>
+                                 <button onClick={exportarReporteObservaciones} className="bg-oxford-500 hover:bg-oxford-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all active:scale-95 relative z-40"><AlertTriangle className="w-3.5 h-3.5" /> Observaciones</button>
+                                 <button onClick={exportarQGIS} disabled={!hayManzanas} title={!hayManzanas ? 'No aplica: el padrón de este distrito no trae manzanas' : ''} className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-1.5 shadow-sm transition-all relative z-40 ${!hayManzanas ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-oxford-600 text-white active:scale-95'}`}><MapIcon className="w-3.5 h-3.5" /> QGIS</button>
                              </div>
                          </div>
                       </div>
@@ -3832,7 +3838,7 @@ export default function App() {
                       ) : (
                           <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-200 overflow-hidden overflow-x-auto text-left">
                               <table className="w-full text-left border-collapse min-w-[1000px] text-left">
-                                  <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-pink-600 text-left">
+                                  <thead className="bg-oxford-500 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-pink-600 text-left">
                                       <tr>
                                           <th className="p-3 text-left">Sección</th>
                                           <th className="p-3 text-left">Grupo</th>
@@ -3847,14 +3853,14 @@ export default function App() {
                                           const isExpanded = !!seccionesExpandidas[grupo.seccion] || busquedaProyeccion.trim() !== '' || !!filtroAlerta;
                                           return (
                                               <React.Fragment key={grupo.seccion}>
-                                                  <tr onClick={() => toggleSeccion(grupo.seccion)} className={`cursor-pointer transition-colors ${isExpanded ? 'bg-pink-50' : 'hover:bg-slate-50'} ${grupo.tieneVariacion ? 'bg-red-50/50' : ''}`}>
+                                                  <tr onClick={() => toggleSeccion(grupo.seccion)} className={`cursor-pointer transition-colors ${isExpanded ? 'bg-beige-100' : 'hover:bg-slate-50'} ${grupo.tieneVariacion ? 'bg-red-50/50' : ''}`}>
                                                       <td className="p-2.5" colSpan={4}>
                                                           <div className="flex items-center gap-3 flex-wrap">
                                                               {isExpanded ? <ChevronUp className="w-4 h-4 text-pink-600 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
                                                               <span className="font-black text-slate-900 text-sm">Sec {f4(grupo.seccion)}</span>
                                                               <div className="flex flex-wrap gap-1">
                                                                   {grupo.categorias.map(cat => (
-                                                                      <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-pink-100 text-pink-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
+                                                                      <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-beige-200 text-oxford-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
                                                                   ))}
                                                                   {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
                                                                   {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
@@ -3866,7 +3872,7 @@ export default function App() {
                                                       <td className="p-2.5"></td>
                                                       <td className="p-2.5 text-center">
                                                           <div className="flex flex-col items-center justify-center">
-                                                              <span className="text-base font-black text-pink-700">P: {grupo.totalPadron}</span>
+                                                              <span className="text-base font-black text-oxford-700">P: {grupo.totalPadron}</span>
                                                               <span className="text-xs font-bold text-slate-600 mt-0.5">L: {grupo.totalLista}</span>
                                                           </div>
                                                       </td>
@@ -3874,12 +3880,12 @@ export default function App() {
                                                   {isExpanded && grupo.rows.map((row, idx) => {
                                                       const noInstala = row.distPadron.some(d => d.nombre === 'NO INSTALA') || row.distLista.some(d => d.nombre === 'NO INSTALA');
                                                       return (
-                                                          <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-50/40' : row.categoria === 'ESPECIAL' ? 'bg-slate-50' : ''}`}>
+                                                          <tr key={idx} className={`hover:bg-slate-50 transition-colors ${row.categoria === 'EXTRAORDINARIA' ? 'bg-beige-100/40' : row.categoria === 'ESPECIAL' ? 'bg-slate-50' : ''}`}>
                                                               <td className="p-2.5"></td>
                                                               <td className="p-2.5"><span className={`text-[9px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
                                                               <td className="p-2.5">
                                                                   <div className="flex flex-col gap-1">
-                                                                      {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-slate-800 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
+                                                                      {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-oxford-500 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
                                                                       {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
                                                                   </div>
                                                               </td>
@@ -3906,7 +3912,7 @@ export default function App() {
                                                                           {row.distPadron.map((item, i) => {
                                                                               const isNoInstala = item.nombre === 'NO INSTALA';
                                                                               return (
-                                                                                  <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-pink-50 border-pink-300 text-pink-700 font-bold'}`}>
+                                                                                  <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-beige-100 border-beige-400 text-oxford-700 font-bold'}`}>
                                                                                       <span className="font-black text-[9px] opacity-50">P:</span>
                                                                                       <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
                                                                                       {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
@@ -3930,7 +3936,7 @@ export default function App() {
                                                               </td>
                                                               <td className="p-2.5 text-center">
                                                                   <div className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 ${row.variacion ? 'bg-red-50 border-red-200' : noInstala ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                                                      <span className={`text-sm font-black ${noInstala ? 'text-amber-800' : 'text-pink-700'}`}>P: {Number(row.countPadron)}</span>
+                                                                      <span className={`text-sm font-black ${noInstala ? 'text-amber-800' : 'text-oxford-700'}`}>P: {Number(row.countPadron)}</span>
                                                                       <span className={`text-xs font-bold mt-0.5 ${noInstala ? 'text-amber-600' : 'text-slate-600'}`}>L: {Number(row.countLista)}</span>
                                                                       {row.variacion && <AlertTriangle className="w-4 h-4 text-red-500 mt-1" title="Variación detectada entre Padrón y Lista" />}
                                                                       {!row.variacion && noInstala && (
@@ -3959,19 +3965,20 @@ export default function App() {
           <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
                   <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
 
-                      <div className="p-8 rounded-[2.5rem] bg-gradient-to-r from-pink-600 to-pink-800 text-white shadow-xl">
+                      <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white shadow-xl">
+                          <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
                           <div className="flex flex-wrap items-center justify-between gap-4">
                               <div className="flex items-center gap-6">
-                                  <div className="bg-white/20 p-4 rounded-2xl shadow-inner"><Building2 className="w-8 h-8" /></div>
+                                  <div className="bg-white/20 p-4 rounded-2xl shadow-inner ring-1 ring-beige-300/30"><Building2 className="w-8 h-8" /></div>
                                   <div>
-                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-200">Domicilios y sitios de instalación</p>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-beige-200">Domicilios y sitios de instalación</p>
                                       <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
                                   </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                   <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Listado oficial del SUC (INE): asigna/actualiza TODOS los domicilios que coincidan, y recalcula Diferencia de Proyección y Comparativo vs Proceso 2023-2024"><BarChart3 className="w-4 h-4" /> Importar Listado SUC<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarListadoSUC} /></label>
                                   <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Uso diario con tu propia plantilla: actualiza domicilios (nuevos o ya asignados). No toca la Diferencia de Proyección ni el Comparativo 2023-2024"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarDomicilios} /></label>
-                                  <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-pink-700 hover:bg-pink-50 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
+                                  <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-oxford-700 hover:bg-beige-100 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
                                   <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
                                       {limpiezaDomiciliosBloqueada ? <><Lock className="w-4 h-4" /> Limpieza Total</> : <><Unlock className="w-4 h-4" /> Limpieza Desbloqueada</>}
                                   </button>
@@ -3984,8 +3991,8 @@ export default function App() {
                       </div>
 
                       <div className="flex gap-2">
-                          <button onClick={() => setUbicacionVistaTab('listado')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${ubicacionVistaTab === 'listado' ? 'bg-pink-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Listado de Domicilios</button>
-                          <button onClick={() => setUbicacionVistaTab('historial')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${ubicacionVistaTab === 'historial' ? 'bg-pink-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Última Actualización{historialCambiosDomicilio.length > 0 && <span className={`px-2 py-0.5 rounded-full text-[9px] ${ubicacionVistaTab === 'historial' ? 'bg-white/25' : 'bg-slate-300'}`}>{historialCambiosDomicilio.length}</span>}</button>
+                          <button onClick={() => setUbicacionVistaTab('listado')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${ubicacionVistaTab === 'listado' ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-md ring-1 ring-pink-400/50' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Listado de Domicilios</button>
+                          <button onClick={() => setUbicacionVistaTab('historial')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${ubicacionVistaTab === 'historial' ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-md ring-1 ring-pink-400/50' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Última Actualización{historialCambiosDomicilio.length > 0 && <span className={`px-2 py-0.5 rounded-full text-[9px] ${ubicacionVistaTab === 'historial' ? 'bg-white/25' : 'bg-slate-300'}`}>{historialCambiosDomicilio.length}</span>}</button>
                       </div>
 
                       {ubicacionVistaTab === 'historial' ? (
@@ -3997,7 +4004,7 @@ export default function App() {
                                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 pt-5">Esta misma bitácora se incluye como hoja adicional (con filtros) al exportar "Listado Tipos de Domicilio"</p>
                                   <div className="overflow-x-auto">
                                       <table className="w-full text-left border-collapse min-w-[760px]">
-                                          <thead className="bg-slate-800 text-white text-[9px] font-black uppercase">
+                                          <thead className="bg-oxford-500 text-white text-[9px] font-black uppercase">
                                               <tr>
                                                   <th className="p-3">Sección</th>
                                                   <th className="p-3">Casilla</th>
@@ -4038,7 +4045,7 @@ export default function App() {
                                   {(() => {
                                       const totalTipos = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
                                       return Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => (
-                                          <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-pink-50 text-pink-700 hover:bg-pink-100'}`}>{count} {tipo} ({totalTipos > 0 ? (count / totalTipos * 100).toFixed(1) : '0.0'}%) · {seccionesPorTipoDomicilio[tipo] || 0} {(seccionesPorTipoDomicilio[tipo] || 0) === 1 ? 'sección' : 'secciones'}</button>
+                                          <button key={tipo} onClick={() => setFiltroTipoUbicacion(prev => prev === tipo ? 'todos' : tipo)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filtroTipoUbicacion === tipo ? 'bg-pink-600 text-white shadow-md ring-2 ring-pink-300' : 'bg-beige-100 text-oxford-700 hover:bg-beige-200'}`}>{count} {tipo} ({totalTipos > 0 ? (count / totalTipos * 100).toFixed(1) : '0.0'}%) · {seccionesPorTipoDomicilio[tipo] || 0} {(seccionesPorTipoDomicilio[tipo] || 0) === 1 ? 'sección' : 'secciones'}</button>
                                       ));
                                   })()}
                               </div>
@@ -4073,7 +4080,7 @@ export default function App() {
                                               <p className="text-xs mt-3 font-bold text-violet-600">{reporteDiferenciaProyeccion.seccionesConDiferencia} de {reporteDiferenciaProyeccion.filas.length} secciones tienen diferencia con la proyección del sistema. Esta misma tabla se incluye como segunda hoja al exportar el "Listado Tipos de Domicilio":</p>
                                               <div className="overflow-x-auto mt-2 rounded-xl border-2 border-violet-200">
                                                   <table className="w-full text-left border-collapse min-w-[500px]">
-                                                      <thead className="bg-violet-600 text-white text-[9px] font-black uppercase">
+                                                      <thead className="bg-oxford-500 text-white text-[9px] font-black uppercase">
                                                           <tr><th className="p-2">Sección</th><th className="p-2 text-center">Instalado</th><th className="p-2 text-center">Proy. Padrón</th><th className="p-2 text-center">Proy. Lista</th><th className="p-2 text-center">Dif. Padrón</th><th className="p-2 text-center">Dif. Lista</th></tr>
                                                       </thead>
                                                       <tbody className="text-xs font-bold divide-y divide-violet-100 bg-white">
@@ -4193,12 +4200,12 @@ export default function App() {
                                                   {grupo.totalFaltantesCompletables > 0 && (
                                                       <button onClick={() => completarClustersAutomaticamente(grupo.clustersCompletables)} title="Copia el domicilio ya asignado a las casillas faltantes, sólo dentro del mismo grupo físico (básica+contiguas, cada extraordinaria o cada especial por separado)" className="text-[10px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Copy className="w-3.5 h-3.5" /> Completar automáticamente ({grupo.totalFaltantesCompletables})</button>
                                                   )}
-                                                  <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
+                                                  <button onClick={() => { setSeleccionUbicacion(grupo.casillas.map(c => c.clave)); setModalUbicacionConfig({ isOpen: true, claves: grupo.casillas.map(c => c.clave) }); }} className="text-[10px] font-black uppercase bg-oxford-500 hover:bg-oxford-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Un domicilio para toda la sección</button>
                                               </div>
                                               {grupo.casillas.map(c => (
-                                                  <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-pink-50' : 'border-slate-200 bg-slate-50'}`}>
+                                                  <div key={c.clave} className={`flex flex-wrap items-center gap-3 p-4 rounded-2xl border-2 ${seleccionUbicacion.includes(c.clave) ? 'border-pink-400 bg-beige-100' : 'border-slate-200 bg-slate-50'}`}>
                                                       <input type="checkbox" className="w-4 h-4 accent-pink-600" checked={seleccionUbicacion.includes(c.clave)} onChange={() => setSeleccionUbicacion(prev => prev.includes(c.clave) ? prev.filter(x => x !== c.clave) : [...prev, c.clave])} />
-                                                      <span className="bg-slate-800 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
+                                                      <span className="bg-oxford-500 text-white px-2.5 py-1 rounded-lg text-xs font-black">{c.nombre}</span>
                                                       <div className="flex-1 min-w-[200px]">
                                                           {c.dom ? (
                                                               <div className="text-xs">
@@ -4229,7 +4236,7 @@ export default function App() {
                       </div>
 
                       {seleccionUbicacion.length > 0 && !modalUbicacionConfig.isOpen && (
-                          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+                          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-oxford-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
                               <span className="text-xs font-black uppercase">{seleccionUbicacion.length} casilla(s) seleccionada(s)</span>
                               <button onClick={() => setModalUbicacionConfig({ isOpen: true, claves: seleccionUbicacion })} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase">Asignar Domicilio</button>
                               <button onClick={() => setSeleccionUbicacion([])} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
@@ -4254,9 +4261,9 @@ export default function App() {
         </div>
       )}
       <div className="lg:col-span-4 border-r border-slate-200 bg-white p-6 overflow-y-auto shadow-inner text-left">
-        <h2 className="text-xl font-black tracking-tighter uppercase italic text-pink-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
+        <h2 className="text-xl font-black tracking-tighter uppercase italic text-oxford-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
 
-        <div className="bg-pink-50/50 p-6 rounded-3xl border-2 border-pink-200 space-y-6 shadow-sm text-left">
+        <div className="bg-beige-100/50 p-6 rounded-3xl border-2 border-beige-300 space-y-6 shadow-sm text-left">
           <div className="flex items-center justify-between border-b-2 border-pink-100 pb-3 text-left">
               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-pink-600 flex items-center gap-2 text-left"><Settings2 className="w-4 h-4 text-left" /> Mesa de Armado</h3>
           </div>
@@ -4266,17 +4273,17 @@ export default function App() {
 
             {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
             <div className="space-y-2.5 text-left">
-              <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
+              <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
               <div className="grid grid-cols-1 gap-2.5 text-left">
-                  <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-pink-50'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
+                  <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-beige-400'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-beige-100'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
                       <div className="text-left">
                           <p className="text-sm font-black uppercase text-left">Crear una casilla nueva</p>
                           <p className={`text-[10px] font-bold text-left ${form.rol === 'sede' ? 'text-pink-100' : 'text-slate-400'}`}>Le pones un número (E1, E2...) y eliges su manzana sede</p>
                       </div>
                   </button>
-                  <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-pink-300'}`}>
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-pink-50'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
+                  <button onClick={() => sedesActivas.length > 0 && setForm(f => f.rol === 'alimentadora' ? f : ({ ...f, rol: 'alimentadora', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} disabled={sedesActivas.length === 0} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'alimentadora' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : sedesActivas.length === 0 ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed' : 'bg-white border-slate-200 text-slate-700 hover:border-beige-400'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'alimentadora' ? 'bg-white/20' : 'bg-beige-100'}`}><Building2 className={`w-5 h-5 ${form.rol === 'alimentadora' ? 'text-white' : sedesActivas.length === 0 ? 'text-slate-300' : 'text-pink-600'}`} /></div>
                       <div className="text-left">
                           <p className="text-sm font-black uppercase text-left">Agregar manzanas a una casilla ya creada</p>
                           <p className={`text-[10px] font-bold text-left ${form.rol === 'alimentadora' ? 'text-pink-100' : 'text-slate-400'}`}>{sedesActivas.length === 0 ? 'Primero crea una casilla nueva (opción de arriba)' : 'Suma más manzanas a su Padrón y Lista'}</p>
@@ -4288,7 +4295,7 @@ export default function App() {
             {/* PASO 2: depende de qué se eligió arriba */}
             {form.rol === 'sede' && (
               <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
                   <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
                       {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
                   </select>
@@ -4296,7 +4303,7 @@ export default function App() {
             )}
             {form.rol === 'alimentadora' && (
               <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
                   <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
                       <option value="">-- Elige una casilla --</option>
                       {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
@@ -4308,7 +4315,7 @@ export default function App() {
             {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
               <div className="space-y-5 text-left">
                 <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
                   <div className="grid grid-cols-2 gap-4 text-left">
                       {form.rol === 'sede' ? (
                           <div className="space-y-1.5 text-left">
@@ -4339,22 +4346,22 @@ export default function App() {
 
                 {form.localidad && (
                 <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
                       const assign = getMzAssignment(m.id);
                       const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
                       let tileClasses;
-                      if (isSelected) tileClasses = 'border-pink-600 bg-pink-50 scale-105 z-10 shadow-md text-pink-800';
+                      if (isSelected) tileClasses = 'border-pink-600 bg-beige-100 scale-105 z-10 shadow-md text-pink-800';
                       else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
-                      else if (assign?.type === 'alimentadora') tileClasses = 'bg-pink-100 border-pink-300 text-pink-700 shadow-inner';
+                      else if (assign?.type === 'alimentadora') tileClasses = 'bg-beige-200 border-beige-400 text-oxford-700 shadow-inner';
                       else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
-                      return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-800 border-2 border-white shadow-sm text-left"></div>}</button>);
+                      return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-oxford-500 border-2 border-white shadow-sm text-left"></div>}</button>);
                   })}</div>
                 </div>
                 )}
 
                 {form.manzanasSeleccionadas.length > 0 && (
-                  <div className="p-5 bg-slate-900 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
+                  <div className="p-5 bg-oxford-500 rounded-3xl text-white space-y-4 shadow-xl border-b-4 border-pink-600 text-left">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Vas a hacer esto</p>
                     <p className="text-sm font-bold leading-relaxed text-left">
                       {form.rol === 'sede'
@@ -4365,7 +4372,7 @@ export default function App() {
                     <div className="flex justify-between items-center border-t border-slate-700 pt-4 text-left">
                        <div className="text-left"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-pink-200 text-left">Suma de esta selección</p><h4 className="text-lg font-black text-left text-white">P: {totalesSeleccion.padron.toLocaleString()} · L: {totalesSeleccion.lista.toLocaleString()}</h4></div>
                     </div>
-                    <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-pink-50 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
+                    <button onClick={ejecutarAsignacion} className="w-full bg-white text-slate-900 font-black py-4 rounded-xl uppercase text-[11px] tracking-widest hover:bg-beige-100 shadow-md active:scale-95 transition-all text-left flex justify-center items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Confirmar</button>
                   </div>
                 )}
               </div>
@@ -4384,7 +4391,7 @@ export default function App() {
                   const Icon = tab.icon;
                   const isActive = extraordinariasTab === tab.key;
                   return (
-                      <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {tab.label}
                           {!!tab.badge && <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white text-pink-600' : 'bg-amber-100 text-amber-700'}`}>{tab.badge}</span>}
                       </button>
@@ -4410,7 +4417,7 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2 text-left">
                 <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
                 <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
-                <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-pink-200 text-pink-700'}`}>
+                <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-beige-300 text-oxford-700'}`}>
                   <Hash className="w-3.5 h-3.5 text-left shrink-0" />
                   <span className="text-[10px] font-black uppercase text-left tracking-wider">
                     Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
@@ -4425,7 +4432,7 @@ export default function App() {
                   </span>
                   {detalleConflictosAbierto ? <ChevronUp className="w-3.5 h-3.5 text-left" /> : <ChevronDown className="w-3.5 h-3.5 text-left opacity-70" />}
                 </button>
-                <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
+                <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-oxford-600 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
               </div>
             </div>
           </div>
@@ -4474,7 +4481,7 @@ export default function App() {
                   <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
                     <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
                         <div className="flex items-center gap-2 text-left min-w-0">
-                            <span className={`${isEspecial ? 'bg-slate-800 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
+                            <span className={`${isEspecial ? 'bg-oxford-500 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
                             <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
                             {!isEspecial && (nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) && (
                                 <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
@@ -4520,7 +4527,7 @@ export default function App() {
                               <div className="text-left">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 text-left">Manzanas del Polígono ({[c.sede, ...(c.alimentadoras || [])].filter(Boolean).length})</p>
                                 <div className="flex flex-col gap-1.5 text-left">
-                                  <div className="flex items-center justify-between bg-pink-50 border-2 border-pink-200 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
+                                  <div className="flex items-center justify-between bg-beige-100 border-2 border-beige-300 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
                                       <span className="flex items-center gap-1.5 min-w-0 text-left">
                                           <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
                                           <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
@@ -4552,7 +4559,7 @@ export default function App() {
                                       <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
                                       {stats.variacion ? (
                                           <div className="flex gap-1.5">
-                                              <span className="bg-pink-100 border border-pink-200 text-pink-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                              <span className="bg-beige-200 border border-beige-300 text-oxford-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
                                               <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
                                           </div>
                                       ) : (
@@ -4565,7 +4572,7 @@ export default function App() {
                                               {stats.distPadron.map((item, i) => {
                                                   const isNoInstala = item.nombre === 'NO INSTALA';
                                                   return (
-                                                      <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-pink-200 text-slate-700'}`}>
+                                                      <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-beige-300 text-slate-700'}`}>
                                                           <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
                                                           {item.nombre} {(!isNoInstala) && `(${item.valor})`}
                                                           {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -4672,12 +4679,12 @@ export default function App() {
   );
 
   const renderHeader = () => (
-    <header className="bg-white text-slate-800 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-600">
+    <header className="bg-gradient-to-r from-oxford-200 via-oxford-100 to-white text-oxford-700 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-400">
       <div className="flex items-center gap-4">
         <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
-        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-slate-800">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200 ml-4 pointer-events-none">
-           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-slate-500" /><span className="text-[8px] font-black uppercase text-slate-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-slate-500">Sincronizando...</span></> ) : syncStatus === 'error' ? ( <><AlertTriangle className="w-3 h-3 text-red-500" title="No se pudo guardar en la nube — revisa tu conexión o el tamaño del distrito" /><span className="text-[8px] font-black uppercase text-red-600">Error al guardar</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-500" /><span className="text-[8px] font-black uppercase text-slate-500">Nube OK</span></> )}
+        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-oxford-700">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
+        <div className="flex items-center gap-2 px-3 py-1 bg-white/70 rounded-full border border-oxford-200 ml-4 pointer-events-none">
+           {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-oxford-500" /><span className="text-[8px] font-black uppercase text-oxford-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-oxford-500">Sincronizando...</span></> ) : syncStatus === 'error' ? ( <><AlertTriangle className="w-3 h-3 text-red-500" title="No se pudo guardar en la nube — revisa tu conexión o el tamaño del distrito" /><span className="text-[8px] font-black uppercase text-red-600">Error al guardar</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-600" /><span className="text-[8px] font-black uppercase text-oxford-500">Nube OK</span></> )}
         </div>
       </div>
     </header>
@@ -4687,14 +4694,16 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
         <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
-            <div className="bg-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-500 relative overflow-hidden flex flex-col justify-center text-center">
-              <Cloud className="w-16 h-16 mx-auto mb-6 text-white" />
-              <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white">Proyector Cloud</h2>
-              <p className="text-pink-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic">v18.0 | Panel de Control</p>
+            <div className="bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-400/40 relative overflow-hidden flex flex-col justify-center text-center">
+              <div className="absolute -left-16 -bottom-20 w-72 h-72 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
+              <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-pink-300/25 blur-2xl pointer-events-none" />
+              <Cloud className="w-16 h-16 mx-auto mb-6 text-white relative" />
+              <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white relative">Proyector Cloud</h2>
+              <p className="text-beige-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic relative">v18.0 | Panel de Control</p>
 
-              <div className="space-y-4">
+              <div className="space-y-4 relative">
                   <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
-                  <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-pink-500 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-white outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
+                  <input type="text" inputMode="numeric" placeholder="Número de Distrito (01 al 40)" className="w-full bg-pink-700/50 border border-beige-400/40 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-beige-300 outline-none text-center text-white placeholder:text-pink-300" value={distritoInfo.numero} onChange={e => {
                       let v = e.target.value.replace(/\D/g, '').slice(0, 2);
                       setDistritoInfo({...distritoInfo, numero: v});
                   }}/>
@@ -4708,25 +4717,25 @@ export default function App() {
                       localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
                       setRawElectoralData([]);
                       setView('upload');
-                  }} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
+                  }} className="w-full bg-gradient-to-r from-pink-300 to-pink-400 hover:from-pink-200 hover:to-pink-300 text-oxford-900 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg shadow-pink-900/30 transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
               </div>
             </div>
 
             <div className="bg-white/80 p-8 rounded-[3rem] shadow-xl border border-slate-200 flex flex-col text-left h-[500px]">
-               <h3 className="text-xl font-black mb-6 text-pink-600 flex items-center gap-2"><Database className="w-5 h-5"/> Directorio de Proyectos</h3>
+               <h3 className="text-xl font-black mb-6 text-oxford-800 flex items-center gap-2"><Database className="w-5 h-5 text-pink-500"/> Directorio de Proyectos</h3>
                
                <div className="flex-1 overflow-y-auto pr-2 space-y-8 custom-scrollbar">
                   <div>
-                    <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><Cloud className="w-4 h-4 text-pink-500"/> Respaldos en la Nube</h4>
+                    <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><Cloud className="w-4 h-4 text-beige-600"/> Respaldos en la Nube</h4>
                     {dashboardData.loading ? <p className="text-sm text-slate-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/> Buscando...</p> : 
                      dashboardData.cloud.length === 0 ? <p className="text-sm text-slate-400 italic">No hay distritos guardados en la nube.</p> :
                      <div className="flex flex-wrap gap-2">
                         {dashboardData.cloud.map(d => (
-                            <div key={`cloud-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-pink-200">
-                                <button onClick={() => loadDistrictFromDashboard(d, 'extraordinary')} className="bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 text-sm font-black transition-all flex items-center gap-2">
+                            <div key={`cloud-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-beige-300">
+                                <button onClick={() => loadDistrictFromDashboard(d, 'extraordinary')} className="bg-beige-100 hover:bg-beige-200 text-oxford-700 px-4 py-2 text-sm font-black transition-all flex items-center gap-2">
                                     D{f4(d)} <ArrowRight className="w-4 h-4 opacity-50"/>
                                 </button>
-                                <button onClick={() => loadDistrictFromDashboard(d, 'final')} title="Ir directo a Proyección" className="bg-pink-50 hover:bg-slate-800 hover:text-white text-pink-700 px-3 py-2 text-sm font-black transition-all border-l border-pink-200 flex items-center justify-center">
+                                <button onClick={() => loadDistrictFromDashboard(d, 'final')} title="Ir directo a Proyección" className="bg-beige-100 hover:bg-oxford-600 hover:text-white text-oxford-700 px-3 py-2 text-sm font-black transition-all border-l border-beige-300 flex items-center justify-center">
                                     <ChevronRight className="w-4 h-4"/>
                                 </button>
                             </div>
@@ -4739,13 +4748,13 @@ export default function App() {
             </div>
         </div>
         <div className="mt-6 z-10 flex flex-wrap gap-3 justify-center">
-            <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
-            <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border-2 border-pink-200 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
+            <button onClick={exportarPlantillaPadron} className="flex items-center gap-2 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileDown className="w-4 h-4" /> Descargar Plantilla para Padrón</button>
+            <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
         </div>
         <div className="mt-8 flex justify-center">
-            <div className="bg-gradient-to-r from-pink-600 to-pink-800 text-white px-6 py-3 rounded-2xl shadow-md text-center">
+            <div className="relative overflow-hidden bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white px-6 py-3 rounded-2xl shadow-md text-center border-b-2 border-beige-400">
                 <p className="text-sm font-black italic tracking-tight">El INE, contigo siempre</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-pink-100 mt-0.5">Proceso Electoral Federal 2026-2027</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-beige-200 mt-0.5">Proceso Electoral Federal 2026-2027</p>
             </div>
         </div>
       </div>
@@ -4754,9 +4763,9 @@ export default function App() {
 
   if (view === 'upload') {
     const resultadoComparacionJSX = comparacionAnterior && (
-        <div className="p-5 bg-white rounded-3xl border-2 border-pink-200 text-left animate-in fade-in slide-in-from-bottom-2">
+        <div className="p-5 bg-white rounded-3xl border-2 border-beige-300 text-left animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-black text-pink-700 uppercase tracking-widest">Resultado de la Comparación</p>
+                <p className="text-xs font-black text-oxford-700 uppercase tracking-widest">Resultado de la Comparación</p>
                 <button onClick={() => setComparacionAnterior(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
             <ul className="text-[11px] font-bold text-slate-600 space-y-1.5">
@@ -4782,7 +4791,8 @@ export default function App() {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center">
-        <div className="max-w-md w-full bg-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-500 relative overflow-hidden text-center">
+        <div className="max-w-md w-full bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-400/40 relative overflow-hidden text-center">
+          <div className="absolute -left-16 -bottom-20 w-72 h-72 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
           <button onClick={() => setView('welcome')} className="absolute top-6 left-6 text-pink-200 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
           <Database className="w-12 h-12 mx-auto mb-4 text-white" />
           <h2 className="text-2xl font-black mb-1 uppercase tracking-tighter text-white leading-tight">Carga de Padrón</h2>
@@ -4791,7 +4801,7 @@ export default function App() {
 
           {rawElectoralData.length === 0 ? (
             <div className="space-y-4">
-              <label className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-pink-400 rounded-3xl hover:bg-pink-700 cursor-pointer transition-all bg-pink-600 shadow-sm">
+              <label className="flex flex-col items-center justify-center p-12 relative border-2 border-dashed border-pink-300/70 rounded-3xl hover:bg-pink-400/15 cursor-pointer transition-all bg-white/5 shadow-sm">
                 <FileSpreadsheet className="w-10 h-10 text-white mb-4" />
                 <span className="text-xs font-black uppercase tracking-widest text-pink-100">Seleccionar Padrón (.xlsx)</span>
                 <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
@@ -4799,19 +4809,19 @@ export default function App() {
 
               <div className="pt-4 mt-2 border-t border-pink-400/50 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-beige-400 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
                           {archivosComparacionLibre.anterior ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
                           <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.anterior ? archivosComparacionLibre.anterior.name : 'Padrón Anterior'}</span>
                           <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('anterior', e)} />
                       </label>
-                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
+                      <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-beige-400 rounded-2xl transition-all text-pink-100 hover:bg-pink-700/50 cursor-pointer">
                           {archivosComparacionLibre.actual ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <ArrowRightLeft className="w-4 h-4 shrink-0" />}
                           <span className="text-[10px] font-black uppercase tracking-widest truncate">{archivosComparacionLibre.actual ? archivosComparacionLibre.actual.name : 'Padrón Actual'}</span>
                           <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={e => handleArchivoComparacionLibre('actual', e)} />
                       </label>
                   </div>
                   {archivosComparacionLibre.anterior && archivosComparacionLibre.actual && (
-                      <button onClick={ejecutarComparacionLibre} disabled={comparandoPadron} className={`w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
+                      <button onClick={ejecutarComparacionLibre} disabled={comparandoPadron} className={`w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-beige-400 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
                           {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
                           <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar'}</span>
                       </button>
@@ -4822,9 +4832,9 @@ export default function App() {
             </div>
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
-               <div className="p-6 bg-white border border-pink-200 rounded-3xl flex flex-col items-center shadow-sm">
-                   <CheckCircle2 className="w-12 h-12 text-pink-500 mb-2" />
-                   <h3 className="text-xl font-black text-pink-700 uppercase tracking-tighter italic">Padrón Cargado</h3>
+               <div className="p-6 bg-white border border-beige-300 rounded-3xl flex flex-col items-center shadow-sm">
+                   <CheckCircle2 className="w-12 h-12 text-beige-600 mb-2" />
+                   <h3 className="text-xl font-black text-oxford-700 uppercase tracking-tighter italic">Padrón Cargado</h3>
                    <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
                        {rawElectoralData.length.toLocaleString()} Registros procesados
                    </p>
@@ -4836,16 +4846,16 @@ export default function App() {
                </div>
                <p className="text-xs text-pink-100 font-bold uppercase tracking-widest pt-2">¿A dónde deseas ir?</p>
                <div className="flex gap-2 w-full mt-2">
-                   <button onClick={() => setView('extraordinary')} className="w-full bg-white hover:bg-pink-50 text-pink-700 font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
+                   <button onClick={() => setView('extraordinary')} className="w-full bg-white hover:bg-beige-100 text-oxford-700 font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
                        Extraordinarias <ArrowRight className="w-4 h-4 inline ml-1" />
                    </button>
-                   <button onClick={() => setView('final')} className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
+                   <button onClick={() => setView('final')} className="w-full bg-oxford-500 hover:bg-oxford-600 text-white font-black py-4 rounded-2xl shadow-md uppercase tracking-widest text-xs transition-all">
                        Proyección <ChevronRight className="w-4 h-4 inline ml-1" />
                    </button>
                </div>
 
                <div className="pt-4 mt-2 border-t border-pink-400/50">
-                   <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-pink-300 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
+                   <label className={`flex items-center justify-center gap-2 p-3 border-2 border-dashed border-beige-400 rounded-2xl transition-all text-pink-100 ${comparandoPadron ? 'opacity-60' : 'hover:bg-pink-700/50 cursor-pointer'}`}>
                        {comparandoPadron ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
                        <span className="text-[10px] font-black uppercase tracking-widest">{comparandoPadron ? 'Comparando...' : 'Comparar con Corte Anterior'}</span>
                        <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleCompararPadronAnterior} disabled={comparandoPadron} />
@@ -4871,13 +4881,13 @@ export default function App() {
                   const Icon = sec.icon;
                   const isActive = view === sec.key;
                   return (
-                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-pink-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {sec.label}
                       </button>
                   );
               })}
            </div>
-           <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-pink-50 text-pink-700 border border-pink-200 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
+           <button onClick={() => setView('upload')} title="Comparar el padrón cargado contra un corte anterior" className="flex items-center gap-2 bg-white hover:bg-beige-100 text-oxford-700 border border-beige-300 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm"><ArrowRightLeft className="w-3 h-3" /> Comparar Padrón</button>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {view === 'extraordinary' ? (
@@ -4891,7 +4901,7 @@ export default function App() {
                   const data = {distrito: distritoInfo, casillas: currentRefs, basicaSedePorSeccion};
                   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
                   downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
-               }} title="Respaldar JSON" className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-pink-200"><History className="w-3 h-3" /> Respaldo</button>
+               }} title="Respaldar JSON" className="flex items-center gap-2 bg-beige-100 hover:bg-beige-200 text-oxford-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-beige-300"><History className="w-3 h-3" /> Respaldo</button>
                <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all shadow-sm border border-slate-200"><FileUp className="w-3 h-3" /> Cargar <input type="file" className="hidden" accept=".json" onChange={cargarRespaldoJSON} /></label>
             </div>
           ) : null}
@@ -4943,7 +4953,7 @@ export default function App() {
 
             <div className="flex gap-3 justify-end">
               <button onClick={() => setModalEspecialConfig({ isOpen: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
-              <button onClick={agregarCasillaEspecial} disabled={!especialForm.seccion || !especialForm.tipo} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><Star className="w-4 h-4 text-pink-500" /> Insertar</button>
+              <button onClick={agregarCasillaEspecial} disabled={!especialForm.seccion || !especialForm.tipo} className="px-5 py-2.5 bg-oxford-500 hover:bg-oxford-600 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><Star className="w-4 h-4 text-beige-600" /> Insertar</button>
             </div>
           </div>
         </div>
@@ -4960,10 +4970,10 @@ export default function App() {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 ml-1">Esto sigue</p>
 
             <div className="space-y-4 mb-8">
-              <div className="flex gap-3 bg-pink-50 border-2 border-pink-200 rounded-2xl p-4">
+              <div className="flex gap-3 bg-beige-100 border-2 border-beige-300 rounded-2xl p-4">
                 <Send className="w-5 h-5 text-pink-600 shrink-0 mt-0.5" />
                 <p className="text-sm font-bold text-slate-700 leading-snug">
-                  Ve a <span className="text-pink-700">Proyección → Listado de Casillas</span> y descarga el reporte <span className="text-pink-700">"Proyección Oficial INE"</span> — es el que se envía a la Junta Local.
+                  Ve a <span className="text-oxford-700">Proyección → Listado de Casillas</span> y descarga el reporte <span className="text-oxford-700">"Proyección Oficial INE"</span> — es el que se envía a la Junta Local.
                 </p>
               </div>
               <div className="flex gap-3 bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
