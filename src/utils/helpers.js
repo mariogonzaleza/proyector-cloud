@@ -178,39 +178,46 @@ export const aplicarFuenteInstitucional = (wb) => {
   return wb;
 };
 
-// Compara dos "fotos" del armado de extraordinarias (versiones guardadas o el armado actual).
-// Cada foto: { extras: [{ clave, tipo, seccion, sede, manzanas[], padron, lista, casillasPadron,
-// casillasLista }] }. La identidad de una extraordinaria entre fotos es sección + número (E1…),
-// que la app ya garantiza único por sección. Devuelve altas, bajas y cambios de B respecto de A.
+// ===================== VERSIONES DEL ARMADO DE EXTRAORDINARIAS =====================
+// Clasifica cómo cambió una extraordinaria entre dos fotos (a = antes, b = después; null si no
+// existía). La identidad es sección + número (E1…), que la app garantiza único por sección.
+//   nueva / eliminada — apareció o desapareció
+//   armado            — cambió su sede o sus manzanas
+//   casillas          — mismas manzanas, pero con el padrón del corte le toca otro número de casillas
+//   padron            — mismas manzanas y casillas; solo cambiaron las cifras de padrón/lista
+//   igual / vacia     — sin cambio / no existe en ninguna de las dos
+export const clasificarCambioExtra = (a, b) => {
+  if (!a && !b) return 'vacia';
+  if (!a) return 'nueva';
+  if (!b) return 'eliminada';
+  if (a.sede !== b.sede || (a.manzanas || []).join('|') !== (b.manzanas || []).join('|')) return 'armado';
+  if ((a.casillasPadron || 0) !== (b.casillasPadron || 0) || (a.casillasLista || 0) !== (b.casillasLista || 0)) return 'casillas';
+  if ((a.padron || 0) !== (b.padron || 0) || (a.lista || 0) !== (b.lista || 0)) return 'padron';
+  return 'igual';
+};
+
+// Compara dos fotos (versiones guardadas o el armado actual): una fila por cada extraordinaria
+// que exista en cualquiera de las dos, con su estado y qué manzanas/localidades entraron o salieron.
 export const compararVersionesExtra = (fotoA, fotoB) => {
   const mapA = new Map((fotoA?.extras || []).map(e => [e.clave, e]));
   const mapB = new Map((fotoB?.extras || []).map(e => [e.clave, e]));
-  const ordenar = (a, b) => a.seccion.localeCompare(b.seccion, undefined, { numeric: true }) || String(a.tipo).localeCompare(String(b.tipo), undefined, { numeric: true });
-  const altas = [...mapB.values()].filter(e => !mapA.has(e.clave)).sort(ordenar);
-  const bajas = [...mapA.values()].filter(e => !mapB.has(e.clave)).sort(ordenar);
-  const cambios = [];
-  let sinCambio = 0;
-  mapB.forEach((b, clave) => {
-    const a = mapA.get(clave);
-    if (!a) return;
-    const setA = new Set(a.manzanas || []), setB = new Set(b.manzanas || []);
-    const manzanasAgregadas = [...setB].filter(m => !setA.has(m)).sort();
-    const manzanasQuitadas = [...setA].filter(m => !setB.has(m)).sort();
-    const cambio = { clave, tipo: b.tipo, seccion: b.seccion, manzanasAgregadas, manzanasQuitadas, antes: a, despues: b };
-    if (a.sede !== b.sede) cambio.sede = { de: a.sede, a: b.sede };
-    ['padron', 'lista', 'casillasPadron', 'casillasLista'].forEach(k => {
-      if ((a[k] || 0) !== (b[k] || 0)) cambio[k] = { de: a[k] || 0, a: b[k] || 0 };
-    });
-    const hayCambio = manzanasAgregadas.length || manzanasQuitadas.length || cambio.sede || cambio.padron || cambio.lista || cambio.casillasPadron || cambio.casillasLista;
-    if (hayCambio) cambios.push(cambio); else sinCambio += 1;
-  });
-  cambios.sort(ordenar);
-  const totales = (foto) => (foto?.extras || []).reduce((t, e) => ({
-    extraordinarias: t.extraordinarias + 1,
-    casillasPadron: t.casillasPadron + (e.casillasPadron || 0),
-    casillasLista: t.casillasLista + (e.casillasLista || 0),
-    padron: t.padron + (e.padron || 0),
-    lista: t.lista + (e.lista || 0),
-  }), { extraordinarias: 0, casillasPadron: 0, casillasLista: 0, padron: 0, lista: 0 });
-  return { altas, bajas, cambios, sinCambio, totalesA: totales(fotoA), totalesB: totales(fotoB) };
+  const claves = [...new Set([...mapA.keys(), ...mapB.keys()])];
+  const detalle = claves.map(clave => {
+    const a = mapA.get(clave) || null, b = mapB.get(clave) || null;
+    const base = b || a;
+    const setA = new Set(a?.manzanas || []), setB = new Set(b?.manzanas || []);
+    const locsA = a?.localidades || [], locsB = b?.localidades || [];
+    const ambas = a && b;
+    return {
+      clave, seccion: base.seccion, tipo: base.tipo, antes: a, despues: b,
+      estado: clasificarCambioExtra(a, b),
+      manzanasAgregadas: ambas ? [...setB].filter(m => !setA.has(m)).sort() : [],
+      manzanasQuitadas: ambas ? [...setA].filter(m => !setB.has(m)).sort() : [],
+      localidadesAgregadas: ambas && a.localidades && b.localidades ? locsB.filter(l => !locsA.some(x => x.c === l.c)) : [],
+      localidadesQuitadas: ambas && a.localidades && b.localidades ? locsA.filter(l => !locsB.some(x => x.c === l.c)) : [],
+    };
+  }).sort((x, y) => String(x.seccion).localeCompare(String(y.seccion), undefined, { numeric: true }) || String(x.tipo).localeCompare(String(y.tipo), undefined, { numeric: true }));
+  const conteo = { nueva: 0, eliminada: 0, armado: 0, casillas: 0, padron: 0, igual: 0 };
+  detalle.forEach(d => { conteo[d.estado] += 1; });
+  return { detalle, conteo };
 };

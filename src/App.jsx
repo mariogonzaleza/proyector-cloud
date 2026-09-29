@@ -23,7 +23,7 @@ import {
   p4, downloadBlob, estaCercaDelCorte750, distanciaAlCorte750, nivelRiesgoCorte750,
   calcularEquipamientoCasilla, formatearNombreFolio, f4, normalizarDistrito,
   obtenerFechaHoraArchivo, obtenerDistribucionArray, normalizarClave, claveManzana,
-  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional, compararVersionesExtra,
+  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional, compararVersionesExtra, clasificarCambioExtra,
 } from './src/utils/helpers.js';
 
 // --- CONFIGURACIÓN DE ENTORNO ---
@@ -200,7 +200,11 @@ export default function App() {
   const [modalGuardarVersion, setModalGuardarVersion] = useState({ isOpen: false, nombre: '', guardando: false });
   const [compVersionA, setCompVersionA] = useState('');
   const [compVersionB, setCompVersionB] = useState('actual');
-  const [compVersionDetalleAbierto, setCompVersionDetalleAbierto] = useState(false);
+  const [vistaVersiones, setVistaVersiones] = useState('comparar'); // 'comparar' | 'historial' | 'ficha'
+  const [fichaVersionId, setFichaVersionId] = useState('actual');
+  const [filtroDetalleVersiones, setFiltroDetalleVersiones] = useState('relevantes'); // 'relevantes' | 'cambios' | 'todas'
+  const [soloCambiosHistorial, setSoloCambiosHistorial] = useState(true);
+  const [modalCorteAnterior, setModalCorteAnterior] = useState({ isOpen: false });
   const [comparacionAnterior, setComparacionAnterior] = useState(null);
   const [comparandoPadron, setComparandoPadron] = useState(false);
   const [archivosComparacionLibre, setArchivosComparacionLibre] = useState({ anterior: null, actual: null });
@@ -1914,44 +1918,81 @@ export default function App() {
       }
     }
 
-    // --- 7. Comparativo de Versiones de Extraordinarias (el que esté seleccionado en pantalla) ---
+    // --- Versiones de la proyección: comparativo seleccionado en pantalla + historial por corte ---
+    // La fuente estándar del PDF no trae la flecha "→"; se escribe "->" para que no salga basura.
+    const sinFlecha = (t) => String(t).replace(/→/g, '->');
+    const cuerpoIndicadoresPdf = (fotos, conDif) => {
+      const cols = fotos.length + 1 + (conDif ? 1 : 0);
+      const out = [];
+      let g = null;
+      filasIndicadores(fotos).forEach(f => {
+        if (f.grupo !== g) { g = f.grupo; out.push([{ content: g, colSpan: cols, styles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' } }]); }
+        const fila = [f.concepto, ...f.valores.map(v => fmtNum(v, f.esPorcentaje))];
+        if (conDif) { const [a, b] = f.valores; fila.push(a === null || b === null ? '—' : fmtDiferencia(b - a, f.esPorcentaje)); }
+        out.push(fila);
+      });
+      return out;
+    };
+    let numSeccionPdf = comparativo2024 ? 7 : 6;
     if (comparacionVersiones) {
       const cv = comparacionVersiones;
       y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 24;
       if (y > pageHeight - 150) { doc.addPage(); y = 50; }
       doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
-      doc.text(`${comparativo2024 ? 7 : 6}. Comparativo de Versiones — Extraordinarias`, margin, y);
+      doc.text(`${numSeccionPdf++}. Comparativo de Versiones — Extraordinarias`, margin, y);
       y += 8;
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 4 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
         head: [['Concepto', etiquetaVersion(cv.A), etiquetaVersion(cv.B), 'Diferencia']],
-        body: filasTotalesComparacion(cv).map(([c, a, b, d]) => [c, String(a), String(b), fmtDiferencia(d)]),
+        body: cuerpoIndicadoresPdf([cv.A, cv.B], true),
       });
-      y = doc.lastAutoTable.finalY + 12;
+      y = doc.lastAutoTable.finalY + 10;
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin }, theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 5 },
-        body: [[`Nuevas: ${cv.altas.length}`, `Eliminadas: ${cv.bajas.length}`, `Modificadas: ${cv.cambios.length}`, `Sin cambio: ${cv.sinCambio}`]],
+        styles: { fontSize: 8, cellPadding: 4 },
+        body: [Object.entries(ESTADOS_CAMBIO).map(([k, x]) => `${x.label}: ${cv.conteo[k] || 0}`)],
       });
-      const filasDetPdf = [
-        ...cv.altas.map(e => ['Nueva', e.seccion, e.tipo, `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, `— → ${e.casillasPadron}`, `— → ${e.padron}`]),
-        ...cv.bajas.map(e => ['Eliminada', e.seccion, e.tipo, `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, `${e.casillasPadron} → —`, `${e.padron} → —`]),
-        ...cv.cambios.map(c => ['Modificada', c.seccion, c.tipo, describirCambioExtra(c), `${c.antes.casillasPadron} → ${c.despues.casillasPadron}`, `${c.antes.padron} → ${c.despues.padron}`]),
-      ].sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }) || a[2].localeCompare(b[2], undefined, { numeric: true }))
-        // La fuente estándar del PDF no trae la flecha "→"; se escribe "->" para que no salga basura.
-        .map(fila => fila.map(celda => String(celda).replace(/→/g, '->')));
+      const filasDetPdf = cv.detalle.filter(d => ESTADOS_RELEVANTES.includes(d.estado)).map(d => [
+        ESTADOS_CAMBIO[d.estado].label, d.seccion, d.tipo,
+        `${d.antes ? textoCasillas(d.antes) : '—'} -> ${d.despues ? textoCasillas(d.despues) : '—'}`,
+        `${d.antes ? d.antes.manzanas.length : '—'} -> ${d.despues ? d.despues.manzanas.length : '—'}`,
+        `${d.antes ? d.antes.padron : '—'} -> ${d.despues ? d.despues.padron : '—'}`,
+        sinFlecha(describirCambioExtra(d)),
+      ]);
       if (filasDetPdf.length > 0) {
         y = doc.lastAutoTable.finalY + 8;
         if (y > pageHeight - 100) { doc.addPage(); y = 50; }
         doc.autoTable({
           startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-          styles: { fontSize: 7.5, cellPadding: 4 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-          columnStyles: { 3: { cellWidth: 230 } },
-          head: [['Movimiento', 'Sección', 'Casilla', 'Detalle', 'Casillas (P)', 'Padrón']],
+          styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 6: { cellWidth: 190 } },
+          head: [['Movimiento', 'Sección', 'Casilla', 'Casillas', 'Mzas', 'Padrón', 'Detalle']],
           body: filasDetPdf,
         });
       }
+      if (cv.conteo.padron > 0) {
+        y = doc.lastAutoTable.finalY + 6;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(69, 66, 72);
+        doc.text(`${cv.conteo.padron} extraordinaria(s) conservan manzanas y casillas; solo cambió su padrón/lista (detalle en el Excel de análisis).`, margin, y + 8);
+        y += 8;
+      }
+    }
+
+    if (historialVersiones && historialVersiones.fotos.length >= 2) {
+      // Hasta 6 columnas para que quepa en carta; el historial completo va en el Excel.
+      const fotosPdf = historialVersiones.fotos.slice(-6);
+      y = (doc.lastAutoTable ? Math.max(doc.lastAutoTable.finalY, y) : y) + 24;
+      if (y > pageHeight - 200) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
+      doc.text(`${numSeccionPdf++}. Historial de la Proyección por Corte`, margin, y);
+      y += 8;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
+        head: [['Concepto', ...fotosPdf.map(f => `${f.id === 'actual' ? 'Actual' : f.nombre}${f.fechaCorte ? `\n${f.fechaCorte}` : ''}`)]],
+        body: cuerpoIndicadoresPdf(fotosPdf, false),
+      });
     }
 
     const totalPages = doc.internal.getNumberOfPages();
@@ -2712,31 +2753,137 @@ export default function App() {
   }, [consolidadoB_C, casillasGlobales]);
 
   // ===================== VERSIONES DEL ARMADO DE EXTRAORDINARIAS =====================
-  // "Foto" del armado actual: una fila por extraordinaria con sus manzanas y lo que proyecta.
-  // Es el mismo formato que se guarda en cada versión, así se compara igual versión contra
-  // versión que versión contra el armado de hoy.
-  const fotoExtraActual = useMemo(() => {
-    const claveMz = (m) => `${f4(m.seccion)}-${f4(m.localidad)}-${f4(m.manzana)}`;
-    const extras = sedesActivas.filter(c => String(c.tipo).toUpperCase().startsWith('E')).map(c => {
+  // Cada versión es la "foto" COMPLETA de la proyección al momento de guardarla: por cada
+  // extraordinaria, sus casillas (nomenclatura y reparto), localidades, manzanas con su padrón y
+  // lista; y del distrito, el padrón de ese corte y cuántas casillas de cada tipo salían. Como el
+  // padrón nunca se guarda, la foto CONGELA esas cifras: dos versiones guardadas con el mismo
+  // padrón cargado salen iguales. Para registrar un corte que ya pasó, la foto se calcula desde el
+  // Excel de padrón de ese corte (construirFotoDesdeRefs) sin tocar lo que está cargado en pantalla.
+  const armarFotoExtra = (padronRows, extrasVinculadas, numEspeciales) => {
+    const n4 = (v) => String(v ?? '').trim().padStart(4, '0');
+    const claveMz = (m) => `${n4(m.seccion)}-${n4(m.localidad)}-${n4(m.manzana)}`;
+    const nombreLoc = (m) => m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || '';
+    const extras = extrasVinculadas.map(c => {
       const st = calcularProyeccion(c);
+      const mzs = [c.sede, ...(c.alimentadoras || [])].filter(Boolean);
+      const locs = new Map();
+      mzs.forEach(m => { const k = n4(m.localidad); if (!locs.has(k)) locs.set(k, { c: k, n: nombreLoc(m) }); });
       return {
-        clave: `${f4(c.sede.seccion)}-${String(c.tipo).toUpperCase()}`,
+        clave: `${n4(c.sede.seccion)}-${String(c.tipo).toUpperCase()}`,
         tipo: String(c.tipo).toUpperCase(),
-        seccion: f4(c.sede.seccion),
+        seccion: n4(c.sede.seccion),
+        municipio: MUNICIPIOS_MEXICO[String(Number(c.sede.municipio))] || '',
         sede: claveMz(c.sede),
-        manzanas: [c.sede, ...(c.alimentadoras || [])].filter(Boolean).map(claveMz).sort(),
+        manzanas: mzs.map(claveMz).sort(),
+        manzanasDetalle: mzs.map(m => ({ k: claveMz(m), p: parseInt(m.padron) || 0, l: parseInt(m.lista) || 0 })).sort((a, b) => a.k.localeCompare(b.k)),
+        localidades: [...locs.values()].sort((a, b) => a.c.localeCompare(b.c)),
         padron: st.total, lista: st.totalLista,
         casillasPadron: st.totalMesasPadron, casillasLista: st.totalMesasLista,
+        nomenclaturaPadron: (st.mesasDetallePadron || []).join(', '),
+        nomenclaturaLista: (st.mesasDetalleLista || []).join(', '),
+        repartoPadron: (st.distPadron || []).map(d => ({ n: d.nombre, v: d.valor })),
+        repartoLista: (st.distLista || []).map(d => ({ n: d.nombre, v: d.valor })),
       };
     });
+
+    // Básicas y contiguas con el mismo criterio que consolidadoB_C / desgloseTiposCasilla: lo que
+    // le queda a cada sección después de quitarle lo que atienden sus extraordinarias.
+    const padSec = {}, lisSec = {}, consPad = {}, consLis = {};
+    padronRows.forEach(m => {
+      const s = n4(m.seccion);
+      padSec[s] = (padSec[s] || 0) + (parseInt(m.padron) || 0);
+      lisSec[s] = (lisSec[s] || 0) + (parseInt(m.lista) || 0);
+    });
+    const seccionesConExtra = new Set();
+    extrasVinculadas.forEach(c => {
+      seccionesConExtra.add(n4(c.sede?.seccion));
+      [c.sede, ...(c.alimentadoras || [])].forEach(m => {
+        if (!m) return;
+        const s = n4(m.seccion);
+        consPad[s] = (consPad[s] || 0) + (parseInt(m.padron) || 0);
+        consLis[s] = (consLis[s] || 0) + (parseInt(m.lista) || 0);
+      });
+    });
+    let basicasPadron = 0, contiguasPadron = 0, basicasLista = 0, contiguasLista = 0, seccionesNoInstala = 0;
+    Object.keys(padSec).forEach(s => {
+      const remPad = Math.max(0, padSec[s] - (consPad[s] || 0));
+      const remLis = Math.max(0, (lisSec[s] || 0) - (consLis[s] || 0));
+      if (!seccionesConExtra.has(s) && ((remPad > 0 && remPad < 100) || (remLis > 0 && remLis < 100))) { seccionesNoInstala += 1; return; }
+      if (remPad > 0) { const n = Math.ceil(remPad / BOOTH_LIMIT) || 1; basicasPadron += 1; contiguasPadron += n - 1; }
+      if (remLis > 0) { const n = Math.ceil(remLis / BOOTH_LIMIT) || 1; basicasLista += 1; contiguasLista += n - 1; }
+    });
+    const exPadron = extras.reduce((t, e) => t + e.casillasPadron, 0);
+    const exLista = extras.reduce((t, e) => t + e.casillasLista, 0);
     return {
-      id: 'actual', nombre: 'Armado actual', fechaCorte, extras,
-      resumenDistrito: { totalPadron: totalCasillasDistrito.totalPadron, totalLista: totalCasillasDistrito.totalLista, exPadron: totalCasillasDistrito.exPadron, exLista: totalCasillasDistrito.exLista },
+      extras,
+      resumenDistrito: {
+        totalPadron: basicasPadron + contiguasPadron + exPadron + numEspeciales,
+        totalLista: basicasLista + contiguasLista + exLista + numEspeciales,
+        basicasPadron, contiguasPadron, basicasLista, contiguasLista,
+        bcPadron: basicasPadron + contiguasPadron, bcLista: basicasLista + contiguasLista,
+        extraordinarias: extras.length, exPadron, exLista,
+        extraContiguasPadron: exPadron - extras.length, extraContiguasLista: exLista - extras.length,
+        especiales: numEspeciales, seccionesNoInstala,
+      },
+      padronDistrito: {
+        padron: Object.values(padSec).reduce((t, n) => t + n, 0),
+        lista: Object.values(lisSec).reduce((t, n) => t + n, 0),
+        secciones: Object.keys(padSec).length,
+        localidades: new Set(padronRows.map(m => `${Number(m.municipio)}-${Number(m.localidad)}`)).size,
+        manzanas: padronRows.length,
+      },
     };
-  }, [sedesActivas, fechaCorte, totalCasillasDistrito]);
+  };
+
+  // Liga un armado (referencias sección/localidad/manzana, como las del respaldo JSON) contra un
+  // padrón cualquiera. Las manzanas que no existan en ese padrón se cuentan en 0 y se reportan.
+  const construirFotoDesdeRefs = (padronRows, refs) => {
+    const n4 = (v) => String(v ?? '').trim().padStart(4, '0');
+    const mapa = new Map(padronRows.map(m => [`${n4(m.seccion)}|${n4(m.localidad)}|${n4(m.manzana)}`, m]));
+    const faltantes = [];
+    const buscar = (r, tipo) => {
+      const m = mapa.get(`${n4(r.s)}|${n4(r.l)}|${n4(r.m)}`);
+      if (m) return m;
+      faltantes.push({ tipo, seccion: r.s, localidad: r.l, manzana: r.m });
+      return { seccion: r.s, localidad: r.l, manzana: r.m, padron: 0, lista: 0 };
+    };
+    let especiales = 0;
+    const vinculadas = [];
+    refs.forEach(c => {
+      if (String(c.tipo).toUpperCase().startsWith('S')) { especiales += 1; return; }
+      if (!c.sedeRef) return;
+      vinculadas.push({ tipo: c.tipo, sede: buscar(c.sedeRef, c.tipo), alimentadoras: (c.alimentadorasRefs || []).map(r => buscar(r, c.tipo)) });
+    });
+    return { ...armarFotoExtra(padronRows, vinculadas, especiales), faltantes };
+  };
+
+  const numEspecialesActual = useMemo(() => casillasGlobales.filter(c => String(c.tipo).toUpperCase().startsWith('S')).length, [casillasGlobales]);
+  const fotoExtraActual = useMemo(() => ({
+    id: 'actual', nombre: 'Armado actual', fechaCorte,
+    ...armarFotoExtra(rawElectoralData, sedesActivas, numEspecialesActual),
+  }), [rawElectoralData, sedesActivas, fechaCorte, numEspecialesActual, catalogoLocalidades]);
+
+  const refsDeArmadoActual = () => casillasGlobales.map(c => (String(c.tipo).toUpperCase().startsWith('S') || !c.sede)
+    ? { tipo: c.tipo, sedeRef: null }
+    : { tipo: c.tipo, sedeRef: { s: c.sede.seccion, l: c.sede.localidad, m: c.sede.manzana }, alimentadorasRefs: (c.alimentadoras || []).map(a => ({ s: a.seccion, l: a.localidad, m: a.manzana })) });
+  const refsDeVersion = (v) => {
+    const partir = (k) => { const [s, l, m] = String(k).split('-'); return { s, l, m }; };
+    const especiales = v.resumenDistrito?.especiales ?? numEspecialesActual;
+    return [
+      ...(v.extras || []).map(e => ({ tipo: e.tipo, sedeRef: partir(e.sede), alimentadorasRefs: (e.manzanas || []).filter(k => k !== e.sede).map(partir) })),
+      ...Array.from({ length: especiales }, (_, i) => ({ tipo: `S${i + 1}`, sedeRef: null })),
+    ];
+  };
 
   const claveLocalVersionesExtra = `proyector_versionesExtra_D${distritoInfo.numero}`;
-  const ordenarVersiones = (lista) => [...lista].sort((a, b) => String(a.creado).localeCompare(String(b.creado)));
+  // Orden cronológico por fecha de corte (DD/MM/AAAA); si no tiene, por la fecha en que se guardó.
+  // Así un corte anterior que se agrega después queda en su lugar (junio antes que julio).
+  const claveOrdenVersion = (v) => {
+    const m = String(v.fechaCorte || '').match(/(\d{1,2})\D(\d{1,2})\D(\d{2,4})/);
+    if (m) return `${m[3].length === 2 ? `20${m[3]}` : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}|${v.creado || ''}`;
+    return `${String(v.creado || '').slice(0, 10)}|${v.creado || ''}`;
+  };
+  const ordenarVersiones = (lista) => [...lista].sort((a, b) => claveOrdenVersion(a).localeCompare(claveOrdenVersion(b)));
 
   useEffect(() => {
     if (!distritoInfo.numero) { setVersionesExtra([]); return; }
@@ -2758,6 +2905,7 @@ export default function App() {
     const existe = (id) => id === 'actual' || versionesExtra.some(v => v.id === id);
     if (!compVersionA || !existe(compVersionA)) setCompVersionA(versionesExtra[versionesExtra.length - 1].id);
     if (!existe(compVersionB)) setCompVersionB('actual');
+    if (!existe(fichaVersionId)) setFichaVersionId('actual');
   }, [versionesExtra]);
 
   const nombreVersionSugerido = () => {
@@ -2766,24 +2914,28 @@ export default function App() {
     return `Armado ${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${hoy.getFullYear()}`;
   };
 
+  const persistirVersion = async (version) => {
+    const id = `v_${Date.now()}`;
+    if (isCloudEnabled && db && user) {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'versionesExtra', id), version);
+    } else {
+      const lista = ordenarVersiones([...versionesExtra, { ...version, id }]);
+      localStorage.setItem(claveLocalVersionesExtra, JSON.stringify(lista));
+      setVersionesExtra(lista);
+    }
+    return id;
+  };
+
   const guardarVersionExtra = async () => {
     const nombre = (modalGuardarVersion.nombre || '').trim() || nombreVersionSugerido();
-    const ahora = new Date();
-    const id = `v_${ahora.getTime()}`;
     const version = {
       // El corte lo escribe el usuario al guardar (viene prellenado con el del padrón cargado).
-      nombre, creado: ahora.toISOString(), fechaCorte: (modalGuardarVersion.corte || '').trim(),
-      extras: fotoExtraActual.extras, resumenDistrito: fotoExtraActual.resumenDistrito,
+      nombre, creado: new Date().toISOString(), fechaCorte: (modalGuardarVersion.corte || '').trim(), origen: 'armado',
+      extras: fotoExtraActual.extras, resumenDistrito: fotoExtraActual.resumenDistrito, padronDistrito: fotoExtraActual.padronDistrito,
     };
     setModalGuardarVersion(prev => ({ ...prev, guardando: true }));
     try {
-      if (isCloudEnabled && db && user) {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'versionesExtra', id), version);
-      } else {
-        const lista = ordenarVersiones([...versionesExtra, { ...version, id }]);
-        localStorage.setItem(claveLocalVersionesExtra, JSON.stringify(lista));
-        setVersionesExtra(lista);
-      }
+      const id = await persistirVersion(version);
       setCompVersionA(id); setCompVersionB('actual');
       setModalGuardarVersion({ isOpen: false, nombre: '', guardando: false });
       setSuccessMessage(`Versión "${nombre}" guardada (${version.extras.length} extraordinarias). Puedes compararla en Proyección → Resumen Distrital.`);
@@ -2791,6 +2943,62 @@ export default function App() {
       console.error(err);
       setModalGuardarVersion(prev => ({ ...prev, guardando: false }));
       setErrorMessage('No se pudo guardar la versión en la nube. Revisa tu conexión e intenta de nuevo.');
+    }
+  };
+
+  const abrirCorteAnterior = () => setModalCorteAnterior({ isOpen: true, nombre: '', corte: '', archivoPadron: null, fuente: 'actual', archivoJson: null, procesando: false, error: '' });
+
+  // Registra un corte que ya pasó: toma el Excel de padrón de ese corte y un armado (el actual, un
+  // respaldo .json de ese momento, o el de una versión ya guardada) y calcula su foto completa.
+  const guardarCorteAnterior = async () => {
+    const m = modalCorteAnterior;
+    const fallar = (error) => setModalCorteAnterior(prev => ({ ...prev, procesando: false, error }));
+    if (!(m.corte || '').trim()) return fallar('Escribe la fecha de corte de ese padrón (DD/MM/AAAA).');
+    if (!m.archivoPadron) return fallar('Selecciona el Excel de padrón de ese corte.');
+    if (m.fuente === 'json' && !m.archivoJson) return fallar('Selecciona el archivo de respaldo (.json) del armado.');
+    if (!window.XLSX) return fallar('La librería de Excel aún está cargando. Intenta de nuevo.');
+    setModalCorteAnterior(prev => ({ ...prev, procesando: true, error: '' }));
+    try {
+      let padron;
+      try { padron = parsearManzanasDeArchivo(await m.archivoPadron.arrayBuffer()); } catch (e) { return fallar('El Excel de padrón no tiene el formato oficial.'); }
+      if (padron.length === 0) return fallar('El Excel de padrón no trae manzanas.');
+      // Candado: que el padrón sea de este distrito (columna DISTRITO FEDERAL, cuando viene).
+      const distritos = {};
+      padron.forEach(r => { const d = normalizarDistrito(r.federal); if (d) distritos[d] = (distritos[d] || 0) + 1; });
+      const [distritoArchivo] = Object.entries(distritos).sort((a, b) => b[1] - a[1])[0] || [];
+      if (distritoArchivo && distritoArchivo !== normalizarDistrito(distritoInfo.numero)) return fallar(`Ese padrón es del distrito ${distritoArchivo} y estás en el distrito ${normalizarDistrito(distritoInfo.numero)}.`);
+
+      let refs, fuenteArmado;
+      if (m.fuente === 'actual') { refs = refsDeArmadoActual(); fuenteArmado = 'el armado actual'; }
+      else if (m.fuente === 'json') {
+        try {
+          const cfg = JSON.parse(await m.archivoJson.text());
+          refs = cfg.casillas || cfg;
+          if (!Array.isArray(refs)) throw new Error('sin casillas');
+        } catch (e) { return fallar('El respaldo no es válido (debe ser el .json que descarga el botón Respaldo de la Mesa de Diseño).'); }
+        fuenteArmado = `el respaldo ${m.archivoJson.name}`;
+      } else {
+        const v = versionesExtra.find(x => x.id === m.fuente);
+        if (!v) return fallar('No se encontró la versión elegida.');
+        refs = refsDeVersion(v); fuenteArmado = `el armado de la versión "${v.nombre}"`;
+      }
+
+      const foto = construirFotoDesdeRefs(padron, refs);
+      const corte = m.corte.trim();
+      const nombre = (m.nombre || '').trim() || `Corte ${corte}`;
+      const version = {
+        nombre, creado: new Date().toISOString(), fechaCorte: corte, origen: 'archivo',
+        archivoPadron: m.archivoPadron.name, fuenteArmado, manzanasFaltantes: foto.faltantes.length,
+        extras: foto.extras, resumenDistrito: foto.resumenDistrito, padronDistrito: foto.padronDistrito,
+      };
+      const id = await persistirVersion(version);
+      setModalCorteAnterior({ isOpen: false });
+      setVistaVersiones('historial');
+      setFichaVersionId(id);
+      setSuccessMessage(`Corte "${nombre}" agregado con ${version.extras.length} extraordinarias.${foto.faltantes.length > 0 ? ` ⚠ ${foto.faltantes.length} manzana(s) del armado no existían en ese padrón y se contaron en 0.` : ''}`);
+    } catch (err) {
+      console.error(err);
+      fallar('No se pudo guardar en la nube. Revisa tu conexión e intenta de nuevo.');
     }
   };
 
@@ -2819,81 +3027,262 @@ export default function App() {
     return { A, B, ...compararVersionesExtra(A, B) };
   }, [compVersionA, compVersionB, versionesExtra, fotoExtraActual]);
 
-  const etiquetaVersion = (v) => v.id === 'actual' ? 'Armado actual' : `${v.nombre}${v.fechaCorte ? ` (corte ${v.fechaCorte})` : ''}`;
+  // Etiquetas y colores de cada tipo de cambio (pantalla: semáforo; Excel: paleta del Manual INE).
+  const ESTADOS_CAMBIO = {
+    nueva: { label: 'Nueva', cls: 'bg-emerald-100 text-emerald-700 border-emerald-300', xls: 'C5A989' },
+    eliminada: { label: 'Eliminada', cls: 'bg-red-100 text-red-700 border-red-300', xls: 'B2B2B2' },
+    armado: { label: 'Cambió armado', cls: 'bg-amber-100 text-amber-800 border-amber-300', xls: 'DDD4CE' },
+    casillas: { label: 'Cambian casillas', cls: 'bg-pink-100 text-pink-800 border-pink-300', xls: 'C5C9CC' },
+    padron: { label: 'Solo padrón', cls: 'bg-slate-100 text-slate-600 border-slate-200', xls: null },
+    igual: { label: 'Sin cambio', cls: 'bg-white text-slate-400 border-slate-200', xls: null },
+  };
+  const ESTADOS_RELEVANTES = ['nueva', 'eliminada', 'armado', 'casillas'];
+
+  const etiquetaVersion = (v) => v.id === 'actual' ? `Armado actual${v.fechaCorte ? ` (corte ${v.fechaCorte})` : ''}` : `${v.nombre}${v.fechaCorte ? ` (corte ${v.fechaCorte})` : ''}`;
+  const origenVersion = (v) => {
+    if (v.id === 'actual') return 'Armado actual con el padrón cargado ahora.';
+    if (v.origen === 'archivo') return `Calculada con el padrón "${v.archivoPadron}" y ${v.fuenteArmado}.${v.manzanasFaltantes ? ` ${v.manzanasFaltantes} manzana(s) no existían en ese padrón (se contaron en 0).` : ''}`;
+    const basica = (v.extras || []).length > 0 && !(v.extras || []).some(e => e.localidades);
+    return `Guardada del armado el ${new Date(v.creado).toLocaleString('es-MX')}${basica ? ' (guardada antes de la ficha completa: sin localidades, reparto ni padrón del distrito).' : '.'}`;
+  };
+  const textoLocalidades = (e) => e?.localidades ? e.localidades.map(l => `${l.c}${l.n ? ` ${l.n}` : ''}`).join(', ') : '—';
+  const textoCasillas = (e) => e ? (e.nomenclaturaPadron || `${e.casillasPadron} casilla(s)`) : '—';
   // Texto corto de cada cambio, compartido por la pantalla, el Excel y el PDF.
-  const describirCambioExtra = (c) => {
+  const describirCambioExtra = (d) => {
+    const a = d.antes, b = d.despues;
+    if (d.estado === 'nueva') return `Sede ${b.sede} · ${b.manzanas.length} mzas · Locs: ${textoLocalidades(b)}`;
+    if (d.estado === 'eliminada') return `Tenía sede ${a.sede} · ${a.manzanas.length} mzas · Locs: ${textoLocalidades(a)}`;
     const partes = [];
-    if (c.manzanasAgregadas.length) partes.push(`+ Mzas: ${c.manzanasAgregadas.join(', ')}`);
-    if (c.manzanasQuitadas.length) partes.push(`- Mzas: ${c.manzanasQuitadas.join(', ')}`);
-    if (c.sede) partes.push(`Sede: ${c.sede.de} → ${c.sede.a}`);
-    if (!c.manzanasAgregadas.length && !c.manzanasQuitadas.length && !c.sede && (c.padron || c.lista)) partes.push('Mismas manzanas; cambió el padrón/lista del corte');
+    if (a.sede !== b.sede) partes.push(`Sede: ${a.sede} → ${b.sede}`);
+    if (d.manzanasAgregadas.length) partes.push(`+ Mzas: ${d.manzanasAgregadas.join(', ')}`);
+    if (d.manzanasQuitadas.length) partes.push(`- Mzas: ${d.manzanasQuitadas.join(', ')}`);
+    if (d.localidadesAgregadas.length) partes.push(`+ Loc: ${d.localidadesAgregadas.map(l => `${l.c} ${l.n}`.trim()).join(', ')}`);
+    if (d.localidadesQuitadas.length) partes.push(`- Loc: ${d.localidadesQuitadas.map(l => `${l.c} ${l.n}`.trim()).join(', ')}`);
+    if (d.estado === 'casillas') partes.push(`Mismas manzanas; con el padrón del corte pasa de ${textoCasillas(a)} a ${textoCasillas(b)}`);
+    if (d.estado === 'padron') partes.push('Mismas manzanas y casillas; solo cambió el padrón/lista del corte');
     return partes.join(' · ');
   };
 
-  // Filas de totales (Concepto, A, B, Diferencia) — mismas para pantalla, Excel y PDF.
-  const filasTotalesComparacion = (cv) => {
-    const filas = [
-      ['Extraordinarias (sedes)', cv.totalesA.extraordinarias, cv.totalesB.extraordinarias],
-      ['Casillas extraordinarias (Padrón)', cv.totalesA.casillasPadron, cv.totalesB.casillasPadron],
-      ['Casillas extraordinarias (Lista Nominal)', cv.totalesA.casillasLista, cv.totalesB.casillasLista],
-      ['Padrón atendido por extraordinarias', cv.totalesA.padron, cv.totalesB.padron],
-      ['Lista Nominal atendida por extraordinarias', cv.totalesA.lista, cv.totalesB.lista],
-    ];
-    if (cv.A.resumenDistrito && cv.B.resumenDistrito) {
-      filas.push(['Total de casillas del distrito (Padrón)', cv.A.resumenDistrito.totalPadron, cv.B.resumenDistrito.totalPadron]);
-      filas.push(['Total de casillas del distrito (Lista Nominal)', cv.A.resumenDistrito.totalLista, cv.B.resumenDistrito.totalLista]);
-    }
-    return filas.map(([concepto, a, b]) => [concepto, a || 0, b || 0, (b || 0) - (a || 0)]);
-  };
-  const fmtDiferencia = (n) => `${n > 0 ? '+' : ''}${n}`;
+  // Indicadores de cada foto — los mismos en "Comparar", "Historial", Excel y PDF. Las versiones
+  // guardadas antes de que existiera un dato lo muestran como "—" en vez de 0, para no inventar
+  // diferencias.
+  const sumaExtras = (f, k) => (f.extras || []).reduce((t, e) => t + (e[k] || 0), 0);
+  const INDICADORES_VERSION = [
+    ['Padrón del corte', 'Padrón electoral del distrito', f => f.padronDistrito?.padron],
+    ['Padrón del corte', 'Lista nominal del distrito', f => f.padronDistrito?.lista],
+    ['Padrón del corte', 'Secciones', f => f.padronDistrito?.secciones],
+    ['Padrón del corte', 'Localidades', f => f.padronDistrito?.localidades],
+    ['Padrón del corte', 'Manzanas', f => f.padronDistrito?.manzanas],
+    ['Casillas del distrito (por Padrón)', 'Total de casillas', f => f.resumenDistrito?.totalPadron],
+    ['Casillas del distrito (por Padrón)', 'Básicas', f => f.resumenDistrito?.basicasPadron],
+    ['Casillas del distrito (por Padrón)', 'Contiguas', f => f.resumenDistrito?.contiguasPadron],
+    ['Casillas del distrito (por Padrón)', 'Extraordinarias', f => (f.extras || []).length],
+    ['Casillas del distrito (por Padrón)', 'Extraordinarias contiguas', f => sumaExtras(f, 'casillasPadron') - (f.extras || []).length],
+    ['Casillas del distrito (por Padrón)', 'Especiales', f => f.resumenDistrito?.especiales],
+    ['Casillas del distrito (por Padrón)', 'Secciones que no instalan', f => f.resumenDistrito?.seccionesNoInstala],
+    ['Casillas del distrito (por Lista Nominal)', 'Total de casillas', f => f.resumenDistrito?.totalLista],
+    ['Casillas del distrito (por Lista Nominal)', 'Básicas', f => f.resumenDistrito?.basicasLista],
+    ['Casillas del distrito (por Lista Nominal)', 'Contiguas', f => f.resumenDistrito?.contiguasLista],
+    ['Casillas del distrito (por Lista Nominal)', 'Extraordinarias contiguas', f => sumaExtras(f, 'casillasLista') - (f.extras || []).length],
+    ['Extraordinarias', 'Casillas extraordinarias (Padrón)', f => sumaExtras(f, 'casillasPadron')],
+    ['Extraordinarias', 'Casillas extraordinarias (Lista Nominal)', f => sumaExtras(f, 'casillasLista')],
+    ['Extraordinarias', 'Localidades atendidas', f => (f.extras || []).every(e => Array.isArray(e.localidades)) ? new Set((f.extras || []).flatMap(e => e.localidades.map(l => `${e.municipio}|${l.c}`))).size : undefined],
+    ['Extraordinarias', 'Manzanas atendidas', f => new Set((f.extras || []).flatMap(e => e.manzanas || [])).size],
+    ['Extraordinarias', 'Padrón atendido', f => sumaExtras(f, 'padron')],
+    ['Extraordinarias', 'Lista Nominal atendida', f => sumaExtras(f, 'lista')],
+    ['Extraordinarias', '% del padrón del distrito', f => f.padronDistrito?.padron ? Math.round(sumaExtras(f, 'padron') / f.padronDistrito.padron * 1000) / 10 : undefined],
+  ];
+  const filasIndicadores = (fotos) => INDICADORES_VERSION.map(([grupo, concepto, fn]) => ({
+    grupo, concepto, esPorcentaje: concepto.startsWith('%'),
+    valores: fotos.map(f => { const v = fn(f); return typeof v === 'number' && !isNaN(v) ? v : null; }),
+  }));
+  const fmtNum = (n, pct) => n === null || n === undefined ? '—' : `${n.toLocaleString('es-MX')}${pct ? '%' : ''}`;
+  const fmtDiferencia = (n, pct) => n === null || n === undefined ? '—' : `${n > 0 ? '+' : ''}${(pct ? Math.round(n * 10) / 10 : n).toLocaleString('es-MX')}${pct ? ' pts' : ''}`;
 
-  const exportarComparativoVersionesExcel = () => {
-    if (!window.XLSX || !comparacionVersiones) return;
+  // Historial completo: todas las versiones en orden de corte + el armado actual al final, con la
+  // evolución de cada extraordinaria columna por columna (cada celda comparada con la anterior).
+  const historialVersiones = useMemo(() => {
+    if (versionesExtra.length === 0) return null;
+    const fotos = [...versionesExtra, fotoExtraActual];
+    const mapas = fotos.map(f => new Map((f.extras || []).map(e => [e.clave, e])));
+    const referencias = new Map();
+    fotos.forEach(f => (f.extras || []).forEach(e => { if (!referencias.has(e.clave)) referencias.set(e.clave, e); }));
+    const filas = [...referencias.values()].map(ref => {
+      const celdas = mapas.map((m, i) => {
+        const e = m.get(ref.clave) || null;
+        const estado = i === 0 ? (e ? 'igual' : 'vacia') : clasificarCambioExtra(mapas[i - 1].get(ref.clave) || null, e);
+        return { e, estado };
+      });
+      return { clave: ref.clave, seccion: ref.seccion, tipo: ref.tipo, celdas, relevante: celdas.some(c => ESTADOS_RELEVANTES.includes(c.estado)) };
+    }).sort((x, y) => x.seccion.localeCompare(y.seccion, undefined, { numeric: true }) || x.tipo.localeCompare(y.tipo, undefined, { numeric: true }));
+    return { fotos, filas };
+  }, [versionesExtra, fotoExtraActual]);
+
+  const exportarAnalisisVersionesExcel = () => {
+    if (!window.XLSX || !historialVersiones) return;
     const XL = window.XLSX;
-    const cv = comparacionVersiones;
-    // Paleta del Manual INE: encabezado Gris Oxford con blanco; movimientos en Beige / Gris / Gris cálido con negro.
+    // Paleta del Manual INE: encabezados Gris Oxford con blanco, grupos en Beige con negro.
     const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloGrupo = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true, color: { rgb: '000000' } } };
     const estiloTitulo = { font: { bold: true, sz: 13, color: { rgb: '000000' } } };
-    const estiloMov = {
-      Nueva: { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true, color: { rgb: '000000' } } },
-      Eliminada: { fill: { patternType: 'solid', fgColor: { rgb: 'B2B2B2' } }, font: { bold: true, color: { rgb: '000000' } } },
-      Modificada: { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, font: { bold: true, color: { rgb: '000000' } } },
-    };
+    const estiloTotal = { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, font: { bold: true, color: { rgb: '000000' } } };
+    const estiloEstado = (estado) => ESTADOS_CAMBIO[estado]?.xls ? { fill: { patternType: 'solid', fgColor: { rgb: ESTADOS_CAMBIO[estado].xls } }, font: { bold: true, color: { rgb: '000000' } }, alignment: { wrapText: true, vertical: 'top' } } : { alignment: { wrapText: true, vertical: 'top' } };
     const wb = XL.utils.book_new();
+    const usados = new Set();
+    const nombreHoja = (base) => {
+      const limpio = base.replace(/[\[\]:*?\/\\]/g, '').trim();
+      let n = limpio.slice(0, 31), i = 2;
+      while (usados.has(n)) { const suf = ` (${i++})`; n = limpio.slice(0, 31 - suf.length) + suf; }
+      usados.add(n); return n;
+    };
+    const subtitulo = `Distrito ${f4(distritoInfo.numero)}${cabeceraDistrital ? ` ${cabeceraDistrital}` : ''} · Generado: ${new Date().toLocaleString('es-MX')}`;
+    const pintarFila = (ws, r, ncols, estilo) => { for (let c = 0; c < ncols; c++) { const a = XL.utils.encode_cell({ r, c }); ws[a] = ws[a] || { t: 's', v: '' }; ws[a].s = estilo; } };
 
-    const headersRes = ['Concepto', etiquetaVersion(cv.A), etiquetaVersion(cv.B), 'Diferencia'];
-    const filasRes = filasTotalesComparacion(cv).map(([c, a, b, d]) => [c, a, b, fmtDiferencia(d)]);
-    const rowsRes = [
-      [`Comparativo de Versiones — Casillas Extraordinarias · Distrito ${f4(distritoInfo.numero)}${cabeceraDistrital ? ` ${cabeceraDistrital}` : ''}`],
-      [`Generado: ${new Date().toLocaleString('es-MX')}`],
-      [],
-      headersRes, ...filasRes,
-      [],
-      ['Movimiento', 'Cantidad'],
-      ['Nuevas', cv.altas.length], ['Eliminadas', cv.bajas.length], ['Modificadas', cv.cambios.length], ['Sin cambio', cv.sinCambio],
-    ];
-    const wsRes = XL.utils.aoa_to_sheet(rowsRes);
-    wsRes['!cols'] = [{ wch: 44 }, { wch: 30 }, { wch: 30 }, { wch: 12 }];
-    wsRes['A1'].s = estiloTitulo;
-    for (let c = 0; c < headersRes.length; c++) { const addr = XL.utils.encode_cell({ r: 3, c }); if (wsRes[addr]) wsRes[addr].s = estiloHeader; }
-    const filaMov = 3 + 1 + filasRes.length + 1;
-    for (let c = 0; c < 2; c++) { const addr = XL.utils.encode_cell({ r: filaMov, c }); if (wsRes[addr]) wsRes[addr].s = estiloHeader; }
-    XL.utils.book_append_sheet(wb, wsRes, 'Resumen');
+    const hojaIndicadores = (titulo, fotos, conDif, filasExtra = []) => {
+      const header = ['Concepto', ...fotos.map(etiquetaVersion), ...(conDif ? ['Diferencia'] : [])];
+      const rows = [[titulo], [subtitulo], [], header];
+      const filasGrupo = [];
+      let g = null;
+      filasIndicadores(fotos).forEach(f => {
+        if (f.grupo !== g) { g = f.grupo; filasGrupo.push(rows.length); rows.push([g]); }
+        const fila = [f.concepto, ...f.valores.map(v => v === null ? '—' : v)];
+        if (conDif) { const [a, b] = f.valores; fila.push(a === null || b === null ? '—' : fmtDiferencia(b - a, f.esPorcentaje)); }
+        rows.push(fila);
+      });
+      const inicioExtra = rows.length;
+      rows.push(...filasExtra);
+      const ws = XL.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 42 }, ...fotos.map(() => ({ wch: 26 })), ...(conDif ? [{ wch: 14 }] : [])];
+      ws['A1'].s = estiloTitulo;
+      pintarFila(ws, 3, header.length, estiloHeader);
+      filasGrupo.forEach(r => pintarFila(ws, r, header.length, estiloGrupo));
+      return { ws, inicioExtra };
+    };
 
-    const headersDet = ['Movimiento', 'Sección', 'Casilla', 'Sede anterior', 'Sede nueva', 'Manzanas agregadas', 'Manzanas quitadas', 'Padrón anterior', 'Padrón nuevo', 'Lista anterior', 'Lista nueva', 'Casillas (P) anterior', 'Casillas (P) nuevas', 'Casillas (L) anterior', 'Casillas (L) nuevas'];
-    const filasDet = [
-      ...cv.altas.map(e => ['Nueva', e.seccion, e.tipo, '', e.sede, e.manzanas.join(', '), '', '', e.padron, '', e.lista, '', e.casillasPadron, '', e.casillasLista]),
-      ...cv.bajas.map(e => ['Eliminada', e.seccion, e.tipo, e.sede, '', '', e.manzanas.join(', '), e.padron, '', e.lista, '', e.casillasPadron, '', e.casillasLista, '']),
-      ...cv.cambios.map(c => ['Modificada', c.seccion, c.tipo, c.antes.sede, c.despues.sede, c.manzanasAgregadas.join(', '), c.manzanasQuitadas.join(', '), c.antes.padron, c.despues.padron, c.antes.lista, c.despues.lista, c.antes.casillasPadron, c.despues.casillasPadron, c.antes.casillasLista, c.despues.casillasLista]),
-    ].sort((a, b) => String(a[1]).localeCompare(String(b[1]), undefined, { numeric: true }) || String(a[2]).localeCompare(String(b[2]), undefined, { numeric: true }));
-    const wsDet = XL.utils.aoa_to_sheet([headersDet, ...filasDet]);
-    wsDet['!cols'] = headersDet.map((h, i) => ({ wch: i === 5 || i === 6 ? 40 : Math.max(11, h.length + 2) }));
-    for (let c = 0; c < headersDet.length; c++) { const addr = XL.utils.encode_cell({ r: 0, c }); if (wsDet[addr]) wsDet[addr].s = estiloHeader; }
-    filasDet.forEach((f, i) => { const addr = XL.utils.encode_cell({ r: i + 1, c: 0 }); if (wsDet[addr]) wsDet[addr].s = estiloMov[f[0]]; });
-    if (filasDet.length > 0) wsDet['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasDet.length, c: headersDet.length - 1 } }) };
-    XL.utils.book_append_sheet(wb, wsDet, 'Detalle de Cambios');
+    // 1. Historial por corte
+    XL.utils.book_append_sheet(wb, hojaIndicadores('Historial de versiones — Proyección con Casillas Extraordinarias', historialVersiones.fotos, false).ws, nombreHoja('Historial por corte'));
 
-    XL.writeFile(aplicarFuenteInstitucional(wb), `Comparativo_Versiones_Extra_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+    // 2. Evolución por casilla
+    {
+      const header = ['Sección', 'Casilla', ...historialVersiones.fotos.map(etiquetaVersion)];
+      const rows = [header, ...historialVersiones.filas.map(fila => [fila.seccion, fila.tipo, ...fila.celdas.map((c, i) => {
+        if (!c.e) return c.estado === 'eliminada' ? 'Eliminada' : '';
+        const txt = `${textoCasillas(c.e)} · Padrón ${c.e.padron} · Lista ${c.e.lista} · ${c.e.manzanas.length} mzas`;
+        return i > 0 && c.estado !== 'igual' ? `[${ESTADOS_CAMBIO[c.estado].label}] ${txt}` : txt;
+      })])];
+      const leyenda = rows.length + 1;
+      rows.push([], ['Leyenda'], ...Object.values(ESTADOS_CAMBIO).filter(x => x.xls).map(x => [x.label]));
+      const ws = XL.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 9 }, { wch: 9 }, ...historialVersiones.fotos.map(() => ({ wch: 38 }))];
+      pintarFila(ws, 0, header.length, estiloHeader);
+      historialVersiones.filas.forEach((fila, i) => fila.celdas.forEach((c, j) => {
+        const a = XL.utils.encode_cell({ r: i + 1, c: j + 2 });
+        if (ws[a]) ws[a].s = estiloEstado(j === 0 ? 'igual' : c.estado);
+      }));
+      Object.values(ESTADOS_CAMBIO).filter(x => x.xls).forEach((x, i) => { const a = XL.utils.encode_cell({ r: leyenda + 1 + i, c: 0 }); if (ws[a]) ws[a].s = { fill: { patternType: 'solid', fgColor: { rgb: x.xls } }, font: { bold: true, color: { rgb: '000000' } } }; });
+      ws['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: historialVersiones.filas.length, c: header.length - 1 } }) };
+      XL.utils.book_append_sheet(wb, ws, nombreHoja('Evolución por casilla'));
+    }
+
+    // 3. Comparativo de las dos versiones seleccionadas
+    if (comparacionVersiones) {
+      const cv = comparacionVersiones;
+      const conteoFilas = [[], ['Movimiento', 'Extraordinarias'], ...Object.entries(ESTADOS_CAMBIO).map(([k, x]) => [x.label, cv.conteo[k] || 0])];
+      const { ws, inicioExtra } = hojaIndicadores(`Comparativo: ${etiquetaVersion(cv.A)} vs ${etiquetaVersion(cv.B)}`, [cv.A, cv.B], true, conteoFilas);
+      pintarFila(ws, inicioExtra + 1, 2, estiloHeader);
+      XL.utils.book_append_sheet(wb, ws, nombreHoja('Comparativo'));
+
+      const header = ['Movimiento', 'Sección', 'Casilla', 'Casillas (P) antes', 'Casillas (P) después', 'Casillas (L) antes', 'Casillas (L) después', 'Localidades antes', 'Localidades después', 'Mzas antes', 'Mzas después', 'Manzanas agregadas', 'Manzanas quitadas', 'Padrón antes', 'Padrón después', 'Dif. padrón', 'Lista antes', 'Lista después', 'Dif. lista', 'Detalle'];
+      const rows = [header, ...cv.detalle.map(d => {
+        const a = d.antes, b = d.despues;
+        return [ESTADOS_CAMBIO[d.estado].label, d.seccion, d.tipo,
+          a ? textoCasillas(a) : '', b ? textoCasillas(b) : '', a ? (a.nomenclaturaLista || a.casillasLista) : '', b ? (b.nomenclaturaLista || b.casillasLista) : '',
+          a ? textoLocalidades(a) : '', b ? textoLocalidades(b) : '', a ? a.manzanas.length : '', b ? b.manzanas.length : '',
+          d.manzanasAgregadas.join(', '), d.manzanasQuitadas.join(', '),
+          a ? a.padron : '', b ? b.padron : '', (b ? b.padron : 0) - (a ? a.padron : 0),
+          a ? a.lista : '', b ? b.lista : '', (b ? b.lista : 0) - (a ? a.lista : 0),
+          d.estado === 'igual' ? '' : describirCambioExtra(d)];
+      })];
+      const ws2 = XL.utils.aoa_to_sheet(rows);
+      ws2['!cols'] = header.map((h, i) => ({ wch: [7, 8, 11, 12, 19].includes(i) ? 40 : Math.max(10, h.length + 2) }));
+      pintarFila(ws2, 0, header.length, estiloHeader);
+      cv.detalle.forEach((d, i) => { const a = XL.utils.encode_cell({ r: i + 1, c: 0 }); if (ws2[a]) ws2[a].s = estiloEstado(d.estado); });
+      ws2['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: cv.detalle.length, c: header.length - 1 } }) };
+      XL.utils.book_append_sheet(wb, ws2, nombreHoja('Detalle comparativo'));
+    }
+
+    // 4. Ficha completa de cada versión (y del armado actual)
+    historialVersiones.fotos.forEach(f => {
+      const header = ['Sección', 'Municipio', 'Casilla', 'Casillas (Padrón)', 'Nomenclatura (Padrón)', 'Reparto del padrón', 'Casillas (Lista)', 'Nomenclatura (Lista)', 'Reparto de la lista', 'Nº localidades', 'Localidades', 'Nº manzanas', 'Manzanas (padrón / lista)', 'Padrón', 'Lista Nominal'];
+      const extras = f.extras || [];
+      const rows = [[`Ficha: ${etiquetaVersion(f)}`], [origenVersion(f)], [subtitulo], header,
+        ...extras.map(e => [e.seccion, e.municipio || '', e.tipo, e.casillasPadron, e.nomenclaturaPadron || '', (e.repartoPadron || []).map(r => `${r.n}: ${r.v}`).join(' · '), e.casillasLista, e.nomenclaturaLista || '', (e.repartoLista || []).map(r => `${r.n}: ${r.v}`).join(' · '),
+          e.localidades ? e.localidades.length : '', textoLocalidades(e), (e.manzanas || []).length,
+          e.manzanasDetalle ? e.manzanasDetalle.map(m => `${m.k} (${m.p}/${m.l})`).join(', ') : (e.manzanas || []).join(', '), e.padron, e.lista]),
+        ['TOTAL', '', `${extras.length} extraordinarias`, sumaExtras(f, 'casillasPadron'), '', '', sumaExtras(f, 'casillasLista'), '', '', '', '', new Set(extras.flatMap(e => e.manzanas || [])).size, '', sumaExtras(f, 'padron'), sumaExtras(f, 'lista')],
+      ];
+      const ws = XL.utils.aoa_to_sheet(rows);
+      ws['!cols'] = header.map((h, i) => ({ wch: [5, 8, 10, 12].includes(i) ? 40 : Math.max(10, h.length + 2) }));
+      ws['A1'].s = estiloTitulo;
+      pintarFila(ws, 3, header.length, estiloHeader);
+      pintarFila(ws, rows.length - 1, header.length, estiloTotal);
+      XL.utils.book_append_sheet(wb, ws, nombreHoja(`Ficha ${f.id === 'actual' ? 'Actual' : f.nombre}`));
+    });
+
+    XL.writeFile(aplicarFuenteInstitucional(wb), `Analisis_Versiones_Extra_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
+
+  // Tabla de indicadores agrupados. modo 'dos': A, B y columna de diferencia; modo 'historial':
+  // una columna por corte con la variación contra la columna anterior.
+  const renderTablaIndicadores = (fotos, modo) => {
+    const filas = filasIndicadores(fotos);
+    const columnas = fotos.length + (modo === 'dos' ? 2 : 1);
+    let grupoPrevio = null;
+    return (
+      <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 mb-4">
+        <table className="w-full text-xs">
+          <thead className="bg-oxford-500 text-white">
+            <tr>
+              <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Concepto</th>
+              {fotos.map(f => (
+                <th key={f.id} className="text-right px-3 py-2 align-bottom">
+                  <div className="font-black uppercase text-[10px] whitespace-nowrap">{f.id === 'actual' ? 'Actual' : f.nombre}</div>
+                  <div className="text-[9px] font-bold text-oxford-100 whitespace-nowrap">{f.fechaCorte ? `corte ${f.fechaCorte}` : 'sin corte'}</div>
+                </th>
+              ))}
+              {modo === 'dos' && <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Dif.</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(fila => {
+              const encabezado = fila.grupo !== grupoPrevio;
+              grupoPrevio = fila.grupo;
+              const [a, b] = fila.valores;
+              const d = modo === 'dos' && a !== null && b !== null ? b - a : null;
+              return (
+                <React.Fragment key={`${fila.grupo}-${fila.concepto}`}>
+                  {encabezado && <tr className="bg-beige-100"><td colSpan={columnas} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-oxford-700">{fila.grupo}</td></tr>}
+                  <tr className="border-t border-slate-100">
+                    <td className="px-3 py-1.5 font-bold text-slate-700">{fila.concepto}</td>
+                    {fila.valores.map((v, i) => {
+                      const prev = i > 0 ? fila.valores[i - 1] : null;
+                      const dv = modo === 'historial' && i > 0 && v !== null && prev !== null ? v - prev : null;
+                      return (
+                        <td key={i} className="px-3 py-1.5 text-right whitespace-nowrap">
+                          <span className="font-bold text-slate-800">{fmtNum(v, fila.esPorcentaje)}</span>
+                          {dv ? <span className={`ml-1.5 text-[9px] font-black ${dv > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtDiferencia(dv, fila.esPorcentaje)}</span> : null}
+                        </td>
+                      );
+                    })}
+                    {modo === 'dos' && <td className={`px-3 py-1.5 text-right font-black whitespace-nowrap ${d === null || d === 0 ? 'text-slate-400' : d > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtDiferencia(d, fila.esPorcentaje)}</td>}
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   const todasLasCasillasEquipamiento = useMemo(() => {
@@ -3910,20 +4299,24 @@ export default function App() {
                       )}
 
                       <div className="bg-white rounded-3xl shadow-sm border-2 border-beige-300 px-6 py-5">
-                          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                               <div>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-beige-600">Comparativo de Versiones · Extraordinarias</p>
-                                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Compara el armado guardado de un corte (junio, julio, agosto…) contra otro o contra el actual.</p>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-beige-600">Versiones de la Proyección · Extraordinarias</p>
+                                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Guarda la proyección completa de cada corte (junio, julio, agosto…) y analiza cómo fue cambiando.</p>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                   <button onClick={() => setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false })} className="flex items-center gap-1.5 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><Bookmark className="w-3.5 h-3.5" /> Guardar versión</button>
-                                  {comparacionVersiones && <button onClick={exportarComparativoVersionesExcel} className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><FileDown className="w-3.5 h-3.5" /> Excel</button>}
+                                  <button onClick={abrirCorteAnterior} title="Calcular la versión de un corte que ya pasó con el Excel de padrón de ese corte" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><History className="w-3.5 h-3.5" /> Agregar corte anterior</button>
+                                  {historialVersiones && <button onClick={exportarAnalisisVersionesExcel} title="Historial por corte, evolución por casilla, comparativo y ficha completa de cada versión" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><FileDown className="w-3.5 h-3.5" /> Excel de análisis</button>}
                               </div>
+                          </div>
+                          <div className="mb-4 bg-beige-50 border border-beige-300 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-600 leading-snug">
+                              Cada versión <span className="text-oxford-700">congela la proyección con el padrón que estaba cargado al guardarla</span>: casillas y su nomenclatura, localidades, manzanas, padrón y lista de cada extraordinaria, y los totales del distrito. Si guardas varias versiones con el mismo padrón, sus cifras saldrán iguales. Para un corte que ya pasó usa <span className="text-oxford-700">"Agregar corte anterior"</span> con el Excel de padrón de ese corte.
                           </div>
 
                           {versionesExtra.length === 0 ? (
                               <div className="bg-beige-50 border-2 border-dashed border-beige-300 rounded-2xl px-5 py-4 text-sm font-bold text-slate-600">
-                                  Aún no hay versiones guardadas. Cuando termines el armado de un corte, presiona <span className="text-oxford-700">"Guardar versión"</span> (aquí o en la Mesa de Diseño). Con el siguiente corte podrás ver qué extraordinarias se agregaron, se eliminaron o cambiaron de manzanas.
+                                  Aún no hay versiones guardadas. Cuando termines el armado de un corte, presiona <span className="text-oxford-700">"Guardar versión"</span> (aquí o en la Mesa de Diseño). Si ya tienes el Excel de padrón de cortes anteriores, agrégalos con <span className="text-oxford-700">"Agregar corte anterior"</span>.
                               </div>
                           ) : (
                               <>
@@ -3933,105 +4326,211 @@ export default function App() {
                                           <p className="text-xs font-bold text-amber-800">El corte actual ({fechaCorte}) todavía no tiene una versión guardada. Cuando termines de ajustar el armado de este corte, guárdalo como versión.</p>
                                       </div>
                                   )}
-                                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4">
-                                      <div>
-                                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Versión base (antes)</label>
-                                          <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionA} onChange={e => setCompVersionA(e.target.value)}>
-                                              {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
-                                          </select>
-                                      </div>
-                                      <ArrowRight className="w-5 h-5 text-beige-500 mb-2.5 mx-auto hidden sm:block" />
-                                      <div>
-                                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Comparar contra (después)</label>
-                                          <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionB} onChange={e => setCompVersionB(e.target.value)}>
-                                              <option value="actual">Armado actual{fechaCorte ? ` (corte ${fechaCorte})` : ''}</option>
-                                              {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
-                                          </select>
-                                      </div>
+
+                                  <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl mb-4 w-fit">
+                                      {[['comparar', 'Comparar dos versiones'], ['historial', 'Historial completo'], ['ficha', 'Ficha de una versión']].map(([k, l]) => (
+                                          <button key={k} onClick={() => setVistaVersiones(k)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${vistaVersiones === k ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>{l}</button>
+                                      ))}
                                   </div>
 
-                                  {!comparacionVersiones ? (
-                                      <p className="text-xs font-bold text-slate-400 text-center py-3">Elige dos versiones distintas para compararlas.</p>
-                                  ) : (
+                                  {vistaVersiones === 'comparar' && (
                                       <>
-                                          <div className="flex flex-wrap gap-2 mb-4">
-                                              <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">+{comparacionVersiones.altas.length} nuevas</span>
-                                              <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">-{comparacionVersiones.bajas.length} eliminadas</span>
-                                              <span className="bg-amber-100 border-2 border-amber-300 text-amber-800 px-3 py-1 rounded-full text-[9px] font-black uppercase">{comparacionVersiones.cambios.length} modificadas</span>
-                                              <span className="bg-slate-100 border-2 border-slate-200 text-slate-500 px-3 py-1 rounded-full text-[9px] font-black uppercase">{comparacionVersiones.sinCambio} sin cambio</span>
-                                          </div>
-                                          <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 mb-4">
-                                              <table className="w-full text-xs">
-                                                  <thead className="bg-oxford-500 text-white">
-                                                      <tr>
-                                                          <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Concepto</th>
-                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">{comparacionVersiones.A.id === 'actual' ? 'Actual' : comparacionVersiones.A.nombre}</th>
-                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">{comparacionVersiones.B.id === 'actual' ? 'Actual' : comparacionVersiones.B.nombre}</th>
-                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Dif.</th>
-                                                      </tr>
-                                                  </thead>
-                                                  <tbody>
-                                                      {filasTotalesComparacion(comparacionVersiones).map(([concepto, a, b, d]) => (
-                                                          <tr key={concepto} className="border-t border-slate-100">
-                                                              <td className="px-3 py-1.5 font-bold text-slate-700">{concepto}</td>
-                                                              <td className="px-3 py-1.5 text-right font-bold text-slate-600">{a.toLocaleString()}</td>
-                                                              <td className="px-3 py-1.5 text-right font-bold text-slate-800">{b.toLocaleString()}</td>
-                                                              <td className={`px-3 py-1.5 text-right font-black ${d === 0 ? 'text-slate-400' : d > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtDiferencia(d)}</td>
-                                                          </tr>
-                                                      ))}
-                                                  </tbody>
-                                              </table>
+                                          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4">
+                                              <div>
+                                                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Versión base (antes)</label>
+                                                  <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionA} onChange={e => setCompVersionA(e.target.value)}>
+                                                      {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
+                                                  </select>
+                                              </div>
+                                              <ArrowRight className="w-5 h-5 text-beige-500 mb-2.5 mx-auto hidden sm:block" />
+                                              <div>
+                                                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Comparar contra (después)</label>
+                                                  <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionB} onChange={e => setCompVersionB(e.target.value)}>
+                                                      <option value="actual">{etiquetaVersion(fotoExtraActual)}</option>
+                                                      {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
+                                                  </select>
+                                              </div>
                                           </div>
 
-                                          {(comparacionVersiones.altas.length + comparacionVersiones.bajas.length + comparacionVersiones.cambios.length) > 0 && (
+                                          {!comparacionVersiones ? (
+                                              <p className="text-xs font-bold text-slate-400 text-center py-3">Elige dos versiones distintas para compararlas.</p>
+                                          ) : (
                                               <>
-                                                  <button onClick={() => setCompVersionDetalleAbierto(v => !v)} className="flex items-center gap-1.5 text-[10px] font-black uppercase text-oxford-600 hover:text-pink-700 mb-2">
-                                                      {compVersionDetalleAbierto ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} {compVersionDetalleAbierto ? 'Ocultar' : 'Ver'} detalle por casilla
-                                                  </button>
-                                                  {compVersionDetalleAbierto && (
-                                                      <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
-                                                          <table className="w-full text-xs">
-                                                              <thead className="bg-slate-100 text-slate-600 sticky top-0">
-                                                                  <tr>
-                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Movimiento</th>
-                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Sección</th>
-                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Casilla</th>
-                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Detalle</th>
-                                                                      <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Casillas (P)</th>
-                                                                      <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Padrón</th>
-                                                                  </tr>
-                                                              </thead>
-                                                              <tbody>
-                                                                  {[
-                                                                      ...comparacionVersiones.altas.map(e => ({ k: `a-${e.clave}`, mov: 'Nueva', cls: 'bg-emerald-100 text-emerald-700', seccion: e.seccion, tipo: e.tipo, detalle: `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, cas: `— → ${e.casillasPadron}`, pad: `— → ${e.padron.toLocaleString()}` })),
-                                                                      ...comparacionVersiones.bajas.map(e => ({ k: `b-${e.clave}`, mov: 'Eliminada', cls: 'bg-red-100 text-red-700', seccion: e.seccion, tipo: e.tipo, detalle: `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, cas: `${e.casillasPadron} → —`, pad: `${e.padron.toLocaleString()} → —` })),
-                                                                      ...comparacionVersiones.cambios.map(c => ({ k: `c-${c.clave}`, mov: 'Modificada', cls: 'bg-amber-100 text-amber-800', seccion: c.seccion, tipo: c.tipo, detalle: describirCambioExtra(c), cas: `${c.antes.casillasPadron} → ${c.despues.casillasPadron}`, pad: `${c.antes.padron.toLocaleString()} → ${c.despues.padron.toLocaleString()}` })),
-                                                                  ].sort((x, y) => x.seccion.localeCompare(y.seccion, undefined, { numeric: true }) || x.tipo.localeCompare(y.tipo, undefined, { numeric: true })).map(f => (
-                                                                      <tr key={f.k} className="border-t border-slate-100 align-top">
-                                                                          <td className="px-3 py-1.5"><span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${f.cls}`}>{f.mov}</span></td>
-                                                                          <td className="px-3 py-1.5 font-bold text-slate-700">{f.seccion}</td>
-                                                                          <td className="px-3 py-1.5 font-black text-slate-800">{f.tipo}</td>
-                                                                          <td className="px-3 py-1.5 font-bold text-slate-600">{f.detalle}</td>
-                                                                          <td className="px-3 py-1.5 text-right font-bold text-slate-700 whitespace-nowrap">{f.cas}</td>
-                                                                          <td className="px-3 py-1.5 text-right font-bold text-slate-700 whitespace-nowrap">{f.pad}</td>
+                                                  <div className="flex flex-wrap gap-2 mb-4">
+                                                      {Object.entries(ESTADOS_CAMBIO).map(([k, x]) => (
+                                                          <span key={k} className={`border-2 px-3 py-1 rounded-full text-[9px] font-black uppercase ${x.cls}`}>{comparacionVersiones.conteo[k] || 0} {x.label}</span>
+                                                      ))}
+                                                  </div>
+                                                  {renderTablaIndicadores([comparacionVersiones.A, comparacionVersiones.B], 'dos')}
+
+                                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Análisis por extraordinaria</p>
+                                                      <select className="bg-slate-50 border-2 border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700 outline-none" value={filtroDetalleVersiones} onChange={e => setFiltroDetalleVersiones(e.target.value)}>
+                                                          <option value="relevantes">Nuevas, eliminadas, cambios de armado y de casillas</option>
+                                                          <option value="cambios">Todas las que cambiaron (incluye solo padrón)</option>
+                                                          <option value="todas">Todas las extraordinarias</option>
+                                                      </select>
+                                                  </div>
+                                                  {(() => {
+                                                      const filas = comparacionVersiones.detalle.filter(d => filtroDetalleVersiones === 'todas' || (filtroDetalleVersiones === 'cambios' ? d.estado !== 'igual' : ESTADOS_RELEVANTES.includes(d.estado)));
+                                                      if (filas.length === 0) return <p className="text-xs font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl">No hay extraordinarias con este tipo de cambio.</p>;
+                                                      const flecha = (a, b) => <span className="whitespace-nowrap">{a}<span className="text-beige-500 mx-1">→</span><span className="text-slate-800">{b}</span></span>;
+                                                      const dif = (a, b) => { const d = (b || 0) - (a || 0); return d ? <span className={`ml-1 text-[9px] font-black ${d > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtDiferencia(d)}</span> : null; };
+                                                      return (
+                                                          <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 max-h-[32rem] overflow-y-auto custom-scrollbar">
+                                                              <table className="w-full text-xs">
+                                                                  <thead className="bg-slate-100 text-slate-600 sticky top-0 z-10">
+                                                                      <tr>
+                                                                          {['Movimiento', 'Sección', 'Casilla', 'Casillas', 'Localidades', 'Manzanas', 'Padrón', 'Lista'].map(h => <th key={h} className={`px-3 py-2 font-black uppercase text-[10px] ${['Padrón', 'Lista'].includes(h) ? 'text-right' : 'text-left'}`}>{h}</th>)}
                                                                       </tr>
-                                                                  ))}
-                                                              </tbody>
-                                                          </table>
-                                                      </div>
-                                                  )}
+                                                                  </thead>
+                                                                  <tbody>
+                                                                      {filas.map(d => {
+                                                                          const a = d.antes, b = d.despues;
+                                                                          return (
+                                                                              <tr key={d.clave} className="border-t border-slate-100 align-top">
+                                                                                  <td className="px-3 py-2"><span className={`border px-2 py-0.5 rounded-full text-[9px] font-black uppercase whitespace-nowrap ${ESTADOS_CAMBIO[d.estado].cls}`}>{ESTADOS_CAMBIO[d.estado].label}</span></td>
+                                                                                  <td className="px-3 py-2 font-bold text-slate-700">{d.seccion}</td>
+                                                                                  <td className="px-3 py-2 font-black text-slate-800">{d.tipo}</td>
+                                                                                  <td className="px-3 py-2 font-bold text-slate-500">{flecha(textoCasillas(a), textoCasillas(b))}</td>
+                                                                                  <td className="px-3 py-2 font-bold text-slate-500 min-w-[12rem]">
+                                                                                      {flecha(a?.localidades ? a.localidades.length : '—', b?.localidades ? b.localidades.length : '—')}
+                                                                                      <div className="text-[10px] text-slate-500 mt-0.5">{textoLocalidades(b || a)}</div>
+                                                                                      {d.localidadesAgregadas.length > 0 && <div className="text-[10px] text-emerald-700">+ {d.localidadesAgregadas.map(l => `${l.c} ${l.n}`.trim()).join(', ')}</div>}
+                                                                                      {d.localidadesQuitadas.length > 0 && <div className="text-[10px] text-red-700">− {d.localidadesQuitadas.map(l => `${l.c} ${l.n}`.trim()).join(', ')}</div>}
+                                                                                  </td>
+                                                                                  <td className="px-3 py-2 font-bold text-slate-500 min-w-[10rem]">
+                                                                                      {flecha(a ? a.manzanas.length : '—', b ? b.manzanas.length : '—')}
+                                                                                      {a && b && a.sede !== b.sede && <div className="text-[10px] text-amber-700">Sede: {a.sede} → {b.sede}</div>}
+                                                                                      {d.manzanasAgregadas.length > 0 && <div className="text-[10px] text-emerald-700">+ {d.manzanasAgregadas.join(', ')}</div>}
+                                                                                      {d.manzanasQuitadas.length > 0 && <div className="text-[10px] text-red-700">− {d.manzanasQuitadas.join(', ')}</div>}
+                                                                                  </td>
+                                                                                  <td className="px-3 py-2 text-right font-bold text-slate-500">{flecha(a ? fmtNum(a.padron) : '—', b ? fmtNum(b.padron) : '—')}{dif(a?.padron, b?.padron)}</td>
+                                                                                  <td className="px-3 py-2 text-right font-bold text-slate-500">{flecha(a ? fmtNum(a.lista) : '—', b ? fmtNum(b.lista) : '—')}{dif(a?.lista, b?.lista)}</td>
+                                                                              </tr>
+                                                                          );
+                                                                      })}
+                                                                  </tbody>
+                                                              </table>
+                                                          </div>
+                                                      );
+                                                  })()}
                                               </>
                                           )}
                                       </>
                                   )}
 
+                                  {vistaVersiones === 'historial' && historialVersiones && (
+                                      <>
+                                          {renderTablaIndicadores(historialVersiones.fotos, 'historial')}
+                                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Evolución por extraordinaria <span className="normal-case tracking-normal text-slate-400">(cada celda se compara con la columna anterior)</span></p>
+                                              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer">
+                                                  <input type="checkbox" className="accent-pink-600" checked={soloCambiosHistorial} onChange={e => setSoloCambiosHistorial(e.target.checked)} /> Solo las que cambiaron de armado o de casillas
+                                              </label>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1.5 mb-2">
+                                              {Object.entries(ESTADOS_CAMBIO).filter(([k]) => k !== 'igual').map(([k, x]) => <span key={k} className={`border px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${x.cls}`}>{x.label}</span>)}
+                                          </div>
+                                          {(() => {
+                                              const filas = historialVersiones.filas.filter(f => !soloCambiosHistorial || f.relevante);
+                                              if (filas.length === 0) return <p className="text-xs font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl">Ninguna extraordinaria cambió de armado ni de número de casillas entre las versiones.</p>;
+                                              return (
+                                                  <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 max-h-[32rem] overflow-y-auto custom-scrollbar">
+                                                      <table className="w-full text-xs">
+                                                          <thead className="bg-slate-100 text-slate-600 sticky top-0 z-10">
+                                                              <tr>
+                                                                  <th className="px-3 py-2 text-left font-black uppercase text-[10px]">Sección</th>
+                                                                  <th className="px-3 py-2 text-left font-black uppercase text-[10px]">Casilla</th>
+                                                                  {historialVersiones.fotos.map(f => <th key={f.id} className="px-2 py-2 text-center"><div className="font-black uppercase text-[10px] whitespace-nowrap">{f.id === 'actual' ? 'Actual' : f.nombre}</div><div className="text-[9px] font-bold text-slate-400 whitespace-nowrap">{f.fechaCorte || 'sin corte'}</div></th>)}
+                                                              </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                              {filas.map(fila => (
+                                                                  <tr key={fila.clave} className="border-t border-slate-100">
+                                                                      <td className="px-3 py-1.5 font-bold text-slate-700">{fila.seccion}</td>
+                                                                      <td className="px-3 py-1.5 font-black text-slate-800">{fila.tipo}</td>
+                                                                      {fila.celdas.map((c, i) => (
+                                                                          <td key={i} className="px-1.5 py-1 text-center">
+                                                                              {c.e ? (
+                                                                                  <div title={`${ESTADOS_CAMBIO[c.estado]?.label || ''}\nLocalidades: ${textoLocalidades(c.e)}\nManzanas: ${c.e.manzanas.join(', ')}`} className={`rounded-lg border px-2 py-1 ${ESTADOS_CAMBIO[i === 0 ? 'igual' : c.estado].cls}`}>
+                                                                                      <div className="font-black text-[11px] text-slate-800 whitespace-nowrap">{textoCasillas(c.e)}</div>
+                                                                                      <div className="text-[9px] font-bold whitespace-nowrap">P {fmtNum(c.e.padron)} · {c.e.manzanas.length} mz{c.e.localidades ? ` · ${c.e.localidades.length} loc` : ''}</div>
+                                                                                  </div>
+                                                                              ) : c.estado === 'eliminada' ? (
+                                                                                  <div className={`rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${ESTADOS_CAMBIO.eliminada.cls}`}>Eliminada</div>
+                                                                              ) : <span className="text-slate-300">—</span>}
+                                                                          </td>
+                                                                      ))}
+                                                                  </tr>
+                                                              ))}
+                                                          </tbody>
+                                                      </table>
+                                                  </div>
+                                              );
+                                          })()}
+                                      </>
+                                  )}
+
+                                  {vistaVersiones === 'ficha' && (() => {
+                                      const f = fotoPorId(fichaVersionId) || fotoExtraActual;
+                                      const extras = f.extras || [];
+                                      const locsAtendidas = extras.every(e => Array.isArray(e.localidades)) ? new Set(extras.flatMap(e => e.localidades.map(l => `${e.municipio}|${l.c}`))).size : null;
+                                      return (
+                                          <>
+                                              <div className="flex flex-wrap items-end gap-3 mb-3">
+                                                  <div className="min-w-[16rem]">
+                                                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Versión</label>
+                                                      <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={fichaVersionId} onChange={e => setFichaVersionId(e.target.value)}>
+                                                          {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
+                                                          <option value="actual">{etiquetaVersion(fotoExtraActual)}</option>
+                                                      </select>
+                                                  </div>
+                                                  <p className="text-[11px] font-bold text-slate-500 pb-2 flex-1">{origenVersion(f)}</p>
+                                              </div>
+                                              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
+                                                  {[['Padrón distrito', fmtNum(f.padronDistrito?.padron)], ['Casillas distrito (P)', fmtNum(f.resumenDistrito?.totalPadron)], ['Extraordinarias', extras.length], ['Casillas extra (P)', sumaExtras(f, 'casillasPadron')], ['Casillas extra (L)', sumaExtras(f, 'casillasLista')], ['Localidades', fmtNum(locsAtendidas)], ['Manzanas', new Set(extras.flatMap(e => e.manzanas || [])).size], ['Padrón atendido', fmtNum(sumaExtras(f, 'padron'))]].map(([l, v]) => (
+                                                      <div key={l} className="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-center">
+                                                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{l}</p>
+                                                          <p className="text-sm font-black text-slate-800 mt-0.5">{v}</p>
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                              <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 max-h-[32rem] overflow-y-auto custom-scrollbar">
+                                                  <table className="w-full text-xs">
+                                                      <thead className="bg-oxford-500 text-white sticky top-0 z-10">
+                                                          <tr>
+                                                              {['Sección', 'Casilla', 'Casillas (Padrón)', 'Casillas (Lista)', 'Localidades', 'Manzanas', 'Padrón', 'Lista'].map(h => <th key={h} className={`px-3 py-2 font-black uppercase text-[10px] ${['Padrón', 'Lista'].includes(h) ? 'text-right' : 'text-left'}`}>{h}</th>)}
+                                                          </tr>
+                                                      </thead>
+                                                      <tbody>
+                                                          {extras.length === 0 && <tr><td colSpan={8} className="px-3 py-4 text-center font-bold text-slate-400">Esta versión no tiene extraordinarias.</td></tr>}
+                                                          {extras.map(e => (
+                                                              <tr key={e.clave} className="border-t border-slate-100 align-top">
+                                                                  <td className="px-3 py-2 font-bold text-slate-700">{e.seccion}{e.municipio && <div className="text-[9px] text-slate-400">{e.municipio}</div>}</td>
+                                                                  <td className="px-3 py-2 font-black text-slate-800">{e.tipo}</td>
+                                                                  <td className="px-3 py-2 font-bold text-slate-700">{e.casillasPadron} <span className="text-slate-400">· {e.nomenclaturaPadron || '—'}</span>{e.repartoPadron && <div className="text-[9px] text-slate-400">{e.repartoPadron.map(r => `${r.n}: ${r.v}`).join(' · ')}</div>}</td>
+                                                                  <td className="px-3 py-2 font-bold text-slate-700">{e.casillasLista} <span className="text-slate-400">· {e.nomenclaturaLista || '—'}</span>{e.repartoLista && <div className="text-[9px] text-slate-400">{e.repartoLista.map(r => `${r.n}: ${r.v}`).join(' · ')}</div>}</td>
+                                                                  <td className="px-3 py-2 font-bold text-slate-600 min-w-[10rem]">{e.localidades ? <>{e.localidades.length} <div className="text-[10px] text-slate-500">{textoLocalidades(e)}</div></> : '—'}</td>
+                                                                  <td className="px-3 py-2 font-bold text-slate-600 min-w-[12rem]">{(e.manzanas || []).length} <span className="text-[9px] text-slate-400">· sede {e.sede}</span><div className="text-[10px] text-slate-500">{e.manzanasDetalle ? e.manzanasDetalle.map(m => `${m.k} (${m.p})`).join(', ') : (e.manzanas || []).join(', ')}</div></td>
+                                                                  <td className="px-3 py-2 text-right font-black text-slate-800">{fmtNum(e.padron)}</td>
+                                                                  <td className="px-3 py-2 text-right font-black text-slate-800">{fmtNum(e.lista)}</td>
+                                                              </tr>
+                                                          ))}
+                                                      </tbody>
+                                                  </table>
+                                              </div>
+                                          </>
+                                      );
+                                  })()}
+
                                   <div className="mt-4 pt-4 border-t border-slate-100">
                                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Versiones guardadas ({versionesExtra.length})</p>
                                       <div className="flex flex-wrap gap-2">
                                           {versionesExtra.map(v => (
-                                              <div key={v.id} className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-beige-100 border border-beige-300 text-oxford-700" title={`Guardada el ${new Date(v.creado).toLocaleString('es-MX')}`}>
+                                              <div key={v.id} className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-beige-100 border border-beige-300 text-oxford-700" title={origenVersion(v)}>
                                                   <span className="text-[10px] font-black uppercase">{v.nombre}</span>
-                                                  <span className="text-[9px] font-bold text-beige-600">{v.fechaCorte || 's/corte'} · {(v.extras || []).length} extra.</span>
+                                                  <span className="text-[9px] font-bold text-beige-600">{v.fechaCorte || 's/corte'} · {(v.extras || []).length} extra.{v.origen === 'archivo' ? ' · desde archivo' : ''}{!(v.extras || []).some(e => e.localidades) && (v.extras || []).length ? ' · datos básicos' : ''}</span>
                                                   <button onClick={() => eliminarVersionExtra(v)} title="Eliminar versión" className="p-1 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-3 h-3" /></button>
                                               </div>
                                           ))}
@@ -5323,7 +5822,7 @@ export default function App() {
 
             <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nombre de la versión</label>
             <input type="text" autoFocus maxLength={60} className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalGuardarVersion.nombre} placeholder={nombreVersionSugerido()} onChange={e => setModalGuardarVersion(prev => ({ ...prev, nombre: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter' && !modalGuardarVersion.guardando) guardarVersionExtra(); }} />
-            <p className="text-[10px] text-slate-400 mt-1 ml-1 mb-6">Si lo dejas vacío se usa "{nombreVersionSugerido()}". El corte puedes escribirlo o corregirlo en la casilla de arriba. Todo tu equipo del distrito verá esta versión.</p>
+            <p className="text-[10px] text-slate-400 mt-1 ml-1 mb-6">Si lo dejas vacío se usa "{nombreVersionSugerido()}". El corte puedes escribirlo o corregirlo en la casilla de arriba. Todo tu equipo del distrito verá esta versión. Las cifras se toman del padrón cargado ahora; para un corte que ya pasó usa "Agregar corte anterior" en Resumen Distrital.</p>
 
             {fotoExtraActual.extras.length === 0 && (
               <div className="mb-5 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
@@ -5335,6 +5834,66 @@ export default function App() {
             <div className="flex gap-3 justify-end">
               <button onClick={() => setModalGuardarVersion({ isOpen: false, nombre: '', guardando: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
               <button onClick={guardarVersionExtra} disabled={modalGuardarVersion.guardando} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md">{modalGuardarVersion.guardando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL AGREGAR CORTE ANTERIOR */}
+      {modalCorteAnterior.isOpen && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full mx-4 text-left border-2 border-slate-200 max-h-[92vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="bg-gradient-to-br from-oxford-400 to-oxford-600 text-white p-2 rounded-xl shrink-0"><History className="w-5 h-5" /></div>
+              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">Agregar un corte anterior</h3>
+            </div>
+            <p className="text-xs font-bold text-slate-500 mb-5 ml-1">Calcula la versión de un corte que ya pasó con el Excel de padrón de ese corte. No cambia nada de lo que tienes cargado ahora.</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Corte *</label>
+                <input type="text" maxLength={20} placeholder="DD/MM/AAAA" className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalCorteAnterior.corte} onChange={e => setModalCorteAnterior(prev => ({ ...prev, corte: e.target.value, error: '' }))} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nombre</label>
+                <input type="text" maxLength={60} placeholder={`Corte ${modalCorteAnterior.corte || 'DD/MM/AAAA'}`} className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalCorteAnterior.nombre} onChange={e => setModalCorteAnterior(prev => ({ ...prev, nombre: e.target.value }))} />
+              </div>
+            </div>
+
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Excel de padrón de ese corte *</label>
+            <label className="mt-1 mb-4 flex items-center gap-2 bg-slate-50 hover:bg-beige-50 border-2 border-dashed border-slate-300 hover:border-beige-400 rounded-xl px-4 py-3 cursor-pointer transition-colors">
+              <FileUp className="w-4 h-4 text-beige-600 shrink-0" />
+              <span className={`text-sm font-bold truncate ${modalCorteAnterior.archivoPadron ? 'text-slate-800' : 'text-slate-400'}`}>{modalCorteAnterior.archivoPadron ? modalCorteAnterior.archivoPadron.name : 'Seleccionar archivo .xlsx (mismo formato que el padrón de siempre)'}</span>
+              <input type="file" className="hidden" accept=".xlsx,.xls" onChange={e => { const file = e.target.files[0]; if (file) setModalCorteAnterior(prev => ({ ...prev, archivoPadron: file, error: '' })); e.target.value = null; }} />
+            </label>
+
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">¿Con qué armado de extraordinarias?</label>
+            <select className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalCorteAnterior.fuente} onChange={e => setModalCorteAnterior(prev => ({ ...prev, fuente: e.target.value, error: '' }))}>
+              <option value="actual">El armado actual</option>
+              <option value="json">Un respaldo (.json) de ese momento</option>
+              {versionesExtra.map(v => <option key={v.id} value={v.id}>El armado de la versión "{v.nombre}"</option>)}
+            </select>
+            <p className="text-[10px] text-slate-400 mt-1 ml-1 mb-3">
+              {modalCorteAnterior.fuente === 'actual' ? 'Muestra cómo quedaría tu armado de hoy con el padrón de ese corte (sirve para ver cuánto cambió solo el padrón).' : modalCorteAnterior.fuente === 'json' ? 'El .json que descarga el botón "Respaldo" de la Mesa de Diseño: reproduce exactamente el armado que tenías entonces.' : 'Recalcula el armado de esa versión con el padrón de este corte (útil para corregir una versión que se guardó con otro padrón).'}
+            </p>
+            {modalCorteAnterior.fuente === 'json' && (
+              <label className="mb-3 flex items-center gap-2 bg-slate-50 hover:bg-beige-50 border-2 border-dashed border-slate-300 hover:border-beige-400 rounded-xl px-4 py-3 cursor-pointer transition-colors">
+                <FileUp className="w-4 h-4 text-beige-600 shrink-0" />
+                <span className={`text-sm font-bold truncate ${modalCorteAnterior.archivoJson ? 'text-slate-800' : 'text-slate-400'}`}>{modalCorteAnterior.archivoJson ? modalCorteAnterior.archivoJson.name : 'Seleccionar respaldo .json'}</span>
+                <input type="file" className="hidden" accept=".json" onChange={e => { const file = e.target.files[0]; if (file) setModalCorteAnterior(prev => ({ ...prev, archivoJson: file, error: '' })); e.target.value = null; }} />
+              </label>
+            )}
+
+            {modalCorteAnterior.error && (
+              <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-xs font-bold text-red-700">{modalCorteAnterior.error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end mt-2">
+              <button onClick={() => setModalCorteAnterior({ isOpen: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
+              <button onClick={guardarCorteAnterior} disabled={modalCorteAnterior.procesando} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md">{modalCorteAnterior.procesando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Calcular y guardar</button>
             </div>
           </div>
         </div>
