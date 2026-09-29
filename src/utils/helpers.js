@@ -177,3 +177,40 @@ export const aplicarFuenteInstitucional = (wb) => {
   });
   return wb;
 };
+
+// Compara dos "fotos" del armado de extraordinarias (versiones guardadas o el armado actual).
+// Cada foto: { extras: [{ clave, tipo, seccion, sede, manzanas[], padron, lista, casillasPadron,
+// casillasLista }] }. La identidad de una extraordinaria entre fotos es sección + número (E1…),
+// que la app ya garantiza único por sección. Devuelve altas, bajas y cambios de B respecto de A.
+export const compararVersionesExtra = (fotoA, fotoB) => {
+  const mapA = new Map((fotoA?.extras || []).map(e => [e.clave, e]));
+  const mapB = new Map((fotoB?.extras || []).map(e => [e.clave, e]));
+  const ordenar = (a, b) => a.seccion.localeCompare(b.seccion, undefined, { numeric: true }) || String(a.tipo).localeCompare(String(b.tipo), undefined, { numeric: true });
+  const altas = [...mapB.values()].filter(e => !mapA.has(e.clave)).sort(ordenar);
+  const bajas = [...mapA.values()].filter(e => !mapB.has(e.clave)).sort(ordenar);
+  const cambios = [];
+  let sinCambio = 0;
+  mapB.forEach((b, clave) => {
+    const a = mapA.get(clave);
+    if (!a) return;
+    const setA = new Set(a.manzanas || []), setB = new Set(b.manzanas || []);
+    const manzanasAgregadas = [...setB].filter(m => !setA.has(m)).sort();
+    const manzanasQuitadas = [...setA].filter(m => !setB.has(m)).sort();
+    const cambio = { clave, tipo: b.tipo, seccion: b.seccion, manzanasAgregadas, manzanasQuitadas, antes: a, despues: b };
+    if (a.sede !== b.sede) cambio.sede = { de: a.sede, a: b.sede };
+    ['padron', 'lista', 'casillasPadron', 'casillasLista'].forEach(k => {
+      if ((a[k] || 0) !== (b[k] || 0)) cambio[k] = { de: a[k] || 0, a: b[k] || 0 };
+    });
+    const hayCambio = manzanasAgregadas.length || manzanasQuitadas.length || cambio.sede || cambio.padron || cambio.lista || cambio.casillasPadron || cambio.casillasLista;
+    if (hayCambio) cambios.push(cambio); else sinCambio += 1;
+  });
+  cambios.sort(ordenar);
+  const totales = (foto) => (foto?.extras || []).reduce((t, e) => ({
+    extraordinarias: t.extraordinarias + 1,
+    casillasPadron: t.casillasPadron + (e.casillasPadron || 0),
+    casillasLista: t.casillasLista + (e.casillasLista || 0),
+    padron: t.padron + (e.padron || 0),
+    lista: t.lista + (e.lista || 0),
+  }), { extraordinarias: 0, casillasPadron: 0, casillasLista: 0, padron: 0, lista: 0 });
+  return { altas, bajas, cambios, sinCambio, totalesA: totales(fotoA), totalesB: totales(fotoB) };
+};

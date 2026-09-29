@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs } from 'firebase/firestore';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 
 import {
@@ -23,7 +23,7 @@ import {
   p4, downloadBlob, estaCercaDelCorte750, distanciaAlCorte750, nivelRiesgoCorte750,
   calcularEquipamientoCasilla, formatearNombreFolio, f4, normalizarDistrito,
   obtenerFechaHoraArchivo, obtenerDistribucionArray, normalizarClave, claveManzana,
-  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional,
+  claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional, compararVersionesExtra,
 } from './src/utils/helpers.js';
 
 // --- CONFIGURACIÓN DE ENTORNO ---
@@ -193,6 +193,14 @@ export default function App() {
   const [filtroAlerta, setFiltroAlerta] = useState(null); // null | 'variacion' | 'menos100'
   const [fechaCorte, setFechaCorte] = useState("");
   const [cabeceraDistrital, setCabeceraDistrital] = useState("");
+  // Versiones guardadas del armado de extraordinarias (junio, julio, agosto…) para comparar
+  // cortes entre sí o contra el armado actual. Viven en una subcolección aparte del documento
+  // del distrito, así no crecen el documento principal ni viajan en cada autoguardado.
+  const [versionesExtra, setVersionesExtra] = useState([]);
+  const [modalGuardarVersion, setModalGuardarVersion] = useState({ isOpen: false, nombre: '', guardando: false });
+  const [compVersionA, setCompVersionA] = useState('');
+  const [compVersionB, setCompVersionB] = useState('actual');
+  const [compVersionDetalleAbierto, setCompVersionDetalleAbierto] = useState(false);
   const [comparacionAnterior, setComparacionAnterior] = useState(null);
   const [comparandoPadron, setComparandoPadron] = useState(false);
   const [archivosComparacionLibre, setArchivosComparacionLibre] = useState({ anterior: null, actual: null });
@@ -1906,6 +1914,46 @@ export default function App() {
       }
     }
 
+    // --- 7. Comparativo de Versiones de Extraordinarias (el que esté seleccionado en pantalla) ---
+    if (comparacionVersiones) {
+      const cv = comparacionVersiones;
+      y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 24;
+      if (y > pageHeight - 150) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
+      doc.text(`${comparativo2024 ? 7 : 6}. Comparativo de Versiones — Extraordinarias`, margin, y);
+      y += 8;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
+        head: [['Concepto', etiquetaVersion(cv.A), etiquetaVersion(cv.B), 'Diferencia']],
+        body: filasTotalesComparacion(cv).map(([c, a, b, d]) => [c, String(a), String(b), fmtDiferencia(d)]),
+      });
+      y = doc.lastAutoTable.finalY + 12;
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'plain',
+        styles: { fontSize: 9, cellPadding: 5 },
+        body: [[`Nuevas: ${cv.altas.length}`, `Eliminadas: ${cv.bajas.length}`, `Modificadas: ${cv.cambios.length}`, `Sin cambio: ${cv.sinCambio}`]],
+      });
+      const filasDetPdf = [
+        ...cv.altas.map(e => ['Nueva', e.seccion, e.tipo, `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, `— → ${e.casillasPadron}`, `— → ${e.padron}`]),
+        ...cv.bajas.map(e => ['Eliminada', e.seccion, e.tipo, `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, `${e.casillasPadron} → —`, `${e.padron} → —`]),
+        ...cv.cambios.map(c => ['Modificada', c.seccion, c.tipo, describirCambioExtra(c), `${c.antes.casillasPadron} → ${c.despues.casillasPadron}`, `${c.antes.padron} → ${c.despues.padron}`]),
+      ].sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }) || a[2].localeCompare(b[2], undefined, { numeric: true }))
+        // La fuente estándar del PDF no trae la flecha "→"; se escribe "->" para que no salga basura.
+        .map(fila => fila.map(celda => String(celda).replace(/→/g, '->')));
+      if (filasDetPdf.length > 0) {
+        y = doc.lastAutoTable.finalY + 8;
+        if (y > pageHeight - 100) { doc.addPage(); y = 50; }
+        doc.autoTable({
+          startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+          styles: { fontSize: 7.5, cellPadding: 4 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 3: { cellWidth: 230 } },
+          head: [['Movimiento', 'Sección', 'Casilla', 'Detalle', 'Casillas (P)', 'Padrón']],
+          body: filasDetPdf,
+        });
+      }
+    }
+
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
@@ -2662,6 +2710,191 @@ export default function App() {
     const totalLista = bcLista + exLista + espLista;
     return { totalPadron, totalLista, bcPadron, bcLista, exPadron, exLista, espPadron, espLista, variacion: totalPadron !== totalLista };
   }, [consolidadoB_C, casillasGlobales]);
+
+  // ===================== VERSIONES DEL ARMADO DE EXTRAORDINARIAS =====================
+  // "Foto" del armado actual: una fila por extraordinaria con sus manzanas y lo que proyecta.
+  // Es el mismo formato que se guarda en cada versión, así se compara igual versión contra
+  // versión que versión contra el armado de hoy.
+  const fotoExtraActual = useMemo(() => {
+    const claveMz = (m) => `${f4(m.seccion)}-${f4(m.localidad)}-${f4(m.manzana)}`;
+    const extras = sedesActivas.filter(c => String(c.tipo).toUpperCase().startsWith('E')).map(c => {
+      const st = calcularProyeccion(c);
+      return {
+        clave: `${f4(c.sede.seccion)}-${String(c.tipo).toUpperCase()}`,
+        tipo: String(c.tipo).toUpperCase(),
+        seccion: f4(c.sede.seccion),
+        sede: claveMz(c.sede),
+        manzanas: [c.sede, ...(c.alimentadoras || [])].filter(Boolean).map(claveMz).sort(),
+        padron: st.total, lista: st.totalLista,
+        casillasPadron: st.totalMesasPadron, casillasLista: st.totalMesasLista,
+      };
+    });
+    return {
+      id: 'actual', nombre: 'Armado actual', fechaCorte, extras,
+      resumenDistrito: { totalPadron: totalCasillasDistrito.totalPadron, totalLista: totalCasillasDistrito.totalLista, exPadron: totalCasillasDistrito.exPadron, exLista: totalCasillasDistrito.exLista },
+    };
+  }, [sedesActivas, fechaCorte, totalCasillasDistrito]);
+
+  const claveLocalVersionesExtra = `proyector_versionesExtra_D${distritoInfo.numero}`;
+  const ordenarVersiones = (lista) => [...lista].sort((a, b) => String(a.creado).localeCompare(String(b.creado)));
+
+  useEffect(() => {
+    if (!distritoInfo.numero) { setVersionesExtra([]); return; }
+    if (!isCloudEnabled || !db || !user) {
+      try { setVersionesExtra(ordenarVersiones(JSON.parse(localStorage.getItem(claveLocalVersionesExtra) || '[]'))); } catch (e) { setVersionesExtra([]); }
+      return;
+    }
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'versionesExtra');
+    const unsubscribe = onSnapshot(colRef, (snap) => {
+      setVersionesExtra(ordenarVersiones(snap.docs.map(d => ({ ...d.data(), id: d.id }))));
+    }, (err) => console.error('Error leyendo versiones de extraordinarias', err));
+    return () => unsubscribe();
+  }, [user, distritoInfo.numero]);
+
+  // Al llegar versiones (o cambiar de distrito) se preselecciona "la más reciente vs Actual",
+  // que es la comparación que se quiere casi siempre. Si la versión elegida se borró, se reajusta.
+  useEffect(() => {
+    if (versionesExtra.length === 0) { if (compVersionA) setCompVersionA(''); return; }
+    const existe = (id) => id === 'actual' || versionesExtra.some(v => v.id === id);
+    if (!compVersionA || !existe(compVersionA)) setCompVersionA(versionesExtra[versionesExtra.length - 1].id);
+    if (!existe(compVersionB)) setCompVersionB('actual');
+  }, [versionesExtra]);
+
+  const nombreVersionSugerido = () => {
+    const hoy = new Date();
+    const mes = hoy.toLocaleDateString('es-MX', { month: 'long' });
+    return `Armado ${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${hoy.getFullYear()}`;
+  };
+
+  const guardarVersionExtra = async () => {
+    const nombre = (modalGuardarVersion.nombre || '').trim() || nombreVersionSugerido();
+    const ahora = new Date();
+    const id = `v_${ahora.getTime()}`;
+    const version = {
+      // El corte lo escribe el usuario al guardar (viene prellenado con el del padrón cargado).
+      nombre, creado: ahora.toISOString(), fechaCorte: (modalGuardarVersion.corte || '').trim(),
+      extras: fotoExtraActual.extras, resumenDistrito: fotoExtraActual.resumenDistrito,
+    };
+    setModalGuardarVersion(prev => ({ ...prev, guardando: true }));
+    try {
+      if (isCloudEnabled && db && user) {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'versionesExtra', id), version);
+      } else {
+        const lista = ordenarVersiones([...versionesExtra, { ...version, id }]);
+        localStorage.setItem(claveLocalVersionesExtra, JSON.stringify(lista));
+        setVersionesExtra(lista);
+      }
+      setCompVersionA(id); setCompVersionB('actual');
+      setModalGuardarVersion({ isOpen: false, nombre: '', guardando: false });
+      setSuccessMessage(`Versión "${nombre}" guardada (${version.extras.length} extraordinarias). Puedes compararla en Proyección → Resumen Distrital.`);
+    } catch (err) {
+      console.error(err);
+      setModalGuardarVersion(prev => ({ ...prev, guardando: false }));
+      setErrorMessage('No se pudo guardar la versión en la nube. Revisa tu conexión e intenta de nuevo.');
+    }
+  };
+
+  const eliminarVersionExtra = (version) => {
+    setModalConfig({
+      isOpen: true,
+      message: `¿Eliminar la versión "${version.nombre}"? Ya no se podrá comparar contra ella. Esta acción no se puede deshacer.`,
+      onConfirm: async () => {
+        try {
+          if (isCloudEnabled && db && user) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'versionesExtra', version.id));
+          } else {
+            const lista = versionesExtra.filter(v => v.id !== version.id);
+            localStorage.setItem(claveLocalVersionesExtra, JSON.stringify(lista));
+            setVersionesExtra(lista);
+          }
+        } catch (err) { setErrorMessage('No se pudo eliminar la versión.'); }
+      },
+    });
+  };
+
+  const fotoPorId = (id) => id === 'actual' ? fotoExtraActual : versionesExtra.find(v => v.id === id) || null;
+  const comparacionVersiones = useMemo(() => {
+    const A = fotoPorId(compVersionA), B = fotoPorId(compVersionB);
+    if (!A || !B || A === B) return null;
+    return { A, B, ...compararVersionesExtra(A, B) };
+  }, [compVersionA, compVersionB, versionesExtra, fotoExtraActual]);
+
+  const etiquetaVersion = (v) => v.id === 'actual' ? 'Armado actual' : `${v.nombre}${v.fechaCorte ? ` (corte ${v.fechaCorte})` : ''}`;
+  // Texto corto de cada cambio, compartido por la pantalla, el Excel y el PDF.
+  const describirCambioExtra = (c) => {
+    const partes = [];
+    if (c.manzanasAgregadas.length) partes.push(`+ Mzas: ${c.manzanasAgregadas.join(', ')}`);
+    if (c.manzanasQuitadas.length) partes.push(`- Mzas: ${c.manzanasQuitadas.join(', ')}`);
+    if (c.sede) partes.push(`Sede: ${c.sede.de} → ${c.sede.a}`);
+    if (!c.manzanasAgregadas.length && !c.manzanasQuitadas.length && !c.sede && (c.padron || c.lista)) partes.push('Mismas manzanas; cambió el padrón/lista del corte');
+    return partes.join(' · ');
+  };
+
+  // Filas de totales (Concepto, A, B, Diferencia) — mismas para pantalla, Excel y PDF.
+  const filasTotalesComparacion = (cv) => {
+    const filas = [
+      ['Extraordinarias (sedes)', cv.totalesA.extraordinarias, cv.totalesB.extraordinarias],
+      ['Casillas extraordinarias (Padrón)', cv.totalesA.casillasPadron, cv.totalesB.casillasPadron],
+      ['Casillas extraordinarias (Lista Nominal)', cv.totalesA.casillasLista, cv.totalesB.casillasLista],
+      ['Padrón atendido por extraordinarias', cv.totalesA.padron, cv.totalesB.padron],
+      ['Lista Nominal atendida por extraordinarias', cv.totalesA.lista, cv.totalesB.lista],
+    ];
+    if (cv.A.resumenDistrito && cv.B.resumenDistrito) {
+      filas.push(['Total de casillas del distrito (Padrón)', cv.A.resumenDistrito.totalPadron, cv.B.resumenDistrito.totalPadron]);
+      filas.push(['Total de casillas del distrito (Lista Nominal)', cv.A.resumenDistrito.totalLista, cv.B.resumenDistrito.totalLista]);
+    }
+    return filas.map(([concepto, a, b]) => [concepto, a || 0, b || 0, (b || 0) - (a || 0)]);
+  };
+  const fmtDiferencia = (n) => `${n > 0 ? '+' : ''}${n}`;
+
+  const exportarComparativoVersionesExcel = () => {
+    if (!window.XLSX || !comparacionVersiones) return;
+    const XL = window.XLSX;
+    const cv = comparacionVersiones;
+    // Paleta del Manual INE: encabezado Gris Oxford con blanco; movimientos en Beige / Gris / Gris cálido con negro.
+    const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloTitulo = { font: { bold: true, sz: 13, color: { rgb: '000000' } } };
+    const estiloMov = {
+      Nueva: { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true, color: { rgb: '000000' } } },
+      Eliminada: { fill: { patternType: 'solid', fgColor: { rgb: 'B2B2B2' } }, font: { bold: true, color: { rgb: '000000' } } },
+      Modificada: { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, font: { bold: true, color: { rgb: '000000' } } },
+    };
+    const wb = XL.utils.book_new();
+
+    const headersRes = ['Concepto', etiquetaVersion(cv.A), etiquetaVersion(cv.B), 'Diferencia'];
+    const filasRes = filasTotalesComparacion(cv).map(([c, a, b, d]) => [c, a, b, fmtDiferencia(d)]);
+    const rowsRes = [
+      [`Comparativo de Versiones — Casillas Extraordinarias · Distrito ${f4(distritoInfo.numero)}${cabeceraDistrital ? ` ${cabeceraDistrital}` : ''}`],
+      [`Generado: ${new Date().toLocaleString('es-MX')}`],
+      [],
+      headersRes, ...filasRes,
+      [],
+      ['Movimiento', 'Cantidad'],
+      ['Nuevas', cv.altas.length], ['Eliminadas', cv.bajas.length], ['Modificadas', cv.cambios.length], ['Sin cambio', cv.sinCambio],
+    ];
+    const wsRes = XL.utils.aoa_to_sheet(rowsRes);
+    wsRes['!cols'] = [{ wch: 44 }, { wch: 30 }, { wch: 30 }, { wch: 12 }];
+    wsRes['A1'].s = estiloTitulo;
+    for (let c = 0; c < headersRes.length; c++) { const addr = XL.utils.encode_cell({ r: 3, c }); if (wsRes[addr]) wsRes[addr].s = estiloHeader; }
+    const filaMov = 3 + 1 + filasRes.length + 1;
+    for (let c = 0; c < 2; c++) { const addr = XL.utils.encode_cell({ r: filaMov, c }); if (wsRes[addr]) wsRes[addr].s = estiloHeader; }
+    XL.utils.book_append_sheet(wb, wsRes, 'Resumen');
+
+    const headersDet = ['Movimiento', 'Sección', 'Casilla', 'Sede anterior', 'Sede nueva', 'Manzanas agregadas', 'Manzanas quitadas', 'Padrón anterior', 'Padrón nuevo', 'Lista anterior', 'Lista nueva', 'Casillas (P) anterior', 'Casillas (P) nuevas', 'Casillas (L) anterior', 'Casillas (L) nuevas'];
+    const filasDet = [
+      ...cv.altas.map(e => ['Nueva', e.seccion, e.tipo, '', e.sede, e.manzanas.join(', '), '', '', e.padron, '', e.lista, '', e.casillasPadron, '', e.casillasLista]),
+      ...cv.bajas.map(e => ['Eliminada', e.seccion, e.tipo, e.sede, '', '', e.manzanas.join(', '), e.padron, '', e.lista, '', e.casillasPadron, '', e.casillasLista, '']),
+      ...cv.cambios.map(c => ['Modificada', c.seccion, c.tipo, c.antes.sede, c.despues.sede, c.manzanasAgregadas.join(', '), c.manzanasQuitadas.join(', '), c.antes.padron, c.despues.padron, c.antes.lista, c.despues.lista, c.antes.casillasPadron, c.despues.casillasPadron, c.antes.casillasLista, c.despues.casillasLista]),
+    ].sort((a, b) => String(a[1]).localeCompare(String(b[1]), undefined, { numeric: true }) || String(a[2]).localeCompare(String(b[2]), undefined, { numeric: true }));
+    const wsDet = XL.utils.aoa_to_sheet([headersDet, ...filasDet]);
+    wsDet['!cols'] = headersDet.map((h, i) => ({ wch: i === 5 || i === 6 ? 40 : Math.max(11, h.length + 2) }));
+    for (let c = 0; c < headersDet.length; c++) { const addr = XL.utils.encode_cell({ r: 0, c }); if (wsDet[addr]) wsDet[addr].s = estiloHeader; }
+    filasDet.forEach((f, i) => { const addr = XL.utils.encode_cell({ r: i + 1, c: 0 }); if (wsDet[addr]) wsDet[addr].s = estiloMov[f[0]]; });
+    if (filasDet.length > 0) wsDet['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filasDet.length, c: headersDet.length - 1 } }) };
+    XL.utils.book_append_sheet(wb, wsDet, 'Detalle de Cambios');
+
+    XL.writeFile(aplicarFuenteInstitucional(wb), `Comparativo_Versiones_Extra_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
 
   const todasLasCasillasEquipamiento = useMemo(() => {
      const lista = [];
@@ -3675,6 +3908,138 @@ export default function App() {
                               )}
                           </div>
                       )}
+
+                      <div className="bg-white rounded-3xl shadow-sm border-2 border-beige-300 px-6 py-5">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                              <div>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-beige-600">Comparativo de Versiones · Extraordinarias</p>
+                                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Compara el armado guardado de un corte (junio, julio, agosto…) contra otro o contra el actual.</p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                  <button onClick={() => setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false })} className="flex items-center gap-1.5 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><Bookmark className="w-3.5 h-3.5" /> Guardar versión</button>
+                                  {comparacionVersiones && <button onClick={exportarComparativoVersionesExcel} className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><FileDown className="w-3.5 h-3.5" /> Excel</button>}
+                              </div>
+                          </div>
+
+                          {versionesExtra.length === 0 ? (
+                              <div className="bg-beige-50 border-2 border-dashed border-beige-300 rounded-2xl px-5 py-4 text-sm font-bold text-slate-600">
+                                  Aún no hay versiones guardadas. Cuando termines el armado de un corte, presiona <span className="text-oxford-700">"Guardar versión"</span> (aquí o en la Mesa de Diseño). Con el siguiente corte podrás ver qué extraordinarias se agregaron, se eliminaron o cambiaron de manzanas.
+                              </div>
+                          ) : (
+                              <>
+                                  {fechaCorte && !versionesExtra.some(v => (v.fechaCorte || '').trim() === fechaCorte.trim()) && (
+                                      <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
+                                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                          <p className="text-xs font-bold text-amber-800">El corte actual ({fechaCorte}) todavía no tiene una versión guardada. Cuando termines de ajustar el armado de este corte, guárdalo como versión.</p>
+                                      </div>
+                                  )}
+                                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end mb-4">
+                                      <div>
+                                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Versión base (antes)</label>
+                                          <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionA} onChange={e => setCompVersionA(e.target.value)}>
+                                              {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
+                                          </select>
+                                      </div>
+                                      <ArrowRight className="w-5 h-5 text-beige-500 mb-2.5 mx-auto hidden sm:block" />
+                                      <div>
+                                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Comparar contra (después)</label>
+                                          <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={compVersionB} onChange={e => setCompVersionB(e.target.value)}>
+                                              <option value="actual">Armado actual{fechaCorte ? ` (corte ${fechaCorte})` : ''}</option>
+                                              {versionesExtra.map(v => <option key={v.id} value={v.id}>{etiquetaVersion(v)}</option>)}
+                                          </select>
+                                      </div>
+                                  </div>
+
+                                  {!comparacionVersiones ? (
+                                      <p className="text-xs font-bold text-slate-400 text-center py-3">Elige dos versiones distintas para compararlas.</p>
+                                  ) : (
+                                      <>
+                                          <div className="flex flex-wrap gap-2 mb-4">
+                                              <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">+{comparacionVersiones.altas.length} nuevas</span>
+                                              <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">-{comparacionVersiones.bajas.length} eliminadas</span>
+                                              <span className="bg-amber-100 border-2 border-amber-300 text-amber-800 px-3 py-1 rounded-full text-[9px] font-black uppercase">{comparacionVersiones.cambios.length} modificadas</span>
+                                              <span className="bg-slate-100 border-2 border-slate-200 text-slate-500 px-3 py-1 rounded-full text-[9px] font-black uppercase">{comparacionVersiones.sinCambio} sin cambio</span>
+                                          </div>
+                                          <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 mb-4">
+                                              <table className="w-full text-xs">
+                                                  <thead className="bg-oxford-500 text-white">
+                                                      <tr>
+                                                          <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Concepto</th>
+                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">{comparacionVersiones.A.id === 'actual' ? 'Actual' : comparacionVersiones.A.nombre}</th>
+                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">{comparacionVersiones.B.id === 'actual' ? 'Actual' : comparacionVersiones.B.nombre}</th>
+                                                          <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Dif.</th>
+                                                      </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                      {filasTotalesComparacion(comparacionVersiones).map(([concepto, a, b, d]) => (
+                                                          <tr key={concepto} className="border-t border-slate-100">
+                                                              <td className="px-3 py-1.5 font-bold text-slate-700">{concepto}</td>
+                                                              <td className="px-3 py-1.5 text-right font-bold text-slate-600">{a.toLocaleString()}</td>
+                                                              <td className="px-3 py-1.5 text-right font-bold text-slate-800">{b.toLocaleString()}</td>
+                                                              <td className={`px-3 py-1.5 text-right font-black ${d === 0 ? 'text-slate-400' : d > 0 ? 'text-emerald-700' : 'text-red-700'}`}>{fmtDiferencia(d)}</td>
+                                                          </tr>
+                                                      ))}
+                                                  </tbody>
+                                              </table>
+                                          </div>
+
+                                          {(comparacionVersiones.altas.length + comparacionVersiones.bajas.length + comparacionVersiones.cambios.length) > 0 && (
+                                              <>
+                                                  <button onClick={() => setCompVersionDetalleAbierto(v => !v)} className="flex items-center gap-1.5 text-[10px] font-black uppercase text-oxford-600 hover:text-pink-700 mb-2">
+                                                      {compVersionDetalleAbierto ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} {compVersionDetalleAbierto ? 'Ocultar' : 'Ver'} detalle por casilla
+                                                  </button>
+                                                  {compVersionDetalleAbierto && (
+                                                      <div className="overflow-x-auto rounded-2xl border-2 border-slate-200 max-h-96 overflow-y-auto custom-scrollbar">
+                                                          <table className="w-full text-xs">
+                                                              <thead className="bg-slate-100 text-slate-600 sticky top-0">
+                                                                  <tr>
+                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Movimiento</th>
+                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Sección</th>
+                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Casilla</th>
+                                                                      <th className="text-left px-3 py-2 font-black uppercase text-[10px]">Detalle</th>
+                                                                      <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Casillas (P)</th>
+                                                                      <th className="text-right px-3 py-2 font-black uppercase text-[10px]">Padrón</th>
+                                                                  </tr>
+                                                              </thead>
+                                                              <tbody>
+                                                                  {[
+                                                                      ...comparacionVersiones.altas.map(e => ({ k: `a-${e.clave}`, mov: 'Nueva', cls: 'bg-emerald-100 text-emerald-700', seccion: e.seccion, tipo: e.tipo, detalle: `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, cas: `— → ${e.casillasPadron}`, pad: `— → ${e.padron.toLocaleString()}` })),
+                                                                      ...comparacionVersiones.bajas.map(e => ({ k: `b-${e.clave}`, mov: 'Eliminada', cls: 'bg-red-100 text-red-700', seccion: e.seccion, tipo: e.tipo, detalle: `Sede ${e.sede} · Mzas: ${e.manzanas.join(', ')}`, cas: `${e.casillasPadron} → —`, pad: `${e.padron.toLocaleString()} → —` })),
+                                                                      ...comparacionVersiones.cambios.map(c => ({ k: `c-${c.clave}`, mov: 'Modificada', cls: 'bg-amber-100 text-amber-800', seccion: c.seccion, tipo: c.tipo, detalle: describirCambioExtra(c), cas: `${c.antes.casillasPadron} → ${c.despues.casillasPadron}`, pad: `${c.antes.padron.toLocaleString()} → ${c.despues.padron.toLocaleString()}` })),
+                                                                  ].sort((x, y) => x.seccion.localeCompare(y.seccion, undefined, { numeric: true }) || x.tipo.localeCompare(y.tipo, undefined, { numeric: true })).map(f => (
+                                                                      <tr key={f.k} className="border-t border-slate-100 align-top">
+                                                                          <td className="px-3 py-1.5"><span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${f.cls}`}>{f.mov}</span></td>
+                                                                          <td className="px-3 py-1.5 font-bold text-slate-700">{f.seccion}</td>
+                                                                          <td className="px-3 py-1.5 font-black text-slate-800">{f.tipo}</td>
+                                                                          <td className="px-3 py-1.5 font-bold text-slate-600">{f.detalle}</td>
+                                                                          <td className="px-3 py-1.5 text-right font-bold text-slate-700 whitespace-nowrap">{f.cas}</td>
+                                                                          <td className="px-3 py-1.5 text-right font-bold text-slate-700 whitespace-nowrap">{f.pad}</td>
+                                                                      </tr>
+                                                                  ))}
+                                                              </tbody>
+                                                          </table>
+                                                      </div>
+                                                  )}
+                                              </>
+                                          )}
+                                      </>
+                                  )}
+
+                                  <div className="mt-4 pt-4 border-t border-slate-100">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Versiones guardadas ({versionesExtra.length})</p>
+                                      <div className="flex flex-wrap gap-2">
+                                          {versionesExtra.map(v => (
+                                              <div key={v.id} className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-beige-100 border border-beige-300 text-oxford-700" title={`Guardada el ${new Date(v.creado).toLocaleString('es-MX')}`}>
+                                                  <span className="text-[10px] font-black uppercase">{v.nombre}</span>
+                                                  <span className="text-[9px] font-bold text-beige-600">{v.fechaCorte || 's/corte'} · {(v.extras || []).length} extra.</span>
+                                                  <button onClick={() => eliminarVersionExtra(v)} title="Eliminar versión" className="p-1 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-3 h-3" /></button>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  </div>
+                              </>
+                          )}
+                      </div>
                   </div>
           </div>
           )}
@@ -4903,6 +5268,7 @@ export default function App() {
                   downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
                }} title="Respaldar JSON" className="flex items-center gap-2 bg-beige-100 hover:bg-beige-200 text-oxford-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-beige-300"><History className="w-3 h-3" /> Respaldo</button>
                <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all shadow-sm border border-slate-200"><FileUp className="w-3 h-3" /> Cargar <input type="file" className="hidden" accept=".json" onChange={cargarRespaldoJSON} /></label>
+               <button onClick={(e) => { e.stopPropagation(); setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false }); }} title="Guardar una versión de este armado para compararla después (junio vs julio vs agosto…) en Resumen Distrital" className="flex items-center gap-2 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer"><Bookmark className="w-3 h-3" /> Guardar versión{versionesExtra.length > 0 ? ` (${versionesExtra.length})` : ''}</button>
             </div>
           ) : null}
 
@@ -4929,6 +5295,50 @@ export default function App() {
       </main>
 
       <style>{`.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>
+
+      {/* MODAL GUARDAR VERSIÓN DE EXTRAORDINARIAS */}
+      {modalGuardarVersion.isOpen && (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="bg-gradient-to-br from-pink-500 to-pink-700 text-white p-2 rounded-xl shrink-0"><Bookmark className="w-5 h-5" /></div>
+              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">Guardar versión del armado</h3>
+            </div>
+            <p className="text-xs font-bold text-slate-500 mb-5 ml-1">Se guarda una "foto" de tus extraordinarias tal como están ahora, para compararla después contra otro corte en Proyección → Resumen Distrital.</p>
+
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              <div className="bg-white border-2 border-pink-300 rounded-xl p-3 text-center focus-within:ring-2 focus-within:ring-pink-500">
+                <p className="text-[9px] font-black uppercase tracking-widest text-pink-600">Corte</p>
+                <input type="text" maxLength={20} value={modalGuardarVersion.corte || ''} placeholder="DD/MM/AAAA" title="Fecha de corte del padrón con el que se armó esta versión" onChange={e => setModalGuardarVersion(prev => ({ ...prev, corte: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter' && !modalGuardarVersion.guardando) guardarVersionExtra(); }} className="w-full text-sm font-black text-slate-800 mt-0.5 text-center bg-transparent outline-none placeholder:text-slate-300" />
+              </div>
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-center">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Extraordinarias</p>
+                <p className="text-sm font-black text-slate-800 mt-0.5">{fotoExtraActual.extras.length}</p>
+              </div>
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-center">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Casillas (P)</p>
+                <p className="text-sm font-black text-slate-800 mt-0.5">{totalCasillasDistrito.exPadron}</p>
+              </div>
+            </div>
+
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nombre de la versión</label>
+            <input type="text" autoFocus maxLength={60} className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalGuardarVersion.nombre} placeholder={nombreVersionSugerido()} onChange={e => setModalGuardarVersion(prev => ({ ...prev, nombre: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter' && !modalGuardarVersion.guardando) guardarVersionExtra(); }} />
+            <p className="text-[10px] text-slate-400 mt-1 ml-1 mb-6">Si lo dejas vacío se usa "{nombreVersionSugerido()}". El corte puedes escribirlo o corregirlo en la casilla de arriba. Todo tu equipo del distrito verá esta versión.</p>
+
+            {fotoExtraActual.extras.length === 0 && (
+              <div className="mb-5 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs font-bold text-amber-800">Todavía no hay extraordinarias armadas. Puedes guardar la versión vacía, pero normalmente conviene guardarla ya con el armado terminado.</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setModalGuardarVersion({ isOpen: false, nombre: '', guardando: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
+              <button onClick={guardarVersionExtra} disabled={modalGuardarVersion.guardando} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md">{modalGuardarVersion.guardando ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL ESPECIALES */}
       {modalEspecialConfig.isOpen && (
