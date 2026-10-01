@@ -16,24 +16,34 @@ export const downloadBlob = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
-export const estaCercaDelCorte750 = (valor) => {
-  const v = Number(valor) || 0;
-  if (v <= 0) return false;
-  const resto = v % BOOTH_LIMIT;
-  const cercaPorArriba = (BOOTH_LIMIT - resto) <= MARGEN_CORTE_750; // a punto de sumar una casilla más (ej. 740, 748...)
-  const cercaPorAbajo = v >= BOOTH_LIMIT && resto <= MARGEN_CORTE_750; // recién cruzó un múltiplo real (ej. 751, 755...); no aplica cerca de 0
-  return cercaPorArriba || cercaPorAbajo;
-};
-// Electores que faltan (o sobran) para cruzar el múltiplo de 750 más cercano; null si no aplica (v<=0).
-export const distanciaAlCorte750 = (valor) => {
+// Margen al corte de 750. Una casilla atiende hasta 750 electores (casillas = techo(v / 750)):
+// con 750 sigue siendo 1 casilla y la segunda se abre hasta 751; igual en 1,500 → 1,501, etc.
+//   'abre'   → electores que FALTAN para que se proyecte una casilla más (740 → faltan 11).
+//   'cierra' → electores que SOBRAN sobre el último corte cruzado; si se pierden, se proyecta
+//              una casilla menos (755 → sobran 5: con 750 vuelve a ser 1 casilla).
+// Devuelve el más cercano de los dos, o null si no aplica (v <= 0).
+export const margenCorte750 = (valor) => {
   const v = Number(valor) || 0;
   if (v <= 0) return null;
-  const resto = v % BOOTH_LIMIT;
-  if (resto === 0) return 0;
-  const distArriba = BOOTH_LIMIT - resto;
-  const distAbajo = v >= BOOTH_LIMIT ? resto : Infinity;
-  return Math.min(distArriba, distAbajo);
+  const casillas = Math.ceil(v / BOOTH_LIMIT);
+  const faltan = casillas * BOOTH_LIMIT + 1 - v;
+  const sobran = casillas > 1 ? v - (casillas - 1) * BOOTH_LIMIT : Infinity;
+  return faltan <= sobran ? { electores: faltan, sentido: 'abre' } : { electores: sobran, sentido: 'cierra' };
 };
+export const distanciaAlCorte750 = (valor) => margenCorte750(valor)?.electores ?? null;
+export const estaCercaDelCorte750 = (valor) => {
+  const m = margenCorte750(valor);
+  return !!m && m.electores <= MARGEN_CORTE_750;
+};
+// El margen más cercano entre varios valores (padrón y lista) que estén cerca del corte; null si ninguno.
+export const margenMinCorte750 = (...valores) => valores
+  .filter(estaCercaDelCorte750)
+  .map(margenCorte750)
+  .reduce((min, m) => (!min || m.electores < min.electores ? m : min), null);
+// Texto corto para pantalla, Excel y PDF (solo ASCII en los signos: la fuente del PDF no trae "−").
+export const textoMargenCorte750 = (m) => !m ? '' : m.sentido === 'abre'
+  ? `Faltan ${m.electores} (+1 casilla)`
+  : `Sobran ${m.electores} (-1 casilla)`;
 export const nivelRiesgoCorte750 = (distancia) => {
   if (distancia === null || distancia === undefined) return '';
   if (distancia <= 5) return 'ALTO';

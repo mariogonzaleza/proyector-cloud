@@ -20,7 +20,7 @@ import {
   DEFAULT_EQUIP_CONFIG, DEFAULT_FOLIO_CONFIG,
 } from './src/data/constantes.js';
 import {
-  p4, downloadBlob, estaCercaDelCorte750, distanciaAlCorte750, nivelRiesgoCorte750,
+  p4, downloadBlob, estaCercaDelCorte750, nivelRiesgoCorte750, margenMinCorte750, textoMargenCorte750,
   calcularEquipamientoCasilla, formatearNombreFolio, f4, normalizarDistrito,
   obtenerFechaHoraArchivo, obtenerDistribucionArray, normalizarClave, claveManzana,
   claveLocalidad, claveCasillaUbicacion, normalizarCodigoCasillaINE, clasificarCategoriaCasillaINE, aplicarFuenteInstitucional, compararVersionesExtra, clasificarCambioExtra,
@@ -123,6 +123,91 @@ const SeccionColapsable = ({ title, icon, isOpen, onToggle, children }) => (
     </div>
 );
 
+// ===================== GRÁFICAS (Resumen Distrital) =====================
+// Paleta del Manual INE. Es una paleta de grises + beige: se eligió por pares que sí se
+// distinguen (validados para daltonismo): Oxford↔Beige, Oxford↔Gris medio, y la escala ordinal
+// Gris → Gris medio → Oxford. El Beige y el Gris quedan bajo 3:1 contra blanco, así que TODA
+// barra lleva su valor escrito (nunca se depende solo del color). El mismo criterio usa el PDF.
+const COLORES_GRAFICA = { oxford: '#454248', beige: '#C5A989', grisMedio: '#828A91', gris: '#B2B2B2' };
+
+// Barras horizontales de una o dos series (p. ej. Padrón vs Lista). `etiqueta(fila, i)` permite
+// escribir algo más que el número (porcentaje, diferencia).
+const GraficaBarras = ({ filas, series, etiqueta }) => {
+  const max = Math.max(1, ...filas.flatMap(f => f.valores.map(v => v || 0)));
+  return (
+    <div>
+      {series.length > 1 && (
+        <div className="flex flex-wrap gap-4 mb-3">
+          {series.map(s => <span key={s.nombre} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />{s.nombre}</span>)}
+        </div>
+      )}
+      <div className="space-y-2">
+        {filas.map(f => (
+          <div key={f.label} className="grid grid-cols-[minmax(5.5rem,8.5rem)_1fr] gap-3 items-center">
+            <span className="text-[11px] font-bold text-slate-700 leading-tight">{f.label}</span>
+            <div className="border-l border-slate-300 py-0.5 space-y-[2px]">
+              {series.map((s, i) => {
+                const v = f.valores[i] || 0;
+                return (
+                  <div key={s.nombre} className="flex items-center gap-2 group" title={`${f.label} · ${s.nombre}: ${v.toLocaleString('es-MX')}`}>
+                    <div className="h-3 rounded-r-[4px] group-hover:opacity-80 transition-opacity" style={{ width: `${(v / max) * 78}%`, minWidth: v > 0 ? 3 : 0, background: s.color }} />
+                    <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">{etiqueta ? etiqueta(f, i) : v.toLocaleString('es-MX')}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Barra 100% apilada para partes de un todo con orden natural (completo → sin asignar).
+const BarraApilada = ({ segmentos }) => {
+  const total = segmentos.reduce((t, s) => t + s.valor, 0);
+  const pct = (v) => total ? Math.round(v / total * 1000) / 10 : 0;
+  return (
+    <div>
+      <div className="flex h-7 w-full gap-[2px] rounded-md overflow-hidden bg-slate-100">
+        {segmentos.filter(s => s.valor > 0).map(s => (
+          <div key={s.label} title={`${s.label}: ${s.valor.toLocaleString('es-MX')} (${pct(s.valor)}%)`} style={{ flex: s.valor, background: s.color, color: s.texto }} className="flex items-center justify-center text-[10px] font-black hover:opacity-85 transition-opacity">
+            {pct(s.valor) >= 9 ? `${pct(s.valor)}%` : ''}
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+        {segmentos.map(s => <span key={s.label} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: {s.valor.toLocaleString('es-MX')} ({pct(s.valor)}%)</span>)}
+      </div>
+    </div>
+  );
+};
+
+// Columnas pequeñas para ver un indicador corte por corte (small multiples: una escala por
+// gráfica, nunca dos ejes). La última columna (el armado actual) va resaltada.
+const MiniColumnas = ({ titulo, valores, etiquetas }) => {
+  const max = Math.max(1, ...valores.map(v => v || 0));
+  return (
+    <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">{titulo}</p>
+      <div className="flex items-end gap-2 h-24 border-b border-slate-300">
+        {valores.map((v, i) => {
+          const ultimo = i === valores.length - 1;
+          return (
+            <div key={i} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full" title={`${etiquetas[i]}: ${v === null ? 'sin dato' : v.toLocaleString('es-MX')}`}>
+              <span className={`text-[9px] font-black mb-0.5 whitespace-nowrap ${ultimo ? 'text-slate-800' : 'text-slate-500'}`}>{v === null ? '—' : v.toLocaleString('es-MX')}</span>
+              {v !== null && <div className="w-full max-w-[2.25rem] rounded-t-[4px]" style={{ height: `${Math.max(2, (v / max) * 72)}%`, background: ultimo ? COLORES_GRAFICA.oxford : COLORES_GRAFICA.gris }} />}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 mt-1">
+        {etiquetas.map((e, i) => <span key={i} className={`flex-1 min-w-0 text-center text-[9px] font-bold truncate ${i === etiquetas.length - 1 ? 'text-slate-800' : 'text-slate-400'}`} title={e}>{e}</span>)}
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [view, setView] = useState('welcome'); 
   const [user, setUser] = useState(null); 
@@ -204,6 +289,7 @@ export default function App() {
   const [fichaVersionId, setFichaVersionId] = useState('actual');
   const [filtroDetalleVersiones, setFiltroDetalleVersiones] = useState('relevantes'); // 'relevantes' | 'cambios' | 'todas'
   const [soloCambiosHistorial, setSoloCambiosHistorial] = useState(true);
+  const [tablaHistorialAbierta, setTablaHistorialAbierta] = useState(false);
   const [modalCorteAnterior, setModalCorteAnterior] = useState({ isOpen: false });
   const [comparacionAnterior, setComparacionAnterior] = useState(null);
   const [comparandoPadron, setComparandoPadron] = useState(false);
@@ -1681,7 +1767,7 @@ export default function App() {
       ['Observación', 'Registros detectados'],
       ['Variación Padrón/Lista', filasObservadas.filter(f => f.esVariacion).length],
       ['Menos de 100 electores', filasObservadas.filter(f => f.esMenos100).length],
-      [`Cerca del corte de 750 (±${MARGEN_CORTE_750})`, cercaCorte750.length],
+      [`Cerca del corte de 750 (margen de ${MARGEN_CORTE_750} o menos)`, cercaCorte750.length],
       [`   · Riesgo ALTO (a 5 electores o menos)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'ALTO').length],
       [`   · Riesgo MEDIO (a 6-10 electores)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'MEDIO').length],
       [`   · Riesgo BAJO (a 11-15 electores)`, cercaCorte750.filter(f => f.nivelRiesgo750 === 'BAJO').length],
@@ -1695,12 +1781,12 @@ export default function App() {
     window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
     // --- HOJA 2: DETALLE ---
-    const headers = ['Distrito Federal', 'Distrito Local', 'Municipio', 'Sección', 'Categoría', 'Nomenclatura Padrón', 'Nomenclatura Lista', 'Padrón', 'Lista Nominal', 'Variación P/L', 'Menos de 100', 'Cerca del Corte 750', 'Electores al Corte', 'Nivel de Riesgo', 'Observaciones'];
+    const headers = ['Distrito Federal', 'Distrito Local', 'Municipio', 'Sección', 'Categoría', 'Nomenclatura Padrón', 'Nomenclatura Lista', 'Padrón', 'Lista Nominal', 'Variación P/L', 'Menos de 100', 'Cerca del Corte 750', 'Margen al Corte', 'Nivel de Riesgo', 'Observaciones'];
     const rows = [headers, ...filasObservadas.map(f => [
       f.fed, f.loc, f.mun, f4(f.seccion), f.categoria, f.nomenclaturaPadron || '', f.nomenclaturaLista || '',
       Number(f.padronRef) || 0, Number(f.listaRef) || 0,
       f.esVariacion ? 'SÍ' : '', f.esMenos100 ? 'SÍ' : '', f.esCercaCorte750 ? 'SÍ' : '',
-      f.distanciaCorte750 !== null ? f.distanciaCorte750 : '', f.nivelRiesgo750 || '', f.observaciones
+      f.textoMargen750 || '', f.nivelRiesgo750 || '', f.observaciones
     ])];
 
     const wsDetalle = window.XLSX.utils.aoa_to_sheet(rows);
@@ -1724,6 +1810,9 @@ export default function App() {
     window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Reporte_Observaciones_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
+  // Resumen Distrital en PDF, pensado para presentarse: primero el panorama (cifras clave y
+  // gráficas), después cada tema una sola vez, y al final un anexo con los listados de detalle.
+  // Colores: solo la paleta del Manual INE (ver COLORES_GRAFICA); toda barra lleva su valor escrito.
   const exportarInformeEjecutivoPDF = () => {
     if (!window.jspdf || isPdfLibLoading) { setErrorMessage("La librería de PDF aún está cargando. Intenta de nuevo."); return; }
     const { jsPDF } = window.jspdf;
@@ -1733,94 +1822,305 @@ export default function App() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 40;
+    const anchoUtil = pageWidth - margin * 2;
+    const C = { oxford: [69, 66, 72], beige: [197, 169, 137], grisMedio: [130, 138, 145], gris: [178, 178, 178], grisClaro: [197, 201, 204], grisCalido: [221, 212, 206], negro: [0, 0, 0], blanco: [255, 255, 255] };
+    const fmt = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('es-MX');
+    const conSigno = (n) => `${n > 0 ? '+' : ''}${Number(n).toLocaleString('es-MX')}`;
     let y;
+    let numSeccion = 1;
 
-    doc.setFillColor(69, 66, 72);
+    const asegurarEspacio = (alto) => { if (y + alto > pageHeight - 45) { doc.addPage(); y = 50; } };
+    const titulo = (texto, altoMinimo = 140) => {
+      y += 10;
+      asegurarEspacio(altoMinimo);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...C.negro);
+      doc.text(`${numSeccion++}. ${texto}`, margin, y);
+      doc.setDrawColor(...C.beige); doc.setLineWidth(1.5); doc.line(margin, y + 5, margin + 40, y + 5);
+      y += 20;
+    };
+    const nota = (texto) => {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...C.oxford);
+      const lineas = doc.splitTextToSize(texto, anchoUtil);
+      asegurarEspacio(lineas.length * 10 + 4);
+      doc.text(lineas, margin, y);
+      y += lineas.length * 10 + 4;
+    };
+
+    // Fila de cifras clave (tarjetas en Gris cálido con filete Beige).
+    const tarjetas = (items) => {
+      const gap = 8, alto = 48;
+      const ancho = (anchoUtil - gap * (items.length - 1)) / items.length;
+      asegurarEspacio(alto + 8);
+      items.forEach(([etiqueta, valor], i) => {
+        const x = margin + i * (ancho + gap);
+        doc.setFillColor(...C.grisCalido); doc.rect(x, y, ancho, alto, 'F');
+        doc.setFillColor(...C.beige); doc.rect(x, y, ancho, 3, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(items.length > 5 ? 14 : 16); doc.setTextColor(...C.negro);
+        doc.text(String(valor), x + ancho / 2, y + 26, { align: 'center' });
+        doc.setFontSize(6.5); doc.setTextColor(...C.oxford);
+        doc.text(doc.splitTextToSize(etiqueta.toUpperCase(), ancho - 8), x + ancho / 2, y + 37, { align: 'center' });
+      });
+      y += alto + 10;
+    };
+
+    const leyenda = (series) => {
+      let lx = margin;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      series.forEach(s => {
+        doc.setFillColor(...s.color); doc.rect(lx, y - 7, 8, 8, 'F');
+        doc.setTextColor(...C.oxford); doc.text(s.nombre, lx + 11, y);
+        lx += 11 + doc.getTextWidth(s.nombre) + 16;
+      });
+      y += 10;
+    };
+
+    // Barras horizontales de una o más series, con el valor escrito al final de cada barra.
+    const barras = ({ filas, series, etiqueta, anchoEtiqueta = 130 }) => {
+      const altoBarra = 9, sep = 2, sepFila = 8;
+      const altoBloque = altoBarra * series.length + sep * (series.length - 1);
+      asegurarEspacio(Math.min(200, filas.length * (altoBloque + sepFila) + 20));
+      if (series.length > 1) leyenda(series);
+      const max = Math.max(1, ...filas.flatMap(f => f.valores.map(v => v || 0)));
+      const anchoBarras = anchoUtil - anchoEtiqueta - 70;
+      filas.forEach(f => {
+        asegurarEspacio(altoBloque + sepFila);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...C.oxford);
+        const lineas = doc.splitTextToSize(f.label, anchoEtiqueta - 6);
+        doc.text(lineas, margin, y + altoBloque / 2 + 3 - (lineas.length - 1) * 4.5);
+        doc.setDrawColor(...C.grisClaro); doc.setLineWidth(0.6);
+        doc.line(margin + anchoEtiqueta, y - 1, margin + anchoEtiqueta, y + altoBloque + 1);
+        series.forEach((s, i) => {
+          const v = f.valores[i] || 0;
+          const by = y + i * (altoBarra + sep);
+          const w = v > 0 ? Math.max(2, anchoBarras * v / max) : 0;
+          if (w > 0) { doc.setFillColor(...s.color); doc.rect(margin + anchoEtiqueta, by, w, altoBarra, 'F'); }
+          doc.setFont('helvetica', i === series.length - 1 ? 'bold' : 'normal'); doc.setFontSize(7.5); doc.setTextColor(...C.oxford);
+          doc.text(etiqueta ? etiqueta(f, i) : fmt(v), margin + anchoEtiqueta + w + 4, by + altoBarra - 1.5);
+        });
+        y += altoBloque + sepFila;
+      });
+      y += 4;
+    };
+
+    // Barra 100% apilada (partes de un todo con orden natural), con 2pt de separación entre tramos.
+    const barraApilada = (segmentos) => {
+      const total = segmentos.reduce((t, s) => t + s.valor, 0);
+      const pct = (v) => total ? Math.round(v / total * 1000) / 10 : 0;
+      const alto = 22;
+      asegurarEspacio(alto + 30);
+      let x = margin;
+      segmentos.forEach(s => {
+        const w = total ? anchoUtil * s.valor / total : 0;
+        if (w <= 0) return;
+        doc.setFillColor(...s.color); doc.rect(x, y, Math.max(0.5, w - 2), alto, 'F');
+        if (w > 44) { doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...s.texto); doc.text(`${pct(s.valor)}%`, x + (w - 2) / 2, y + alto / 2 + 3, { align: 'center' }); }
+        x += w;
+      });
+      y += alto + 14;
+      let lx = margin;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      segmentos.forEach(s => {
+        const txt = `${s.label}: ${fmt(s.valor)} (${pct(s.valor)}%)`;
+        doc.setFillColor(...s.color); doc.rect(lx, y - 7, 8, 8, 'F');
+        doc.setTextColor(...C.oxford); doc.text(txt, lx + 11, y);
+        lx += 11 + doc.getTextWidth(txt) + 16;
+      });
+      y += 12;
+    };
+
+    // Columnas pequeñas por corte (una escala por panel, nunca dos ejes). La última columna es
+    // el armado actual y va en Gris Oxford; los cortes anteriores en Gris.
+    const panelesColumnas = (paneles, etiquetas) => {
+      const columnas = 2, gap = 18, altoPanel = 118;
+      const anchoPanel = (anchoUtil - gap) / columnas;
+      for (let p = 0; p < paneles.length; p += columnas) {
+        asegurarEspacio(altoPanel + 6);
+        paneles.slice(p, p + columnas).forEach((panel, c) => {
+          const x0 = margin + c * (anchoPanel + gap);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...C.oxford);
+          doc.text(panel.titulo, x0, y + 8);
+          const areaY = y + 22, areaH = 64;
+          const n = panel.valores.length;
+          const ancho = Math.min(42, (anchoPanel - (n - 1) * 6) / n);
+          const max = Math.max(1, ...panel.valores.map(v => v || 0));
+          doc.setDrawColor(...C.grisClaro); doc.setLineWidth(0.6); doc.line(x0, areaY + areaH, x0 + anchoPanel, areaY + areaH);
+          panel.valores.forEach((v, i) => {
+            const bx = x0 + i * (ancho + 6);
+            const ultimo = i === n - 1;
+            if (v !== null) {
+              const h = Math.max(1.5, areaH * 0.85 * v / max);
+              doc.setFillColor(...(ultimo ? C.oxford : C.gris)); doc.rect(bx, areaY + areaH - h, ancho, h, 'F');
+              doc.setFont('helvetica', ultimo ? 'bold' : 'normal'); doc.setFontSize(6.5); doc.setTextColor(...C.oxford);
+              doc.text(fmt(v), bx + ancho / 2, areaY + areaH - h - 3, { align: 'center' });
+            } else {
+              doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...C.grisMedio);
+              doc.text('sin dato', bx + ancho / 2, areaY + areaH - 3, { align: 'center' });
+            }
+            doc.setFont('helvetica', ultimo ? 'bold' : 'normal'); doc.setFontSize(6); doc.setTextColor(...C.oxford);
+            doc.text(doc.splitTextToSize(etiquetas[i], ancho + 4).slice(0, 2), bx + ancho / 2, areaY + areaH + 9, { align: 'center' });
+          });
+        });
+        y += altoPanel;
+      }
+    };
+
+    // ---------- Encabezado ----------
+    doc.setFillColor(...C.oxford);
     doc.rect(0, 0, pageWidth, 90, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
+    doc.setFillColor(...C.beige);
+    doc.rect(0, 90, pageWidth, 4, 'F');
+    doc.setTextColor(...C.blanco);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
     doc.text('RESUMEN DISTRITAL', margin, 40);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    const cabeceraTxt = cabeceraDistrital ? ` — ${cabeceraDistrital}` : '';
-    doc.text(`Distrito ${f4(distritoInfo.numero)}${cabeceraTxt} · Estado de México`, margin, 62);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
+    doc.text(`Distrito ${f4(distritoInfo.numero)}${cabeceraDistrital ? ` — ${cabeceraDistrital}` : ''} · Estado de México`, margin, 62);
     doc.setFontSize(9);
     doc.text(`Corte de padrón: ${fechaCorte || 'N/A'}  ·  Generado: ${new Date().toLocaleString('es-MX')}`, margin, 78);
+    y = 116;
 
-    doc.setTextColor(0, 0, 0);
-    y = 115;
+    // ---------- Panorama ----------
+    tarjetas([
+      ['Casillas (padrón)', fmt(totalCasillasDistrito.totalPadron)],
+      ['Casillas (lista nominal)', fmt(totalCasillasDistrito.totalLista)],
+      ['Padrón electoral', fmt(totalesPadronLista.padron)],
+      ['Lista nominal', fmt(totalesPadronLista.lista)],
+      ['Secciones', fmt(sections.length)],
+      ['Municipios', fmt(totalMunicipios)],
+    ]);
 
-    // --- 1. Resumen General ---
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text('1. Resumen General del Distrito', margin, y);
-    y += 8;
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-      head: [['Tipo de Casilla', 'Padrón', 'Lista Nominal']],
-      body: [
-        ['Total de Casillas', totalCasillasDistrito.totalPadron, totalCasillasDistrito.totalLista],
-        ['Básicas / Contiguas', totalCasillasDistrito.bcPadron, totalCasillasDistrito.bcLista],
-        ['Extraordinarias', totalCasillasDistrito.exPadron, totalCasillasDistrito.exLista],
-        ['Especiales', totalCasillasDistrito.espPadron, totalCasillasDistrito.espLista],
-      ],
-    });
-    y = doc.lastAutoTable.finalY + 12;
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'plain',
-      styles: { fontSize: 9, cellPadding: 5 },
-      body: [
-        ['Total de Secciones', String(sections.length), 'Padrón Electoral', totalesPadronLista.padron.toLocaleString('es-MX')],
-        ['Municipios', String(totalMunicipios), 'Lista Nominal', totalesPadronLista.lista.toLocaleString('es-MX')],
-        ['Básicas', String(desgloseTiposCasilla.basicas), 'Contiguas', String(desgloseTiposCasilla.contiguas)],
-        ['Extraordinarias', String(desgloseTiposCasilla.extraordinarias), 'Extraordinarias Contiguas', String(desgloseTiposCasilla.extraordinariasContiguas)],
-        ['Especiales', String(desgloseTiposCasilla.especiales), '', ''],
-      ],
-    });
-    y = doc.lastAutoTable.finalY + 24;
+    titulo('Casillas por tipo', 150);
+    barras({ filas: filasTiposCasilla, series: [{ nombre: 'Por padrón', color: C.oxford }, { nombre: 'Por lista nominal', color: C.beige }] });
 
-    // --- 2. Desglose por Municipio ---
-    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text('2. Desglose por Municipio', margin, y);
-    y += 8;
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-      head: [['Municipio', 'Casillas', '% del Distrito']],
-      body: municipiosDelDistrito.map(m => [m.nombre, String(m.casillas), `${m.porcentaje.toFixed(1)}%`]),
-    });
-    y = doc.lastAutoTable.finalY + 24;
+    if (municipiosDelDistrito.length > 1) {
+      titulo('Casillas por municipio', 120);
+      barras({
+        filas: [...municipiosDelDistrito].sort((a, b) => b.casillas - a.casillas).map(m => ({ label: m.nombre, valores: [m.casillas], porcentaje: m.porcentaje })),
+        series: [{ nombre: 'Casillas', color: C.oxford }],
+        etiqueta: (f) => `${fmt(f.valores[0])} (${f.porcentaje.toFixed(1)}%)`,
+        anchoEtiqueta: 150,
+      });
+    } else if (municipiosDelDistrito.length === 1) {
+      nota(`Todo el distrito está en el municipio de ${municipiosDelDistrito[0].nombre} (${fmt(municipiosDelDistrito[0].casillas)} casillas).`);
+    }
 
-    // --- 3. Alertas y Observaciones ---
-    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text('3. Alertas y Observaciones', margin, y);
-    y += 8;
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-      head: [['Observación', 'Secciones Detectadas']],
-      body: [
-        ['Variación Padrón/Lista', String(countVariacion)],
-        ['Menos de 100 electores', String(countMenos100)],
-        [`Cerca del corte de 750 (±${MARGEN_CORTE_750})`, String(countCercaCorte750)],
-      ],
-    });
-    y = doc.lastAutoTable.finalY + 18;
-
+    // ---------- Alertas (el listado por sección va en el anexo) ----------
     const filasVariacion = filasObservadas.filter(f => f.esVariacion);
     const filasMenos100 = filasObservadas.filter(f => f.esMenos100);
     const filasCerca750 = filasObservadas.filter(f => f.esCercaCorte750);
+    titulo('Alertas y observaciones', 90);
+    tarjetas([
+      ['Secciones con variación padrón / lista', fmt(countVariacion)],
+      ['Secciones con menos de 100 electores', fmt(countMenos100)],
+      [`Secciones cerca del corte de 750 (margen de ${MARGEN_CORTE_750} o menos)`, fmt(countCercaCorte750)],
+    ]);
+    if (filasVariacion.length + filasMenos100.length + filasCerca750.length > 0) nota('El listado de secciones de cada alerta está en el Anexo, al final del documento.');
 
-    const tablaDetalleAlerta = (titulo, color, filas, colExtraHead, colExtraBody) => {
+    // ---------- Ubicación y tipos de domicilio ----------
+    const completas = seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length;
+    const parciales = seccionesUbicacion.filter(s => s.estado === 'parcial').length;
+    const sinAsignar = seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length;
+    titulo('Ubicación de casillas (domicilios por sección)', 120);
+    // Escala ordinal de grises: más oscuro = más avanzado.
+    barraApilada([
+      { label: 'Completo', valor: completas, color: C.oxford, texto: C.blanco },
+      { label: 'Parcial', valor: parciales, color: C.grisMedio, texto: C.negro },
+      { label: 'Sin asignar', valor: sinAsignar, color: C.gris, texto: C.negro },
+    ]);
+    const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
+    if (totalDomicilios > 0) {
+      y += 6;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...C.oxford);
+      asegurarEspacio(80);
+      doc.text('Tipos de domicilio', margin, y); y += 12;
+      barras({
+        filas: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, n]) => ({ label: tipo, valores: [n], secciones: seccionesPorTipoDomicilio[tipo] || 0 })),
+        series: [{ nombre: 'Domicilios', color: C.oxford }],
+        etiqueta: (f) => `${fmt(f.valores[0])} (${(f.valores[0] / totalDomicilios * 100).toFixed(1)}%) · ${f.secciones} secc.`,
+        anchoEtiqueta: 150,
+      });
+    }
+
+    // ---------- Comparativo vs 2023-2024 ----------
+    if (comparativo2024) {
+      titulo('Comparativo vs Proceso 2023-2024', 160);
+      barras({
+        filas: [['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extraordinarias contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => ({ label, key, valores: [comparativo2024.conteo2024[key], comparativo2024.conteoActual[key]] })),
+        series: [{ nombre: 'Proceso 2023-2024', color: C.grisMedio }, { nombre: 'Este proceso', color: C.oxford }],
+        etiqueta: (f, i) => i === 0 ? fmt(f.valores[0]) : `${fmt(f.valores[1])} (${conSigno(comparativo2024.diffs[f.key])})`,
+      });
+      nota(`Secciones: ${fmt(comparativo2024.totalSecciones2024)} en 2023-2024 y ${fmt(comparativo2024.totalSeccionesActual)} hoy.${comparativo2024.seccionesNuevas.length ? ` Nuevas (${comparativo2024.seccionesNuevas.length}): ${comparativo2024.seccionesNuevas.join(', ')}.` : ''}${comparativo2024.seccionesDesaparecidas.length ? ` Desaparecidas (${comparativo2024.seccionesDesaparecidas.length}): ${comparativo2024.seccionesDesaparecidas.join(', ')}.` : ''}`);
+    }
+
+    // ---------- Evolución por corte (versiones guardadas) ----------
+    if (historialVersiones && historialVersiones.fotos.length >= 2) {
+      // Hasta 6 cortes para que quepa en carta; el historial completo va en el Excel de análisis.
+      const fotosPdf = historialVersiones.fotos.slice(-6);
+      const etiquetasPdf = fotosPdf.map(f => f.id === 'actual' ? 'Actual' : (f.fechaCorte || f.nombre));
+      titulo('Evolución de la proyección por corte', 260);
+      const serie = (fn) => fotosPdf.map(f => { const v = fn(f); return typeof v === 'number' && !isNaN(v) ? v : null; });
+      panelesColumnas([
+        { titulo: 'Padrón electoral del distrito', valores: serie(f => f.padronDistrito?.padron) },
+        { titulo: 'Casillas del distrito (por padrón)', valores: serie(f => f.resumenDistrito?.totalPadron) },
+        { titulo: 'Casillas extraordinarias (por padrón)', valores: serie(f => sumaExtras(f, 'casillasPadron')) },
+        { titulo: 'Padrón atendido por extraordinarias', valores: serie(f => sumaExtras(f, 'padron')) },
+      ], etiquetasPdf);
+      // Tabla única de indicadores: cada celda muestra su cambio contra el corte anterior.
+      const cols = fotosPdf.length + 1;
+      const cuerpo = [];
+      let g = null;
+      filasIndicadores(fotosPdf).forEach(f => {
+        if (f.grupo !== g) { g = f.grupo; cuerpo.push([{ content: g, colSpan: cols, styles: { fillColor: C.beige, textColor: C.negro, fontStyle: 'bold' } }]); }
+        cuerpo.push([f.concepto, ...f.valores.map((v, i) => {
+          const prev = i > 0 ? f.valores[i - 1] : null;
+          const base = fmtNum(v, f.esPorcentaje);
+          return v !== null && prev !== null && v !== prev ? `${base} (${fmtDiferencia(v - prev, f.esPorcentaje)})` : base;
+        })]);
+      });
+      asegurarEspacio(120);
+      doc.autoTable({
+        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: C.oxford, textColor: 255, fontStyle: 'bold' },
+        head: [['Indicador', ...fotosPdf.map(f => `${f.id === 'actual' ? 'Actual' : f.nombre}${f.fechaCorte ? `\n${f.fechaCorte}` : ''}`)]],
+        body: cuerpo,
+      });
+      y = doc.lastAutoTable.finalY + 6;
+      nota('Entre paréntesis: cambio contra el corte anterior.');
+    }
+
+    // ---------- Cambios en extraordinarias entre las dos versiones elegidas en pantalla ----------
+    if (comparacionVersiones) {
+      const cv = comparacionVersiones;
+      titulo(`Cambios en extraordinarias: ${cv.A.id === 'actual' ? 'Actual' : cv.A.nombre} vs ${cv.B.id === 'actual' ? 'Actual' : cv.B.nombre}`, 120);
+      tarjetas(['nueva', 'eliminada', 'armado', 'casillas', 'padron', 'igual'].map(k => [ESTADOS_CAMBIO[k].label, fmt(cv.conteo[k] || 0)]));
+      const relevantes = cv.detalle.filter(d => ESTADOS_RELEVANTES.includes(d.estado));
+      if (relevantes.length > 0) {
+        doc.autoTable({
+          startY: y, margin: { left: margin, right: margin }, theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: C.oxford, textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 6: { cellWidth: 200 } },
+          head: [['Movimiento', 'Sección', 'Casilla', 'Casillas', 'Mzas', 'Padrón', 'Qué cambió']],
+          body: relevantes.map(d => [
+            ESTADOS_CAMBIO[d.estado].label, d.seccion, d.tipo,
+            `${d.antes ? textoCasillas(d.antes) : '—'} -> ${d.despues ? textoCasillas(d.despues) : '—'}`,
+            `${d.antes ? d.antes.manzanas.length : '—'} -> ${d.despues ? d.despues.manzanas.length : '—'}`,
+            `${d.antes ? fmt(d.antes.padron) : '—'} -> ${d.despues ? fmt(d.despues.padron) : '—'}`,
+            // La fuente estándar del PDF no trae la flecha "→".
+            describirCambioExtra(d).replace(/→/g, '->'),
+          ]),
+        });
+        y = doc.lastAutoTable.finalY + 6;
+      } else {
+        nota('Ninguna extraordinaria se agregó, eliminó ni cambió de armado o de número de casillas.');
+      }
+      if (cv.conteo.padron > 0) nota(`${cv.conteo.padron} extraordinaria(s) conservan manzanas y casillas; solo cambió su padrón/lista (detalle en el Excel de análisis).`);
+    }
+
+    // ---------- Anexo: listado de secciones por alerta ----------
+    const tablaDetalleAlerta = (subtitulo, color, filas, colExtraHead, colExtraBody) => {
       if (filas.length === 0) return;
-      if (y > pageHeight - 100) { doc.addPage(); y = 50; }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-      doc.setTextColor(69, 66, 72);
-      doc.text(titulo, margin, y);
-      doc.setTextColor(0, 0, 0);
+      asegurarEspacio(70);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...C.oxford);
+      doc.text(subtitulo, margin, y);
       y += 6;
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin }, theme: 'grid',
@@ -1831,175 +2131,22 @@ export default function App() {
       });
       y = doc.lastAutoTable.finalY + 16;
     };
-
-    tablaDetalleAlerta(`Secciones con Variación Padrón/Lista (${filasVariacion.length})`, [69, 66, 72], filasVariacion, [], () => []);
-    tablaDetalleAlerta(`Secciones con Menos de 100 Electores (${filasMenos100.length})`, [197, 169, 137], filasMenos100, [], () => []);
-    tablaDetalleAlerta(`Secciones Cerca del Corte de 750 (${filasCerca750.length})`, [130, 138, 145], filasCerca750, ['Distancia', 'Riesgo'], (f) => [String(f.distanciaCorte750), f.nivelRiesgo750]);
-
-    // --- 4. Estado de Ubicación de Casillas ---
-    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text('4. Estado de Ubicación de Casillas (Domicilios)', margin, y);
-    y += 8;
-    const completas = seccionesUbicacion.filter(s => s.estado.startsWith('completo')).length;
-    const parciales = seccionesUbicacion.filter(s => s.estado === 'parcial').length;
-    const sinAsignar = seccionesUbicacion.filter(s => s.estado === 'sin_asignar').length;
-    const totalSeccionesUbicacion = completas + parciales + sinAsignar;
-    const pct = (n) => totalSeccionesUbicacion > 0 ? `${(n / totalSeccionesUbicacion * 100).toFixed(1)}%` : '0.0%';
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [130, 138, 145], textColor: [0, 0, 0], fontStyle: 'bold' },
-      head: [['Estado del Domicilio', 'Secciones', '% del Distrito']],
-      body: [
-        ['Completo', String(completas), pct(completas)],
-        ['Parcial', String(parciales), pct(parciales)],
-        ['Sin Asignar', String(sinAsignar), pct(sinAsignar)],
-      ],
-    });
-    y = doc.lastAutoTable.finalY + 24;
-
-    // --- 5. Tipos de Domicilio ---
-    if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-    doc.text('5. Tipos de Domicilio', margin, y);
-    y += 8;
-    const totalDomicilios = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin }, theme: 'striped',
-      styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-      head: [['Tipo de Domicilio', 'Domicilios', '% del Total', 'Secciones']],
-      body: Object.entries(conteoTiposDomicilio).sort((a, b) => b[1] - a[1]).map(([tipo, count]) => [
-        tipo, String(count), totalDomicilios > 0 ? `${(count / totalDomicilios * 100).toFixed(1)}%` : '0.0%', String(seccionesPorTipoDomicilio[tipo] || 0)
-      ]),
-    });
-    y = doc.lastAutoTable.finalY + 24;
-
-    // --- 6. Comparativo vs Proceso 2023-2024 ---
-    if (comparativo2024) {
-      if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-      doc.text('6. Comparativo vs Proceso 2023-2024', margin, y);
-      y += 8;
-      const dif = comparativo2024.diffs;
-      const fmtDif = (n) => `${n > 0 ? '+' : ''}${n}`;
-      doc.autoTable({
-        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
-        head: [['Tipo de Casilla', 'Proceso 2023-2024', 'Este proceso', 'Diferencia']],
-        body: [
-          ['Básicas', String(comparativo2024.conteo2024.basicas), String(comparativo2024.conteoActual.basicas), fmtDif(dif.basicas)],
-          ['Contiguas', String(comparativo2024.conteo2024.contiguas), String(comparativo2024.conteoActual.contiguas), fmtDif(dif.contiguas)],
-          ['Extraordinarias', String(comparativo2024.conteo2024.extraordinarias), String(comparativo2024.conteoActual.extraordinarias), fmtDif(dif.extraordinarias)],
-          ['Extraordinarias Contiguas', String(comparativo2024.conteo2024.extraordinariasContiguas), String(comparativo2024.conteoActual.extraordinariasContiguas), fmtDif(dif.extraordinariasContiguas)],
-          ['Especiales', String(comparativo2024.conteo2024.especiales), String(comparativo2024.conteoActual.especiales), fmtDif(dif.especiales)],
-        ],
-      });
-      y = doc.lastAutoTable.finalY + 12;
-      doc.autoTable({
-        startY: y, margin: { left: margin, right: margin }, theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 5 },
-        body: [
-          ['Secciones en Proceso 2023-2024', String(comparativo2024.totalSecciones2024), 'Secciones hoy', String(comparativo2024.totalSeccionesActual)],
-        ],
-      });
-      y = doc.lastAutoTable.finalY + 12;
-
-      if (comparativo2024.seccionesNuevas.length > 0 || comparativo2024.seccionesDesaparecidas.length > 0) {
-        if (y > pageHeight - 100) { doc.addPage(); y = 50; }
-        doc.autoTable({
-          startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-          styles: { fontSize: 8, cellPadding: 6 }, headStyles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' },
-          head: [['Cambio', 'Secciones']],
-          body: [
-            ...(comparativo2024.seccionesNuevas.length > 0 ? [[`Nuevas (${comparativo2024.seccionesNuevas.length})`, comparativo2024.seccionesNuevas.join(', ')]] : []),
-            ...(comparativo2024.seccionesDesaparecidas.length > 0 ? [[`Desaparecidas (${comparativo2024.seccionesDesaparecidas.length})`, comparativo2024.seccionesDesaparecidas.join(', ')]] : []),
-          ],
-        });
-      }
-    }
-
-    // --- Versiones de la proyección: comparativo seleccionado en pantalla + historial por corte ---
-    // La fuente estándar del PDF no trae la flecha "→"; se escribe "->" para que no salga basura.
-    const sinFlecha = (t) => String(t).replace(/→/g, '->');
-    const cuerpoIndicadoresPdf = (fotos, conDif) => {
-      const cols = fotos.length + 1 + (conDif ? 1 : 0);
-      const out = [];
-      let g = null;
-      filasIndicadores(fotos).forEach(f => {
-        if (f.grupo !== g) { g = f.grupo; out.push([{ content: g, colSpan: cols, styles: { fillColor: [197, 169, 137], textColor: [0, 0, 0], fontStyle: 'bold' } }]); }
-        const fila = [f.concepto, ...f.valores.map(v => fmtNum(v, f.esPorcentaje))];
-        if (conDif) { const [a, b] = f.valores; fila.push(a === null || b === null ? '—' : fmtDiferencia(b - a, f.esPorcentaje)); }
-        out.push(fila);
-      });
-      return out;
-    };
-    let numSeccionPdf = comparativo2024 ? 7 : 6;
-    if (comparacionVersiones) {
-      const cv = comparacionVersiones;
-      y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 24;
-      if (y > pageHeight - 150) { doc.addPage(); y = 50; }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
-      doc.text(`${numSeccionPdf++}. Comparativo de Versiones — Extraordinarias`, margin, y);
-      y += 8;
-      doc.autoTable({
-        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 8, cellPadding: 4 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-        head: [['Concepto', etiquetaVersion(cv.A), etiquetaVersion(cv.B), 'Diferencia']],
-        body: cuerpoIndicadoresPdf([cv.A, cv.B], true),
-      });
-      y = doc.lastAutoTable.finalY + 10;
-      doc.autoTable({
-        startY: y, margin: { left: margin, right: margin }, theme: 'plain',
-        styles: { fontSize: 8, cellPadding: 4 },
-        body: [Object.entries(ESTADOS_CAMBIO).map(([k, x]) => `${x.label}: ${cv.conteo[k] || 0}`)],
-      });
-      const filasDetPdf = cv.detalle.filter(d => ESTADOS_RELEVANTES.includes(d.estado)).map(d => [
-        ESTADOS_CAMBIO[d.estado].label, d.seccion, d.tipo,
-        `${d.antes ? textoCasillas(d.antes) : '—'} -> ${d.despues ? textoCasillas(d.despues) : '—'}`,
-        `${d.antes ? d.antes.manzanas.length : '—'} -> ${d.despues ? d.despues.manzanas.length : '—'}`,
-        `${d.antes ? d.antes.padron : '—'} -> ${d.despues ? d.despues.padron : '—'}`,
-        sinFlecha(describirCambioExtra(d)),
-      ]);
-      if (filasDetPdf.length > 0) {
-        y = doc.lastAutoTable.finalY + 8;
-        if (y > pageHeight - 100) { doc.addPage(); y = 50; }
-        doc.autoTable({
-          startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-          columnStyles: { 6: { cellWidth: 190 } },
-          head: [['Movimiento', 'Sección', 'Casilla', 'Casillas', 'Mzas', 'Padrón', 'Detalle']],
-          body: filasDetPdf,
-        });
-      }
-      if (cv.conteo.padron > 0) {
-        y = doc.lastAutoTable.finalY + 6;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(69, 66, 72);
-        doc.text(`${cv.conteo.padron} extraordinaria(s) conservan manzanas y casillas; solo cambió su padrón/lista (detalle en el Excel de análisis).`, margin, y + 8);
-        y += 8;
-      }
-    }
-
-    if (historialVersiones && historialVersiones.fotos.length >= 2) {
-      // Hasta 6 columnas para que quepa en carta; el historial completo va en el Excel.
-      const fotosPdf = historialVersiones.fotos.slice(-6);
-      y = (doc.lastAutoTable ? Math.max(doc.lastAutoTable.finalY, y) : y) + 24;
-      if (y > pageHeight - 200) { doc.addPage(); y = 50; }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0);
-      doc.text(`${numSeccionPdf++}. Historial de la Proyección por Corte`, margin, y);
-      y += 8;
-      doc.autoTable({
-        startY: y, margin: { left: margin, right: margin }, theme: 'grid',
-        styles: { fontSize: 7, cellPadding: 3 }, headStyles: { fillColor: [69, 66, 72], textColor: 255, fontStyle: 'bold' },
-        head: [['Concepto', ...fotosPdf.map(f => `${f.id === 'actual' ? 'Actual' : f.nombre}${f.fechaCorte ? `\n${f.fechaCorte}` : ''}`)]],
-        body: cuerpoIndicadoresPdf(fotosPdf, false),
-      });
+    if (filasVariacion.length + filasMenos100.length + filasCerca750.length > 0) {
+      doc.addPage(); y = 50;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...C.negro);
+      doc.text('Anexo · Secciones con alertas', margin, y);
+      doc.setDrawColor(...C.beige); doc.setLineWidth(1.5); doc.line(margin, y + 5, margin + 40, y + 5);
+      y += 24;
+      tablaDetalleAlerta(`Variación padrón / lista (${filasVariacion.length})`, C.oxford, filasVariacion, [], () => []);
+      tablaDetalleAlerta(`Menos de 100 electores (${filasMenos100.length})`, C.beige, filasMenos100, [], () => []);
+      tablaDetalleAlerta(`Cerca del corte de 750 (${filasCerca750.length})`, C.grisMedio, filasCerca750, ['Margen al corte', 'Riesgo'], (f) => [f.textoMargen750, f.nivelRiesgo750]);
     }
 
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(130, 138, 145);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.setTextColor(...C.oxford);
       doc.text(`Proyector Cloud · Distrito ${f4(distritoInfo.numero)} · Página ${i} de ${totalPages}`, margin, pageHeight - 20);
     }
 
@@ -2558,12 +2705,7 @@ export default function App() {
         tieneNoInstala: rows.some(r => r.distPadron.some(d => d.nombre === 'NO INSTALA') || r.distLista.some(d => d.nombre === 'NO INSTALA')),
         tieneMenos100: rows.some(r => r.categoria !== 'ESPECIAL' && (Number(r.padronRef) < 100 || Number(r.listaRef) < 100)),
         tieneCercaCorte750: rows.some(r => r.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(r.padronRef) || estaCercaDelCorte750(r.listaRef))),
-        distanciaMinCorte750: Math.min(Infinity, ...rows.filter(r => r.categoria !== 'ESPECIAL').flatMap(r => {
-            const d = [];
-            if (estaCercaDelCorte750(r.padronRef)) d.push(distanciaAlCorte750(r.padronRef));
-            if (estaCercaDelCorte750(r.listaRef)) d.push(distanciaAlCorte750(r.listaRef));
-            return d;
-        })),
+        margenMinCorte750: margenMinCorte750(...rows.filter(r => r.categoria !== 'ESPECIAL').flatMap(r => [r.padronRef, r.listaRef])),
         categorias: [...new Set(rows.map(r => r.categoria))],
     }));
   }, [filasConsolidadoFinal]);
@@ -2627,23 +2769,20 @@ export default function App() {
         const esMenos100 = row.categoria !== 'ESPECIAL' && (Number(row.padronRef) < 100 || Number(row.listaRef) < 100);
         const esCercaCorte750 = row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef));
         if (!esVariacion && !esMenos100 && !esCercaCorte750) return;
-        let distanciaCorte750 = null;
-        if (esCercaCorte750) {
-          const candidatos = [];
-          if (estaCercaDelCorte750(row.padronRef)) candidatos.push(distanciaAlCorte750(row.padronRef));
-          if (estaCercaDelCorte750(row.listaRef)) candidatos.push(distanciaAlCorte750(row.listaRef));
-          distanciaCorte750 = Math.min(...candidatos);
-        }
+        // Margen al corte: el más cercano entre padrón y lista (faltan para abrir / sobran para quitar casilla).
+        const margen750 = esCercaCorte750 ? margenMinCorte750(row.padronRef, row.listaRef) : null;
+        const distanciaCorte750 = margen750 ? margen750.electores : null;
+        const textoMargen750 = textoMargenCorte750(margen750);
         const nivelRiesgo750 = nivelRiesgoCorte750(distanciaCorte750);
         const observaciones = [];
         if (esVariacion) observaciones.push('VARIACIÓN PADRÓN/LISTA');
         if (esMenos100) observaciones.push('MENOS DE 100');
-        if (esCercaCorte750) observaciones.push(`CERCA DEL CORTE DE 750 (a ${distanciaCorte750}, riesgo ${nivelRiesgo750})`);
+        if (esCercaCorte750) observaciones.push(`CERCA DEL CORTE DE 750 (${textoMargen750.toUpperCase()}, RIESGO ${nivelRiesgo750})`);
         filas.push({
           seccion: row.seccion, fed: row.fed, loc: row.loc, mun: row.mun, categoria: row.categoria,
           nomenclaturaPadron: row.nomenclaturaPadron, nomenclaturaLista: row.nomenclaturaLista,
           padronRef: row.padronRef, listaRef: row.listaRef,
-          esVariacion, esMenos100, esCercaCorte750, distanciaCorte750, nivelRiesgo750,
+          esVariacion, esMenos100, esCercaCorte750, distanciaCorte750, textoMargen750, nivelRiesgo750,
           observaciones: observaciones.join(' · ')
         });
       });
@@ -3071,25 +3210,18 @@ export default function App() {
     ['Padrón del corte', 'Padrón electoral del distrito', f => f.padronDistrito?.padron],
     ['Padrón del corte', 'Lista nominal del distrito', f => f.padronDistrito?.lista],
     ['Padrón del corte', 'Secciones', f => f.padronDistrito?.secciones],
-    ['Padrón del corte', 'Localidades', f => f.padronDistrito?.localidades],
     ['Padrón del corte', 'Manzanas', f => f.padronDistrito?.manzanas],
-    ['Casillas del distrito (por Padrón)', 'Total de casillas', f => f.resumenDistrito?.totalPadron],
-    ['Casillas del distrito (por Padrón)', 'Básicas', f => f.resumenDistrito?.basicasPadron],
-    ['Casillas del distrito (por Padrón)', 'Contiguas', f => f.resumenDistrito?.contiguasPadron],
-    ['Casillas del distrito (por Padrón)', 'Extraordinarias', f => (f.extras || []).length],
-    ['Casillas del distrito (por Padrón)', 'Extraordinarias contiguas', f => sumaExtras(f, 'casillasPadron') - (f.extras || []).length],
-    ['Casillas del distrito (por Padrón)', 'Especiales', f => f.resumenDistrito?.especiales],
-    ['Casillas del distrito (por Padrón)', 'Secciones que no instalan', f => f.resumenDistrito?.seccionesNoInstala],
-    ['Casillas del distrito (por Lista Nominal)', 'Total de casillas', f => f.resumenDistrito?.totalLista],
-    ['Casillas del distrito (por Lista Nominal)', 'Básicas', f => f.resumenDistrito?.basicasLista],
-    ['Casillas del distrito (por Lista Nominal)', 'Contiguas', f => f.resumenDistrito?.contiguasLista],
-    ['Casillas del distrito (por Lista Nominal)', 'Extraordinarias contiguas', f => sumaExtras(f, 'casillasLista') - (f.extras || []).length],
-    ['Extraordinarias', 'Casillas extraordinarias (Padrón)', f => sumaExtras(f, 'casillasPadron')],
-    ['Extraordinarias', 'Casillas extraordinarias (Lista Nominal)', f => sumaExtras(f, 'casillasLista')],
+    ['Casillas del distrito', 'Total por padrón', f => f.resumenDistrito?.totalPadron],
+    ['Casillas del distrito', 'Total por lista nominal', f => f.resumenDistrito?.totalLista],
+    ['Casillas del distrito', 'Básicas', f => f.resumenDistrito?.basicasPadron],
+    ['Casillas del distrito', 'Contiguas', f => f.resumenDistrito?.contiguasPadron],
+    ['Casillas del distrito', 'Secciones que no instalan', f => f.resumenDistrito?.seccionesNoInstala],
+    ['Extraordinarias', 'Extraordinarias (sedes)', f => (f.extras || []).length],
+    ['Extraordinarias', 'Casillas por padrón', f => sumaExtras(f, 'casillasPadron')],
+    ['Extraordinarias', 'Casillas por lista nominal', f => sumaExtras(f, 'casillasLista')],
     ['Extraordinarias', 'Localidades atendidas', f => (f.extras || []).every(e => Array.isArray(e.localidades)) ? new Set((f.extras || []).flatMap(e => e.localidades.map(l => `${e.municipio}|${l.c}`))).size : undefined],
     ['Extraordinarias', 'Manzanas atendidas', f => new Set((f.extras || []).flatMap(e => e.manzanas || [])).size],
     ['Extraordinarias', 'Padrón atendido', f => sumaExtras(f, 'padron')],
-    ['Extraordinarias', 'Lista Nominal atendida', f => sumaExtras(f, 'lista')],
     ['Extraordinarias', '% del padrón del distrito', f => f.padronDistrito?.padron ? Math.round(sumaExtras(f, 'padron') / f.padronDistrito.padron * 1000) / 10 : undefined],
   ];
   const filasIndicadores = (fotos) => INDICADORES_VERSION.map(([grupo, concepto, fn]) => ({
@@ -3231,6 +3363,19 @@ export default function App() {
 
     XL.writeFile(aplicarFuenteInstitucional(wb), `Analisis_Versiones_Extra_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
+
+  // Casillas por tipo (padrón y lista) para las gráficas del Resumen y del PDF. Sale de la misma
+  // foto que se guarda en cada versión, así pantalla, PDF y versiones cuadran siempre.
+  const filasTiposCasilla = useMemo(() => {
+    const rd = fotoExtraActual.resumenDistrito;
+    return [
+      { label: 'Básicas', valores: [rd.basicasPadron, rd.basicasLista] },
+      { label: 'Contiguas', valores: [rd.contiguasPadron, rd.contiguasLista] },
+      { label: 'Extraordinarias', valores: [rd.extraordinarias, rd.extraordinarias] },
+      { label: 'Extraordinarias contiguas', valores: [rd.extraContiguasPadron, rd.extraContiguasLista] },
+      { label: 'Especiales', valores: [rd.especiales, rd.especiales] },
+    ];
+  }, [fotoExtraActual]);
 
   // Tabla de indicadores agrupados. modo 'dos': A, B y columna de diferencia; modo 'historial':
   // una columna por corte con la variación contra la columna anterior.
@@ -4197,98 +4342,54 @@ export default function App() {
                                       <Calculator className="w-8 h-8" />
                                   </div>
                                   <div className="text-left">
-                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-beige-200">Resumen Distrito {f4(distritoInfo.numero)}</p>
-                                      <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">P: {totalCasillasDistrito.totalPadron} | L: {totalCasillasDistrito.totalLista} Casillas</h4>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-beige-200">Resumen Distrito {f4(distritoInfo.numero)}{fechaCorte ? ` · corte ${fechaCorte}` : ''}</p>
+                                      <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">{totalCasillasDistrito.totalPadron.toLocaleString('es-MX')} casillas <span className="text-lg font-bold not-italic text-beige-200">por padrón · {totalCasillasDistrito.totalLista.toLocaleString('es-MX')} por lista nominal</span></h4>
                                   </div>
                               </div>
-                              <div className="text-center bg-white/15 rounded-2xl px-5 py-2.5 shrink-0">
-                                  <p className="text-[10px] font-bold text-pink-200 uppercase tracking-widest">Municipios</p>
-                                  <p className="text-2xl font-black text-white mt-0.5">{totalMunicipios}</p>
-                                  <button onClick={exportarInformeEjecutivoPDF} className="mt-2 w-full flex items-center justify-center gap-1.5 bg-pink-700/40 hover:bg-pink-700/70 text-white/80 hover:text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border border-white/25 transition-all"><FileText className="w-3 h-3" /> Resumen Distrital</button>
-                              </div>
+                              <button onClick={exportarInformeEjecutivoPDF} className="shrink-0 flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/30 transition-all"><FileText className="w-4 h-4" /> Descargar PDF</button>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
-                              <div className="text-center sm:text-left">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Básicas / Contiguas</p>
-                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.bcPadron} | L: {totalCasillasDistrito.bcLista}</p>
-                              </div>
-                              <div className="text-center sm:text-left">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Extraordinarias</p>
-                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.exPadron} | L: {totalCasillasDistrito.exLista}</p>
-                              </div>
-                              <div className="text-center sm:text-left">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">Especiales</p>
-                                  <p className="text-xl font-black text-white mt-0.5">P: {totalCasillasDistrito.espPadron} | L: {totalCasillasDistrito.espLista}</p>
-                              </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 pt-4 border-t border-white/20">
+                              {[['Padrón electoral', totalesPadronLista.padron], ['Lista nominal', totalesPadronLista.lista], ['Secciones', sections.length], ['Municipios', totalMunicipios]].map(([l, v]) => (
+                                  <div key={l} className="text-center sm:text-left">
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-pink-200">{l}</p>
+                                      <p className="text-xl font-black text-white mt-0.5">{Number(v || 0).toLocaleString('es-MX')}</p>
+                                  </div>
+                              ))}
                           </div>
                       </div>
-                      {municipiosDelDistrito.length > 0 && (
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Municipios que conforman el distrito ({municipiosDelDistrito.length})</p>
-                              <div className="flex flex-wrap gap-2">
-                                  {municipiosDelDistrito.map(m => (
-                                      <div key={m.codigo} className="flex flex-col items-center px-4 py-2 rounded-2xl bg-beige-100 text-oxford-700">
-                                          <span className="text-[10px] font-black uppercase">{m.nombre}</span>
-                                          <span className="text-[9px] font-bold text-beige-600 uppercase mt-0.5">{m.casillas} {m.casillas === 1 ? 'casilla' : 'casillas'} ({m.porcentaje.toFixed(1)}%)</span>
-                                      </div>
-                                  ))}
-                              </div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Casillas por tipo</p>
+                              <GraficaBarras filas={filasTiposCasilla} series={[{ nombre: 'Por padrón', color: COLORES_GRAFICA.oxford }, { nombre: 'Por lista nominal', color: COLORES_GRAFICA.beige }]} />
                           </div>
-                      )}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Total de Secciones</p>
-                              <h5 className="text-3xl font-black italic text-slate-800">{sections.length}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Padrón Electoral</p>
-                              <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.padron.toLocaleString()}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-violet-600 uppercase tracking-widest mb-1">Lista Nominal</p>
-                              <h5 className="text-3xl font-black italic text-slate-800">{totalesPadronLista.lista.toLocaleString()}</h5>
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Casillas por municipio ({municipiosDelDistrito.length})</p>
+                              {municipiosDelDistrito.length > 1 ? (
+                                  <GraficaBarras filas={[...municipiosDelDistrito].sort((a, b) => b.casillas - a.casillas).map(m => ({ label: m.nombre, valores: [m.casillas], porcentaje: m.porcentaje }))} series={[{ nombre: 'Casillas', color: COLORES_GRAFICA.oxford }]} etiqueta={(f) => `${f.valores[0].toLocaleString('es-MX')} (${f.porcentaje.toFixed(1)}%)`} />
+                              ) : municipiosDelDistrito.length === 1 ? (
+                                  <div className="h-full flex flex-col items-center justify-center py-6 text-center">
+                                      <p className="text-lg font-black text-slate-800 uppercase">{municipiosDelDistrito[0].nombre}</p>
+                                      <p className="text-xs font-bold text-slate-500 mt-1">Todo el distrito está en un solo municipio · {municipiosDelDistrito[0].casillas.toLocaleString('es-MX')} casillas</p>
+                                  </div>
+                              ) : <p className="text-xs font-bold text-slate-400 py-6 text-center">Sin datos de municipio en el padrón.</p>}
                           </div>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Básicas</p>
-                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.basicas}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Contiguas</p>
-                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.contiguas}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Extraordinarias</p>
-                              <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinarias}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Extraordinarias Contiguas</p>
-                              <h5 className="text-2xl font-black italic text-pink-600">{desgloseTiposCasilla.extraordinariasContiguas}</h5>
-                          </div>
-                          <div className="bg-white py-4 px-6 rounded-2xl shadow-sm border-2 border-slate-200 border-t-4 border-t-pink-400 flex flex-col justify-center items-center">
-                              <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1">Especiales</p>
-                              <h5 className="text-2xl font-black italic text-slate-800">{desgloseTiposCasilla.especiales}</h5>
-                          </div>
-                      </div>
+
                       {comparativo2024 && (
-                          <div className="bg-white rounded-3xl shadow-sm border-2 border-sky-200 px-6 py-5">
-                              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-sky-500">Comparativo vs Proceso 2023-2024</p>
+                          <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
+                              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Comparativo vs Proceso 2023-2024 · casillas por tipo</p>
                                   <div className="flex flex-wrap gap-2">
                                       <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">+{comparativo2024.seccionesNuevas.length} secciones nuevas</span>
                                       <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">-{comparativo2024.seccionesDesaparecidas.length} secciones desaparecidas</span>
                                   </div>
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                                  {[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extra. Contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => (
-                                      <div key={key} className="flex flex-col justify-center items-center">
-                                          <p className="text-[11px] font-black text-pink-600 uppercase tracking-widest mb-1 text-center">{label}</p>
-                                          <h5 className="text-2xl font-black italic text-slate-800">{comparativo2024.conteoActual[key]}</h5>
-                                          <span className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${comparativo2024.diffs[key] === 0 ? 'bg-slate-100 text-slate-500' : comparativo2024.diffs[key] > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{comparativo2024.diffs[key] > 0 ? '+' : ''}{comparativo2024.diffs[key]} vs 2024</span>
-                                      </div>
-                                  ))}
-                              </div>
+                              <GraficaBarras
+                                  filas={[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extraordinarias contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => ({ label, key, valores: [comparativo2024.conteo2024[key], comparativo2024.conteoActual[key]] }))}
+                                  series={[{ nombre: 'Proceso 2023-2024', color: COLORES_GRAFICA.grisMedio }, { nombre: 'Este proceso', color: COLORES_GRAFICA.oxford }]}
+                                  etiqueta={(f, i) => i === 0 ? f.valores[0].toLocaleString('es-MX') : `${f.valores[1].toLocaleString('es-MX')} (${comparativo2024.diffs[f.key] > 0 ? '+' : ''}${comparativo2024.diffs[f.key]})`}
+                              />
                               {comparativo2024.codigosNoReconocidos.length > 0 && (
                                   <div className="mt-4 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 flex items-start gap-2">
                                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -4299,19 +4400,16 @@ export default function App() {
                       )}
 
                       <div className="bg-white rounded-3xl shadow-sm border-2 border-beige-300 px-6 py-5">
-                          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                               <div>
                                   <p className="text-[10px] font-black uppercase tracking-widest text-beige-600">Versiones de la Proyección · Extraordinarias</p>
-                                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Guarda la proyección completa de cada corte (junio, julio, agosto…) y analiza cómo fue cambiando.</p>
+                                  <p className="text-[11px] font-bold text-slate-400 mt-0.5">Cada versión congela las cifras del padrón cargado al guardarla. Para meses anteriores usa "Agregar corte anterior" con el Excel de ese padrón.</p>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                   <button onClick={() => setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false })} className="flex items-center gap-1.5 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><Bookmark className="w-3.5 h-3.5" /> Guardar versión</button>
                                   <button onClick={abrirCorteAnterior} title="Calcular la versión de un corte que ya pasó con el Excel de padrón de ese corte" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><History className="w-3.5 h-3.5" /> Agregar corte anterior</button>
                                   {historialVersiones && <button onClick={exportarAnalisisVersionesExcel} title="Historial por corte, evolución por casilla, comparativo y ficha completa de cada versión" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><FileDown className="w-3.5 h-3.5" /> Excel de análisis</button>}
                               </div>
-                          </div>
-                          <div className="mb-4 bg-beige-50 border border-beige-300 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-600 leading-snug">
-                              Cada versión <span className="text-oxford-700">congela la proyección con el padrón que estaba cargado al guardarla</span>: casillas y su nomenclatura, localidades, manzanas, padrón y lista de cada extraordinaria, y los totales del distrito. Si guardas varias versiones con el mismo padrón, sus cifras saldrán iguales. Para un corte que ya pasó usa <span className="text-oxford-700">"Agregar corte anterior"</span> con el Excel de padrón de ese corte.
                           </div>
 
                           {versionesExtra.length === 0 ? (
@@ -4422,7 +4520,23 @@ export default function App() {
 
                                   {vistaVersiones === 'historial' && historialVersiones && (
                                       <>
-                                          {renderTablaIndicadores(historialVersiones.fotos, 'historial')}
+                                          {(() => {
+                                              const fotos = historialVersiones.fotos;
+                                              const etiquetas = fotos.map(f => f.id === 'actual' ? 'Actual' : (f.fechaCorte || f.nombre));
+                                              const serie = (fn) => fotos.map(f => { const v = fn(f); return typeof v === 'number' && !isNaN(v) ? v : null; });
+                                              return (
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
+                                                      <MiniColumnas titulo="Padrón del distrito" valores={serie(f => f.padronDistrito?.padron)} etiquetas={etiquetas} />
+                                                      <MiniColumnas titulo="Casillas del distrito" valores={serie(f => f.resumenDistrito?.totalPadron)} etiquetas={etiquetas} />
+                                                      <MiniColumnas titulo="Casillas extraordinarias" valores={serie(f => sumaExtras(f, 'casillasPadron'))} etiquetas={etiquetas} />
+                                                      <MiniColumnas titulo="Padrón atendido por extra." valores={serie(f => sumaExtras(f, 'padron'))} etiquetas={etiquetas} />
+                                                  </div>
+                                              );
+                                          })()}
+                                          <button onClick={() => setTablaHistorialAbierta(v => !v)} className="flex items-center gap-1.5 text-[10px] font-black uppercase text-oxford-600 hover:text-pink-700 mb-3">
+                                              {tablaHistorialAbierta ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} {tablaHistorialAbierta ? 'Ocultar' : 'Ver'} todos los indicadores por corte
+                                          </button>
+                                          {tablaHistorialAbierta && renderTablaIndicadores(historialVersiones.fotos, 'historial')}
                                           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Evolución por extraordinaria <span className="normal-case tracking-normal text-slate-400">(cada celda se compara con la columna anterior)</span></p>
                                               <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer">
@@ -4681,7 +4795,7 @@ export default function App() {
                                  <button onClick={() => setFiltroAlerta(filtroAlerta === 'menos100' ? null : 'menos100')} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'menos100' ? 'bg-amber-600 border-amber-600 text-white shadow-md' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
                                      <AlertTriangle className="w-3.5 h-3.5" /> Menos de 100 ({countMenos100})
                                  </button>
-                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o Lista a ±${MARGEN_CORTE_750} electores de un múltiplo de 750`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-oxford-500 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
+                                 <button onClick={() => setFiltroAlerta(filtroAlerta === 'cerca750' ? null : 'cerca750')} title={`Padrón o lista a ${MARGEN_CORTE_750} electores o menos de cambiar el número de casillas (750 es 1 casilla; la segunda se abre en 751, la tercera en 1,501…)`} className={`px-3.5 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 border-2 transition-all ${filtroAlerta === 'cerca750' ? 'bg-oxford-500 border-violet-600 text-white shadow-md' : 'bg-white border-violet-200 text-violet-700 hover:bg-violet-50'}`}>
                                      <AlertTriangle className="w-3.5 h-3.5" /> Cerca del Corte de 750 ({countCercaCorte750})
                                  </button>
                                  {filtroAlerta && (
@@ -4728,7 +4842,7 @@ export default function App() {
                                                                   ))}
                                                                   {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
                                                                   {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
-                                                                  {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 (a {grupo.distanciaMinCorte750})</span>}
+                                                                  {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 · {textoMargenCorte750(grupo.margenMinCorte750)}</span>}
                                                               </div>
                                                               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-auto mr-4">{grupo.rows.length} {grupo.rows.length === 1 ? 'registro' : 'registros'}</span>
                                                           </div>
@@ -4758,14 +4872,11 @@ export default function App() {
                                                                       <span className="text-slate-900 font-black text-sm">P: {Number(row.padronRef).toLocaleString()}</span>
                                                                       <span className="text-slate-500 text-[11px] font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
                                                                       {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
-                                                                          const dist = Math.min(
-                                                                              estaCercaDelCorte750(row.padronRef) ? distanciaAlCorte750(row.padronRef) : Infinity,
-                                                                              estaCercaDelCorte750(row.listaRef) ? distanciaAlCorte750(row.listaRef) : Infinity
-                                                                          );
-                                                                          const nivel = nivelRiesgoCorte750(dist);
+                                                                          const margen = margenMinCorte750(row.padronRef, row.listaRef);
+                                                                          const nivel = nivelRiesgoCorte750(margen.electores);
                                                                           const colorNivel = nivel === 'ALTO' ? 'bg-red-100 text-red-700' : nivel === 'MEDIO' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
                                                                           return (
-                                                                              <span className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> A {dist} de 750 ({nivel})</span>
+                                                                              <span className={`mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase w-fit ${colorNivel}`}><AlertTriangle className="w-3 h-3" /> {textoMargenCorte750(margen)} · {nivel}</span>
                                                                           );
                                                                       })()}
                                                                   </div>
