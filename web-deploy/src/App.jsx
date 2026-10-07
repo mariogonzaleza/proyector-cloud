@@ -49,36 +49,36 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
     const sinConflictos = conflictos.total === 0;
     if (sinConflictos && !expandido) return null;
     return (
-        <div className={`border-2 rounded-2xl px-6 py-4 mb-6 ${sinConflictos ? 'bg-emerald-50 border-emerald-300' : 'bg-red-50 border-red-300'}`}>
+        <div className={`border-2 rounded-2xl px-6 py-4 mb-6 ${sinConflictos ? 'bg-white border-slate-200' : 'bg-amber-50 border-amber-300'}`}>
             <button onClick={onToggle} className="w-full flex items-start gap-4 text-left">
-                {sinConflictos ? <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />}
+                {sinConflictos ? <CheckCircle2 className="w-6 h-6 text-slate-400 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />}
                 <div className="flex-1">
-                    <p className={`text-sm font-black uppercase tracking-wide ${sinConflictos ? 'text-emerald-700' : 'text-red-700'}`}>
+                    <p className={`text-sm font-black uppercase tracking-wide ${sinConflictos ? 'text-slate-700' : 'text-amber-800'}`}>
                         {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu diseño que ya no están en el padrón'}
                     </p>
-                    <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-slate-500' : 'text-amber-700'}`}>
                         {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y Mz integrantes) siguen existiendo en él.' : <>
                             {conflictos.desaparecidas.length} manzana(s) que usa tu diseño ya no existen en el padrón que acabas de cargar. Esas casillas quedaron sin esa manzana — revísalas en la Mesa de Armado.
                         </>}
                     </p>
                 </div>
-                {expandido ? <ChevronUp className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-emerald-500' : 'text-red-500'}`} /> : <ChevronDown className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-emerald-400' : 'text-red-400'}`} />}
+                {expandido ? <ChevronUp className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-slate-400' : 'text-amber-600'}`} /> : <ChevronDown className={`w-5 h-5 flex-shrink-0 ${sinConflictos ? 'text-slate-400' : 'text-amber-500'}`} />}
             </button>
             {expandido && !sinConflictos && (
-                <div className="mt-4 pt-4 border-t border-red-200 space-y-3">
+                <div className="mt-4 pt-4 border-t border-amber-200 space-y-3">
                     {conflictos.desaparecidas.length > 0 && (
                         <div>
-                            <p className="text-[10px] font-black text-red-700 uppercase tracking-widest mb-1.5">Manzanas desaparecidas (en uso en tu diseño)</p>
+                            <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-1.5">Manzanas desaparecidas (en uso en tu diseño)</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {conflictos.desaparecidas.map((m, i) => (
-                                    <span key={i} className="text-[10px] font-bold bg-white border-2 border-red-200 text-red-700 px-2 py-1 rounded-lg">
+                                    <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-800 px-2 py-1 rounded-lg">
                                         {String(m.tipo)} · {m.rol} · Sec {p4(m.seccion)} · Loc {p4(m.localidad)} · Mz {p4(m.manzana)}
                                     </span>
                                 ))}
                             </div>
                         </div>
                     )}
-                    <button onClick={(e) => { e.stopPropagation(); onExportar(); }} className="bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm"><FileDown className="w-4 h-4" /> Descargar Excel de Conflictos</button>
+                    <button onClick={(e) => { e.stopPropagation(); onExportar(); }} className="bg-white hover:bg-amber-100 text-amber-800 border-2 border-amber-300 font-black text-[10px] uppercase tracking-widest px-4 py-2.5 rounded-xl flex items-center gap-2"><FileDown className="w-4 h-4" /> Descargar Excel de Conflictos</button>
                 </div>
             )}
         </div>
@@ -124,10 +124,9 @@ const SeccionColapsable = ({ title, icon, isOpen, onToggle, children }) => (
 );
 
 // ===================== GRÁFICAS (Resumen Distrital) =====================
-// Paleta del Manual INE. Es una paleta de grises + beige: se eligió por pares que sí se
-// distinguen (validados para daltonismo): Oxford↔Beige, Oxford↔Gris medio, y la escala ordinal
-// Gris → Gris medio → Oxford. El Beige y el Gris quedan bajo 3:1 contra blanco, así que TODA
-// barra lleva su valor escrito (nunca se depende solo del color). El mismo criterio usa el PDF.
+// Paleta del Manual INE (la misma del PDF). Pares validados para daltonismo: Oxford↔Beige,
+// Oxford↔Gris medio, y la escala ordinal Gris → Gris medio → Oxford. El Beige y el Gris quedan
+// bajo 3:1 contra blanco, así que TODA barra lleva su valor escrito (nunca solo el color).
 const COLORES_GRAFICA = { oxford: '#454248', beige: '#C5A989', grisMedio: '#828A91', gris: '#B2B2B2' };
 
 // Barras horizontales de una o dos series (p. ej. Padrón vs Lista). `etiqueta(fila, i)` permite
@@ -3891,8 +3890,7 @@ export default function App() {
     <div className="lg:col-span-12 overflow-y-auto p-10 text-left">
       <div className="max-w-7xl mx-auto space-y-8 pb-24">
 
-        <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white shadow-xl">
-            <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-oxford-600 text-white shadow-xl">
             <div className="flex items-center gap-6">
                 <div className="p-4 rounded-2xl bg-white/20 shadow-inner ring-1 ring-beige-300/30">
                     <Box className="w-8 h-8 text-white" />
@@ -3901,7 +3899,7 @@ export default function App() {
                     <p className="text-xs font-black uppercase tracking-[0.4em] text-beige-200">
                         Proyección Logística (Modelo de Casilla Única INE · PEC 2026-2027)
                     </p>
-                    <h4 className="text-3xl font-black italic tracking-tighter mt-1 text-white">Módulo de Equipamiento</h4>
+                    <h4 className="text-3xl font-black tracking-tight mt-1 text-white">Módulo de Equipamiento</h4>
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6 pt-6 border-t border-white/20">
@@ -3930,7 +3928,7 @@ export default function App() {
                 const Icon = tab.icon;
                 const isActive = equipTab === tab.key;
                 return (
-                    <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                    <button key={tab.key} onClick={() => setEquipTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                         <Icon className="w-3.5 h-3.5" /> {tab.label}
                     </button>
                 );
@@ -3948,21 +3946,21 @@ export default function App() {
                         <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'padron'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'padron' ? 'bg-white text-pink-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Padrón</button>
                         <button onClick={() => setEquipConfig({...equipConfig, modoProyeccion: 'lista'})} className={`px-6 py-2 rounded-lg text-sm font-black uppercase transition-colors ${equipConfig.modoProyeccion === 'lista' ? 'bg-white text-slate-800 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Lista Nominal</button>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2 italic">Afecta el total de casillas estimadas (Actualmente: {statsEquipamiento.total} casillas).</p>
+                    <p className="text-xs text-slate-400 mt-2">Afecta el total de casillas estimadas (Actualmente: {statsEquipamiento.total} casillas).</p>
                 </div>
                 <div className="flex flex-col items-center text-center">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Total de Elecciones a realizar</label>
                     <div className="w-32 bg-slate-100 border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-black text-center text-slate-600 flex items-center justify-center gap-2">
                         <Lock className="w-3.5 h-3.5 text-slate-400" /> {equipConfig.totalElecciones}
                     </div>
-                    <p className="text-xs text-slate-400 mt-2 italic max-w-[220px]">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). Fijo — por ahora no es posible que cambie el número de elecciones.</p>
+                    <p className="text-xs text-slate-400 mt-2 max-w-[220px]">Edomex 2027: 3 (Dip. Federales, Dip. Locales, Ayuntamientos). Fijo — por ahora no es posible que cambie el número de elecciones.</p>
                 </div>
                 <div className="flex flex-col items-center text-center">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Editar Configuración</label>
                     <button onClick={() => setConfigEquipoBloqueada(!configEquipoBloqueada)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black uppercase shadow-sm transition-all ${configEquipoBloqueada ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
                         {configEquipoBloqueada ? <><Lock className="w-4 h-4" /> Bloqueado</> : <><Unlock className="w-4 h-4" /> Desbloqueado</>}
                     </button>
-                    <p className="text-xs text-slate-400 mt-2 italic">{configEquipoBloqueada ? 'Toca para desbloquear y editar' : 'Toca para bloquear de nuevo'}</p>
+                    <p className="text-xs text-slate-400 mt-2">{configEquipoBloqueada ? 'Toca para desbloquear y editar' : 'Toca para bloquear de nuevo'}</p>
                 </div>
             </div>
 
@@ -4080,7 +4078,7 @@ export default function App() {
                                     <input type="number" min="0" step="0.01" placeholder="0.00" className="w-full bg-transparent px-2 py-2 text-sm font-bold outline-none text-slate-800" value={equipConfig.precioSilla} onChange={e => setEquipConfig({...equipConfig, precioSilla: e.target.value})} />
                                 </div>
                             </div>
-                            <p className="col-span-2 text-[10px] text-slate-400 italic">Se usan para calcular el costo total de renta de mobiliario en "Volumen Total Requerido" y en el Excel exportado.</p>
+                            <p className="col-span-2 text-[10px] text-slate-400">Se usan para calcular el costo total de renta de mobiliario en "Volumen Total Requerido" y en el Excel exportado.</p>
                         </div>
                     )}
                 </div>
@@ -4141,7 +4139,7 @@ export default function App() {
               <div className="flex flex-wrap gap-2">
                   {/* BOTONES DE RESPALDO DE EQUIPAMIENTO */}
                   <div className="flex gap-2 mr-2 pr-2 border-r border-slate-200">
-                       <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 hover:from-oxford-500 hover:to-oxford-700 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
+                       <button onClick={exportarRespaldoEquipamiento} className="text-xs font-black uppercase tracking-wider bg-violet-600 hover:from-oxford-500 hover:to-oxford-700 text-white px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-md"><Save className="w-4 h-4" /> Respaldo</button>
                        <label className="text-xs font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer border-2 border-slate-200"><FileUp className="w-4 h-4" /> Cargar<input type="file" className="hidden" accept=".json" onChange={importarRespaldoEquipamiento} /></label>
                   </div>
                   {/* BOTONES DE ASIGNACIÓN RÁPIDA */}
@@ -4213,8 +4211,7 @@ export default function App() {
         {equipTab === 'volumen' && (
         <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
           <div className="px-4 sm:px-8 pt-8 pb-8">
-        <div className="relative overflow-hidden bg-gradient-to-br from-oxford-600 via-oxford-600 to-pink-700 p-8 rounded-3xl shadow-xl border-b-8 border-pink-500 text-white">
-            <div className="absolute -right-16 -top-20 w-80 h-80 rounded-full bg-pink-400/25 blur-3xl pointer-events-none" />
+        <div className="relative overflow-hidden bg-oxford-600 p-8 rounded-3xl shadow-xl border-b-8 border-pink-500 text-white">
             <div className="flex justify-end mb-6">
                 <button onClick={exportarReporteEquipamientoMCU} className="bg-white hover:bg-beige-100 text-oxford-700 px-5 py-3 rounded-2xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all"><FileText className="w-5 h-5" /> Exportar Reporte Material</button>
             </div>
@@ -4324,7 +4321,7 @@ export default function App() {
                   const Icon = tab.icon;
                   const isActive = proyeccionTab === tab.key;
                   return (
-                      <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={tab.key} onClick={() => setProyeccionTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {tab.label}
                       </button>
                   );
@@ -4334,8 +4331,7 @@ export default function App() {
           {proyeccionTab === 'resumen' && (
           <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
                   <div className="p-8 space-y-6">
-                      <div className="relative overflow-hidden p-6 rounded-[2rem] text-white shadow-xl bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600">
-                          <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
+                      <div className="relative overflow-hidden p-6 rounded-[2rem] text-white shadow-xl bg-oxford-600">
                           <div className="flex flex-wrap items-center justify-between gap-4 text-left">
                               <div className="flex items-center gap-4 text-left">
                                   <div className="p-4 rounded-2xl bg-white/20 shadow-inner text-left text-white ring-1 ring-beige-300/30">
@@ -4343,7 +4339,7 @@ export default function App() {
                                   </div>
                                   <div className="text-left">
                                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-left text-beige-200">Resumen Distrito {f4(distritoInfo.numero)}{fechaCorte ? ` · corte ${fechaCorte}` : ''}</p>
-                                      <h4 className="text-3xl font-black italic tracking-tighter mt-0.5 text-left text-white">{totalCasillasDistrito.totalPadron.toLocaleString('es-MX')} casillas <span className="text-lg font-bold not-italic text-beige-200">por padrón · {totalCasillasDistrito.totalLista.toLocaleString('es-MX')} por lista nominal</span></h4>
+                                      <h4 className="text-3xl font-black tracking-tight mt-0.5 text-left text-white">{totalCasillasDistrito.totalPadron.toLocaleString('es-MX')} casillas <span className="text-lg font-bold not-italic text-beige-200">por padrón · {totalCasillasDistrito.totalLista.toLocaleString('es-MX')} por lista nominal</span></h4>
                                   </div>
                               </div>
                               <button onClick={exportarInformeEjecutivoPDF} className="shrink-0 flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase border border-white/30 transition-all"><FileText className="w-4 h-4" /> Descargar PDF</button>
@@ -4360,11 +4356,11 @@ export default function App() {
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Casillas por tipo</p>
+                              <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-3">Casillas por tipo</p>
                               <GraficaBarras filas={filasTiposCasilla} series={[{ nombre: 'Por padrón', color: COLORES_GRAFICA.oxford }, { nombre: 'Por lista nominal', color: COLORES_GRAFICA.beige }]} />
                           </div>
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Casillas por municipio ({municipiosDelDistrito.length})</p>
+                              <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-3">Casillas por municipio ({municipiosDelDistrito.length})</p>
                               {municipiosDelDistrito.length > 1 ? (
                                   <GraficaBarras filas={[...municipiosDelDistrito].sort((a, b) => b.casillas - a.casillas).map(m => ({ label: m.nombre, valores: [m.casillas], porcentaje: m.porcentaje }))} series={[{ nombre: 'Casillas', color: COLORES_GRAFICA.oxford }]} etiqueta={(f) => `${f.valores[0].toLocaleString('es-MX')} (${f.porcentaje.toFixed(1)}%)`} />
                               ) : municipiosDelDistrito.length === 1 ? (
@@ -4379,7 +4375,7 @@ export default function App() {
                       {comparativo2024 && (
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
                               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Comparativo vs Proceso 2023-2024 · casillas por tipo</p>
+                                  <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full">Comparativo vs Proceso 2023-2024</p>
                                   <div className="flex flex-wrap gap-2">
                                       <span className="bg-emerald-100 border-2 border-emerald-300 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">+{comparativo2024.seccionesNuevas.length} secciones nuevas</span>
                                       <span className="bg-red-100 border-2 border-red-300 text-red-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">-{comparativo2024.seccionesDesaparecidas.length} secciones desaparecidas</span>
@@ -4402,11 +4398,11 @@ export default function App() {
                       <div className="bg-white rounded-3xl shadow-sm border-2 border-beige-300 px-6 py-5">
                           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                               <div>
-                                  <p className="text-[10px] font-black uppercase tracking-widest text-beige-600">Versiones de la Proyección · Extraordinarias</p>
+                                  <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full">Versiones de la proyección · Extraordinarias</p>
                                   <p className="text-[11px] font-bold text-slate-400 mt-0.5">Cada versión congela las cifras del padrón cargado al guardarla. Para meses anteriores usa "Agregar corte anterior" con el Excel de ese padrón.</p>
                               </div>
                               <div className="flex flex-wrap gap-2">
-                                  <button onClick={() => setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false })} className="flex items-center gap-1.5 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><Bookmark className="w-3.5 h-3.5" /> Guardar versión</button>
+                                  <button onClick={() => setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false })} className="flex items-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><Bookmark className="w-3.5 h-3.5" /> Guardar versión</button>
                                   <button onClick={abrirCorteAnterior} title="Calcular la versión de un corte que ya pasó con el Excel de padrón de ese corte" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><History className="w-3.5 h-3.5" /> Agregar corte anterior</button>
                                   {historialVersiones && <button onClick={exportarAnalisisVersionesExcel} title="Historial por corte, evolución por casilla, comparativo y ficha completa de cada versión" className="flex items-center gap-1.5 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm transition-all"><FileDown className="w-3.5 h-3.5" /> Excel de análisis</button>}
                               </div>
@@ -4427,7 +4423,7 @@ export default function App() {
 
                                   <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl mb-4 w-fit">
                                       {[['comparar', 'Comparar dos versiones'], ['historial', 'Historial completo'], ['ficha', 'Ficha de una versión']].map(([k, l]) => (
-                                          <button key={k} onClick={() => setVistaVersiones(k)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${vistaVersiones === k ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>{l}</button>
+                                          <button key={k} onClick={() => setVistaVersiones(k)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${vistaVersiones === k ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>{l}</button>
                                       ))}
                                   </div>
 
@@ -4462,7 +4458,7 @@ export default function App() {
                                                   {renderTablaIndicadores([comparacionVersiones.A, comparacionVersiones.B], 'dos')}
 
                                                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Análisis por extraordinaria</p>
+                                                      <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full">Análisis por extraordinaria</p>
                                                       <select className="bg-slate-50 border-2 border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700 outline-none" value={filtroDetalleVersiones} onChange={e => setFiltroDetalleVersiones(e.target.value)}>
                                                           <option value="relevantes">Nuevas, eliminadas, cambios de armado y de casillas</option>
                                                           <option value="cambios">Todas las que cambiaron (incluye solo padrón)</option>
@@ -4538,7 +4534,7 @@ export default function App() {
                                           </button>
                                           {tablaHistorialAbierta && renderTablaIndicadores(historialVersiones.fotos, 'historial')}
                                           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Evolución por extraordinaria <span className="normal-case tracking-normal text-slate-400">(cada celda se compara con la columna anterior)</span></p>
+                                              <p className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full">Evolución por extraordinaria</span><span className="text-[11px] font-bold text-slate-500">Cada celda se compara con la columna anterior</span></p>
                                               <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer">
                                                   <input type="checkbox" className="accent-pink-600" checked={soloCambiosHistorial} onChange={e => setSoloCambiosHistorial(e.target.checked)} /> Solo las que cambiaron de armado o de casillas
                                               </label>
@@ -4662,7 +4658,7 @@ export default function App() {
                   <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
                       <div className="flex flex-wrap justify-between items-start gap-4 text-left pt-2">
                           <div className="text-left">
-                              <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">Asignación de Folios de Boletas</h2>
+                              <h2 className="text-3xl font-black tracking-tight uppercase text-slate-800 text-left">Asignación de Folios de Boletas</h2>
                               <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Boletas de Diputación Federal · Lista Nominal</p>
                           </div>
                           <button onClick={exportarFoliosExcel} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase flex items-center gap-2 shadow-md active:scale-95 transition-all"><FileDown className="w-5 h-5" /> Exportar Excel</button>
@@ -4759,7 +4755,7 @@ export default function App() {
                          {/* FILA 1 — título + las dos acciones que importan, mismo tamaño, mismo corte */}
                          <div className="flex flex-wrap items-center justify-between gap-4 text-left">
                              <div className="text-left">
-                                 <h2 className="text-3xl font-black tracking-tighter uppercase italic text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
+                                 <h2 className="text-3xl font-black tracking-tight uppercase text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
                                  <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
                              </div>
                              <div className="flex flex-wrap items-stretch gap-2.5">
@@ -4812,7 +4808,7 @@ export default function App() {
                       </div>
 
                       {seccionesMostradas.length === 0 ? (
-                          <div className="p-16 text-center text-slate-400 italic font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
+                          <div className="p-16 text-center text-slate-400 font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
                       ) : (
                           <div className="bg-white rounded-[2.5rem] shadow-xl border-2 border-slate-200 overflow-hidden overflow-x-auto text-left">
                               <table className="w-full text-left border-collapse min-w-[1000px] text-left">
@@ -4863,8 +4859,8 @@ export default function App() {
                                                               <td className="p-2.5"><span className={`text-[9px] font-black tracking-widest uppercase ${row.categoria === 'EXTRAORDINARIA' ? 'text-pink-600' : row.categoria === 'ESPECIAL' ? 'text-slate-800' : 'text-slate-500'}`}>{String(row.categoria)}</span></td>
                                                               <td className="p-2.5">
                                                                   <div className="flex flex-col gap-1">
-                                                                      {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-oxford-500 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
-                                                                      {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black italic shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
+                                                                      {row.nomenclaturaPadron && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-pink-600 text-white border-pink-700' : row.categoria === 'ESPECIAL' ? 'bg-oxford-500 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-300'}`}>P: {String(row.nomenclaturaPadron)}</span>}
+                                                                      {row.nomenclaturaLista && <span className={`px-2 py-0.5 rounded-md text-[9px] font-black shadow-sm border ${row.categoria === 'EXTRAORDINARIA' ? 'bg-slate-100 text-slate-700 border-slate-300' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 text-slate-800 border-slate-400' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>L: {String(row.nomenclaturaLista)}</span>}
                                                                   </div>
                                                               </td>
                                                               <td className="p-2.5 text-slate-500 font-mono text-left">
@@ -4887,7 +4883,7 @@ export default function App() {
                                                                           {row.distPadron.map((item, i) => {
                                                                               const isNoInstala = item.nombre === 'NO INSTALA';
                                                                               return (
-                                                                                  <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-beige-100 border-beige-400 text-oxford-700 font-bold'}`}>
+                                                                                  <span key={`p-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-100 border-slate-300 text-slate-700 font-bold' : 'bg-beige-100 border-beige-400 text-oxford-700 font-bold'}`}>
                                                                                       <span className="font-black text-[9px] opacity-50">P:</span>
                                                                                       <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
                                                                                       {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
@@ -4899,7 +4895,7 @@ export default function App() {
                                                                           {row.distLista.map((item, i) => {
                                                                               const isNoInstala = item.nombre === 'NO INSTALA';
                                                                               return (
-                                                                                  <span key={`l-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] italic text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
+                                                                                  <span key={`l-${i}`} className={`border px-1.5 py-0.5 rounded text-[9px] text-left flex items-center gap-1 shadow-sm ${isNoInstala ? 'bg-amber-100 border-amber-300 text-amber-800 font-black' : row.categoria === 'ESPECIAL' ? 'bg-slate-200 border-slate-400 text-slate-800 font-bold' : 'bg-slate-100 border-slate-300 text-slate-700 font-bold'}`}>
                                                                                       <span className="font-black text-[9px] opacity-50">L:</span>
                                                                                       <span>{item.nombre} {!isNoInstala && `(${item.valor})`}</span>
                                                                                       {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-600" />}
@@ -4940,14 +4936,13 @@ export default function App() {
           <div className="bg-white rounded-[2.5rem] shadow-sm border-2 border-slate-200 overflow-hidden">
                   <div className="px-4 sm:px-8 pt-8 pb-8 space-y-6">
 
-                      <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white shadow-xl">
-                          <div className="absolute -right-8 -top-16 w-64 h-64 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
+                      <div className="relative overflow-hidden p-8 rounded-[2.5rem] bg-oxford-600 text-white shadow-xl">
                           <div className="flex flex-wrap items-center justify-between gap-4">
                               <div className="flex items-center gap-6">
                                   <div className="bg-white/20 p-4 rounded-2xl shadow-inner ring-1 ring-beige-300/30"><Building2 className="w-8 h-8" /></div>
                                   <div>
                                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-beige-200">Domicilios y sitios de instalación</p>
-                                      <h2 className="text-2xl font-black italic">Módulo de Tipos de Domicilios de Casillas</h2>
+                                      <h2 className="text-2xl font-black">Módulo de Tipos de Domicilios de Casillas</h2>
                                   </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
@@ -4966,8 +4961,8 @@ export default function App() {
                       </div>
 
                       <div className="flex gap-2">
-                          <button onClick={() => setUbicacionVistaTab('listado')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${ubicacionVistaTab === 'listado' ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-md ring-1 ring-pink-400/50' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Listado de Domicilios</button>
-                          <button onClick={() => setUbicacionVistaTab('historial')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${ubicacionVistaTab === 'historial' ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-md ring-1 ring-pink-400/50' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Última Actualización{historialCambiosDomicilio.length > 0 && <span className={`px-2 py-0.5 rounded-full text-[9px] ${ubicacionVistaTab === 'historial' ? 'bg-white/25' : 'bg-slate-300'}`}>{historialCambiosDomicilio.length}</span>}</button>
+                          <button onClick={() => setUbicacionVistaTab('listado')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${ubicacionVistaTab === 'listado' ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Listado de Domicilios</button>
+                          <button onClick={() => setUbicacionVistaTab('historial')} className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${ubicacionVistaTab === 'historial' ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Última Actualización{historialCambiosDomicilio.length > 0 && <span className={`px-2 py-0.5 rounded-full text-[9px] ${ubicacionVistaTab === 'historial' ? 'bg-white/25' : 'bg-slate-300'}`}>{historialCambiosDomicilio.length}</span>}</button>
                       </div>
 
                       {ubicacionVistaTab === 'historial' ? (
@@ -5015,7 +5010,7 @@ export default function App() {
                       <>
                       {Object.keys(conteoTiposDomicilio).length > 0 && (
                           <div className="bg-white rounded-3xl shadow-sm border-2 border-slate-200 px-6 py-5">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Tipos de domicilio registrados</p>
+                              <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-3">Tipos de domicilio registrados</p>
                               <div className="flex flex-wrap gap-2">
                                   {(() => {
                                       const totalTipos = Object.values(conteoTiposDomicilio).reduce((s, n) => s + n, 0);
@@ -5111,7 +5106,7 @@ export default function App() {
                                           {[['Básicas', 'basicas'], ['Contiguas', 'contiguas'], ['Extraordinarias', 'extraordinarias'], ['Extra. Contiguas', 'extraordinariasContiguas'], ['Especiales', 'especiales']].map(([label, key]) => (
                                               <div key={key} className="bg-white rounded-xl border-2 border-sky-200 px-3 py-3 flex flex-col items-center">
                                                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">{label}</p>
-                                                  <p className="text-lg font-black italic text-slate-800 mt-0.5">{comparativo2024.conteoActual[key]} <span className="text-xs text-slate-400 font-bold">vs {comparativo2024.conteo2024[key]}</span></p>
+                                                  <p className="text-lg font-black text-slate-800 mt-0.5">{comparativo2024.conteoActual[key]} <span className="text-xs text-slate-400 font-bold">vs {comparativo2024.conteo2024[key]}</span></p>
                                                   <span className={`mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${comparativo2024.diffs[key] === 0 ? 'bg-slate-100 text-slate-500' : comparativo2024.diffs[key] > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{comparativo2024.diffs[key] > 0 ? '+' : ''}{comparativo2024.diffs[key]}</span>
                                               </div>
                                           ))}
@@ -5189,7 +5184,7 @@ export default function App() {
                                                                   {c.dom.ubicacion && <p className="text-slate-400 text-[11px]">{c.dom.ubicacion}</p>}
                                                               </div>
                                                           ) : (
-                                                              <span className="text-xs font-bold text-slate-400 italic">Sin asignar</span>
+                                                              <span className="text-xs font-bold text-slate-400">Sin asignar</span>
                                                           )}
                                                       </div>
                                                       <div className="flex gap-2">
@@ -5229,18 +5224,12 @@ export default function App() {
 
   const renderExtraordinarias = () => (
     <>
-      {(conflictosDiseno.total > 0 || detalleConflictosAbierto || (importJsonAvisos && importJsonAvisos.noEncontradas.length > 0)) && (
-        <div className="lg:col-span-12 p-4 pb-0 text-left">
-          <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
-          <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
-        </div>
-      )}
       <div className="lg:col-span-4 border-r border-slate-200 bg-white p-6 overflow-y-auto shadow-inner text-left">
-        <h2 className="text-xl font-black tracking-tighter uppercase italic text-oxford-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
+        <h2 className="text-xl font-black tracking-tight uppercase text-oxford-700 mb-6">ARMADO DE EXTRAORDINARIAS</h2>
 
         <div className="bg-beige-100/50 p-6 rounded-3xl border-2 border-beige-300 space-y-6 shadow-sm text-left">
           <div className="flex items-center justify-between border-b-2 border-pink-100 pb-3 text-left">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-pink-600 flex items-center gap-2 text-left"><Settings2 className="w-4 h-4 text-left" /> Mesa de Armado</h3>
+              <h3 className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full text-left"><Settings2 className="w-4 h-4" /> Mesa de armado</h3>
           </div>
           <div className="space-y-5 text-left">
             {errorMessage && ( <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 shadow-sm text-left"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5 text-left" /><p className="text-xs font-bold text-red-800 leading-tight text-left">{errorMessage}</p><button onClick={()=>setErrorMessage(null)}><X className="w-4 h-4 text-red-400 text-left" /></button></div> )}
@@ -5248,7 +5237,7 @@ export default function App() {
 
             {/* PASO 1: ¿Qué quieres hacer? — siempre visible, se puede cambiar en cualquier momento */}
             <div className="space-y-2.5 text-left">
-              <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
+              <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-oxford-500 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">1</span> ¿Qué quieres hacer?</p>
               <div className="grid grid-cols-1 gap-2.5 text-left">
                   <button onClick={() => setForm(f => f.rol === 'sede' ? f : ({ ...f, rol: 'sede', seccionOrigen: '', localidad: '', manzanasSeleccionadas: [] }))} className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${form.rol === 'sede' ? 'bg-pink-600 border-pink-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700 hover:border-beige-400'}`}>
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${form.rol === 'sede' ? 'bg-white/20' : 'bg-beige-100'}`}><Plus className={`w-5 h-5 ${form.rol === 'sede' ? 'text-white' : 'text-pink-600'}`} /></div>
@@ -5270,7 +5259,7 @@ export default function App() {
             {/* PASO 2: depende de qué se eligió arriba */}
             {form.rol === 'sede' && (
               <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-oxford-500 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿Qué número de casilla es?</p>
                   <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.tipoElegido} onChange={e => setForm({...form, tipoElegido: e.target.value})}>
                       {Array.from({length:60},(_,i)=>`E${i+1}`).map(e=><option key={e} value={e}>{e}</option>)}
                   </select>
@@ -5278,7 +5267,7 @@ export default function App() {
             )}
             {form.rol === 'alimentadora' && (
               <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-oxford-500 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">2</span> ¿A cuál casilla le vas a agregar manzanas?</p>
                   <select className="w-full bg-white border-2 border-slate-300 rounded-xl px-3 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none text-left text-slate-800" value={form.casillaUidDestino} onChange={e => { const destino = sedesActivas.find(c => String(c.uid) === e.target.value); setForm({...form, casillaUidDestino: e.target.value, seccionOrigen: destino ? String(destino.sede.seccion) : '', localidad: '', manzanasSeleccionadas: []}); }}>
                       <option value="">-- Elige una casilla --</option>
                       {sedesActivas.map(c=><option key={c.uid} value={c.uid}>{String(c.tipo)} · Sección {f4(c.sede?.seccion)} · Sede Mz {f4(c.sede?.manzana)}</option>)}
@@ -5290,7 +5279,7 @@ export default function App() {
             {((form.rol === 'sede' && form.tipoElegido) || (form.rol === 'alimentadora' && form.casillaUidDestino)) && (
               <div className="space-y-5 text-left">
                 <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-oxford-500 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">3</span> ¿En qué localidad {form.rol === 'sede' ? 'está la manzana' : 'están las manzanas'}?</p>
                   <div className="grid grid-cols-2 gap-4 text-left">
                       {form.rol === 'sede' ? (
                           <div className="space-y-1.5 text-left">
@@ -5321,7 +5310,7 @@ export default function App() {
 
                 {form.localidad && (
                 <div className="space-y-2.5 text-left">
-                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-gradient-to-br from-beige-600 to-beige-800 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
+                  <p className="text-[11px] font-black uppercase text-slate-500 ml-1 flex items-center gap-2 text-left"><span className="w-5 h-5 rounded-full bg-oxford-500 text-white ring-1 ring-beige-300/50 flex items-center justify-center text-[10px] shrink-0">4</span> {form.rol === 'sede' ? 'Elige la manzana sede' : 'Elige una o varias manzanas'}</p>
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-[220px] overflow-y-auto p-3 bg-white rounded-2xl border-2 border-slate-200 shadow-inner custom-scrollbar text-left">{manzanasTablero.map(m => {
                       const assign = getMzAssignment(m.id);
                       const isSelected = form.manzanasSeleccionadas.some(sm => sm.id === m.id);
@@ -5366,7 +5355,7 @@ export default function App() {
                   const Icon = tab.icon;
                   const isActive = extraordinariasTab === tab.key;
                   return (
-                      <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={tab.key} onClick={() => setExtraordinariasTab(tab.key)} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {tab.label}
                           {!!tab.badge && <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white text-pink-600' : 'bg-amber-100 text-amber-700'}`}>{tab.badge}</span>}
                       </button>
@@ -5377,7 +5366,7 @@ export default function App() {
           <div className="w-full flex flex-col gap-4 text-left">
             {/* FILA 1 — título + la única acción destacada: ¿qué sigue? */}
             <div className="flex flex-wrap items-center justify-between gap-4 text-left">
-               <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
+               <h2 className="text-2xl font-black tracking-tight uppercase text-slate-800 leading-none text-left">POLÍGONOS GUARDADOS</h2>
                <button onClick={() => setModalSiguientePaso(true)} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
                   <Flag className="w-6 h-6 text-pink-200 shrink-0" />
                   <span className="text-left leading-tight">
@@ -5392,7 +5381,7 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2 text-left">
                 <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Filtrar..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-left text-slate-800" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}/></div>
                 <span className="w-px h-6 bg-slate-200 mx-0.5"></span>
-                <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-red-600 text-white shadow-sm' : 'bg-white border-2 border-beige-300 text-oxford-700'}`}>
+                <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-amber-50 border-2 border-amber-300 text-amber-800' : 'bg-white border-2 border-slate-200 text-slate-600'}`}>
                   <Hash className="w-3.5 h-3.5 text-left shrink-0" />
                   <span className="text-[10px] font-black uppercase text-left tracking-wider">
                     Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
@@ -5400,7 +5389,7 @@ export default function App() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-left">
-                <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-left active:scale-95 transition-all border-2 ${conflictosDiseno.total === 0 ? 'bg-white border-emerald-200 text-emerald-700' : 'bg-red-600 border-red-600 text-white shadow-sm'}`}>
+                <button onClick={() => setDetalleConflictosAbierto(v => !v)} className={`px-3.5 py-2 rounded-full flex items-center gap-1.5 text-left active:scale-95 transition-all border-2 ${conflictosDiseno.total === 0 ? 'bg-white border-slate-200 text-slate-500' : 'bg-amber-50 border-amber-300 text-amber-800'}`}>
                   {conflictosDiseno.total === 0 ? <CheckCircle2 className="w-3.5 h-3.5 text-left" /> : <AlertTriangle className="w-3.5 h-3.5 text-left" />}
                   <span className="text-[10px] font-black uppercase text-left tracking-wider">
                     Armado vs Padrón: {conflictosDiseno.total === 0 ? 'Correcto' : `${conflictosDiseno.total} Diferencias`}
@@ -5416,7 +5405,7 @@ export default function App() {
           <>
           <div className="flex flex-col gap-2 text-left">
             <div className="flex items-center gap-4 text-left">
-               <h2 className="text-2xl font-black tracking-tighter uppercase italic text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
+               <h2 className="text-2xl font-black tracking-tight uppercase text-slate-800 leading-none text-left">SEDE DE LA BÁSICA</h2>
                <div className="relative text-left"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-56 focus:ring-2 focus:ring-pink-500 shadow-sm text-left text-slate-800" value={busquedaBasicaSede} onChange={e => setBusquedaBasicaSede(e.target.value)}/></div>
             </div>
             {(() => {
@@ -5432,7 +5421,7 @@ export default function App() {
                 </div>
               );
             })()}
-            <p className="text-[10px] text-slate-400 italic text-left">Secciones con extraordinaria armada — elige y confirma cuál manzana sobrante es la sede de su básica.</p>
+            <p className="text-[10px] text-slate-400 text-left">Secciones con extraordinaria armada — elige y confirma cuál manzana sobrante es la sede de su básica.</p>
           </div>
           <label className="flex items-center gap-2.5 cursor-pointer select-none text-left">
             <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ocultar confirmadas</span>
@@ -5444,9 +5433,18 @@ export default function App() {
           )}
         </div>
 
+        {/* Avisos de "Armado vs Padrón" e importación: van aquí, bajo la barra que los abre, y
+            ocupan solo lo que miden (antes eran una fila de toda la pantalla y se estiraban). */}
+        {extraordinariasTab === 'poligonos' && (
+          <>
+            <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
+            <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+          </>
+        )}
+
         {extraordinariasTab === 'poligonos' && (
         <div className="flex flex-col gap-3 pb-24 text-left">
-          {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
+          {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
             sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
                 const stats = calcularProyeccion(c);
                 const isEspecial = String(c.tipo).startsWith('S');
@@ -5456,10 +5454,10 @@ export default function App() {
                   <div key={c.uid} className={`bg-white border-2 ${stats.variacion ? 'border-red-400' : isEspecial ? 'border-slate-300' : 'border-slate-300'} rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group text-left`}>
                     <div onClick={() => toggleCasillaExpandida(c.uid)} className={`px-3 py-2.5 flex justify-between items-center text-left cursor-pointer select-none ${isExpanded ? 'border-b-2' : ''} ${stats.variacion ? 'bg-red-50 border-red-200' : isEspecial ? 'bg-slate-100 border-slate-200' : 'bg-slate-50 border-slate-200'}`}>
                         <div className="flex items-center gap-2 text-left min-w-0">
-                            <span className={`${isEspecial ? 'bg-oxford-500 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black italic text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
+                            <span className={`${isEspecial ? 'bg-oxford-500 text-white' : 'bg-pink-600 text-white'} px-2 py-0.5 rounded-md font-black text-sm text-left shadow-sm shrink-0`}>{String(c.tipo)}</span>
                             <p className="text-sm font-black uppercase text-slate-700 text-left tracking-widest shrink-0">SEC. {f4(c.sede?.seccion)}</p>
                             {!isEspecial && (nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) && (
-                                <p className="text-xs font-bold text-slate-400 italic truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
+                                <p className="text-xs font-bold text-slate-400 truncate min-w-0" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>· {nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}</p>
                             )}
                             {!isExpanded && (
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate shrink-0">P:{Number(stats.total).toLocaleString()} · L:{Number(stats.totalLista).toLocaleString()}</span>
@@ -5477,7 +5475,7 @@ export default function App() {
                       <div className="flex justify-between items-center border-b border-slate-100 pb-2 text-left">
                           <span className="text-[9px] font-black text-slate-400 uppercase text-left tracking-widest">Padrón / Lista</span>
                           <div className="text-right">
-                              <span className="text-lg font-black italic tracking-tighter text-pink-600 text-left mr-2">P:{Number(stats.total).toLocaleString()}</span>
+                              <span className="text-lg font-black tracking-tight text-pink-600 text-left mr-2">P:{Number(stats.total).toLocaleString()}</span>
                               <span className="text-sm font-bold text-slate-500 text-left">L:{Number(stats.totalLista).toLocaleString()}</span>
                           </div>
                       </div>
@@ -5505,7 +5503,7 @@ export default function App() {
                                   <div className="flex items-center justify-between bg-beige-100 border-2 border-beige-300 rounded-lg px-2 py-1.5 text-left text-[10px] font-black shadow-sm">
                                       <span className="flex items-center gap-1.5 min-w-0 text-left">
                                           <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
-                                          <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold italic">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
+                                          <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
                                       </span>
                                       <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
                                   </div>
@@ -5515,7 +5513,7 @@ export default function App() {
                                             const nombreLoc = nombreLocalidad(a.municipio, a.localidad) || a.nombreLocalidad;
                                             return (
                                             <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
-                                                <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1 italic">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
+                                                <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
                                                 <div className="flex gap-2 items-center shrink-0 ml-2">
                                                     <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
                                                     <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
@@ -5534,11 +5532,11 @@ export default function App() {
                                       <span className={`text-[9px] font-black uppercase tracking-widest text-left ${stats.variacion ? 'text-red-600' : 'text-slate-500'}`}>Distribución de Mesas</span>
                                       {stats.variacion ? (
                                           <div className="flex gap-1.5">
-                                              <span className="bg-beige-200 border border-beige-300 text-oxford-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
-                                              <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
+                                              <span className="bg-beige-200 border border-beige-300 text-oxford-700 px-2 py-0.5 rounded-md shadow-sm text-sm font-black leading-none text-left">P: {Number(stats.totalMesasPadron)}</span>
+                                              <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black leading-none text-left">L: {Number(stats.totalMesasLista)}</span>
                                           </div>
                                       ) : (
-                                          <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black italic leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
+                                          <span className="bg-slate-200 border border-slate-300 text-slate-800 px-2 py-0.5 rounded-md shadow-sm text-sm font-black leading-none text-left">{Number(stats.totalMesasPadron)} mesa{stats.totalMesasPadron === 1 ? '' : 's'}</span>
                                       )}
                                   </div>
                                   {stats.variacion ? (
@@ -5547,7 +5545,7 @@ export default function App() {
                                               {stats.distPadron.map((item, i) => {
                                                   const isNoInstala = item.nombre === 'NO INSTALA';
                                                   return (
-                                                      <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-beige-300 text-slate-700'}`}>
+                                                      <div key={`dp-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-beige-300 text-slate-700'}`}>
                                                           <span className={`${isNoInstala ? 'text-amber-600' : 'text-pink-600'} mr-0.5`}>P:</span>
                                                           {item.nombre} {(!isNoInstala) && `(${item.valor})`}
                                                           {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -5559,7 +5557,7 @@ export default function App() {
                                               {stats.distLista.map((item, i) => {
                                                   const isNoInstala = item.nombre === 'NO INSTALA';
                                                   return (
-                                                      <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                      <div key={`dl-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
                                                           <span className={`${isNoInstala ? 'text-amber-600' : 'text-slate-500'} mr-0.5`}>L:</span>
                                                           {item.nombre} {(!isNoInstala) && `(${item.valor})`}
                                                           {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -5574,7 +5572,7 @@ export default function App() {
                                               const isNoInstala = item.nombre === 'NO INSTALA';
                                               const listaItem = stats.distLista[i];
                                               return (
-                                                  <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black italic flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
+                                                  <div key={`d-${i}`} className={`border-2 rounded-md px-1.5 py-0.5 shadow-sm text-[9px] font-black flex items-center gap-1 ${isNoInstala ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-300 text-slate-700'}`}>
                                                       {item.nombre}
                                                       {!isNoInstala && <span className="text-slate-400 font-bold not-italic">P:{item.valor} · L:{listaItem?.valor ?? item.valor}</span>}
                                                       {isNoInstala && <AlertTriangle className="w-3 h-3 text-amber-500" />}
@@ -5599,7 +5597,7 @@ export default function App() {
         {extraordinariasTab === 'basica' && (
         <div className="flex flex-col gap-2 pb-24 text-left">
           {basicaSedeCandidatas.length === 0 ? (
-            <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 italic text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Ninguna sección necesita definir sede de básica todavía.</div>
+            <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Ninguna sección necesita definir sede de básica todavía.</div>
           ) : (() => {
               const filtradas = basicaSedeCandidatas.filter(s => !busquedaBasicaSede.trim() || f4(s.seccion).includes(busquedaBasicaSede.trim()));
               const pendientes = filtradas.filter(s => !basicaSedePorSeccion[s.seccion]);
@@ -5654,10 +5652,10 @@ export default function App() {
   );
 
   const renderHeader = () => (
-    <header className="bg-gradient-to-r from-oxford-200 via-oxford-100 to-white text-oxford-700 px-6 py-4 flex justify-between items-center shadow-sm shrink-0 pointer-events-auto z-50 border-b-4 border-pink-400">
+    <header className="bg-white text-oxford-700 px-6 py-4 flex justify-between items-center shrink-0 pointer-events-auto z-50 border-b border-slate-200">
       <div className="flex items-center gap-4">
         <div className="bg-pink-600 text-white p-1.5 rounded-lg shadow-md pointer-events-none"><Monitor className="w-4 h-4" /></div>
-        <h1 className="text-sm font-black tracking-tighter uppercase italic leading-none pointer-events-none text-oxford-700">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
+        <h1 className="text-sm font-black tracking-tight uppercase leading-none pointer-events-none text-oxford-700">D{distritoInfo.numero} | {view === 'extraordinary' ? 'EXTRAORDINARIAS' : view === 'equipamiento' ? 'EQUIPAMIENTO' : 'PROYECCIÓN DE CASILLAS'}</h1>
         <div className="flex items-center gap-2 px-3 py-1 bg-white/70 rounded-full border border-oxford-200 ml-4 pointer-events-none">
            {!isCloudEnabled ? ( <><CloudOff className="w-3 h-3 text-oxford-500" /><span className="text-[8px] font-black uppercase text-oxford-500">Modo Local</span></> ) : syncStatus === 'saving' ? ( <><RefreshCw className="w-3 h-3 text-pink-600 animate-spin" /><span className="text-[8px] font-black uppercase text-oxford-500">Sincronizando...</span></> ) : syncStatus === 'error' ? ( <><AlertTriangle className="w-3 h-3 text-red-500" title="No se pudo guardar en la nube — revisa tu conexión o el tamaño del distrito" /><span className="text-[8px] font-black uppercase text-red-600">Error al guardar</span></> ) : ( <><Cloud className="w-3 h-3 text-emerald-600" /><span className="text-[8px] font-black uppercase text-oxford-500">Nube OK</span></> )}
         </div>
@@ -5669,12 +5667,10 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center relative overflow-hidden">
         <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 z-10">
-            <div className="bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 p-10 rounded-[3rem] shadow-xl border border-pink-400/40 relative overflow-hidden flex flex-col justify-center text-center">
-              <div className="absolute -left-16 -bottom-20 w-72 h-72 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
-              <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-pink-300/25 blur-2xl pointer-events-none" />
+            <div className="bg-oxford-600 p-10 rounded-[3rem] shadow-xl border border-pink-400/40 relative overflow-hidden flex flex-col justify-center text-center">
               <Cloud className="w-16 h-16 mx-auto mb-6 text-white relative" />
-              <h2 className="text-3xl font-black mb-2 tracking-tighter uppercase italic leading-none text-white relative">Proyector Cloud</h2>
-              <p className="text-beige-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold italic relative">v18.0 | Panel de Control</p>
+              <h2 className="text-3xl font-black mb-2 tracking-tight uppercase leading-none text-white relative">Proyector Cloud</h2>
+              <p className="text-beige-200 text-[10px] mb-8 uppercase tracking-[0.3em] font-bold relative">v18.0 | Panel de Control</p>
 
               <div className="space-y-4 relative">
                   <p className="text-xs font-bold text-pink-100 uppercase tracking-widest text-left">Crear o Entrar a Distrito</p>
@@ -5682,7 +5678,7 @@ export default function App() {
                       let v = e.target.value.replace(/\D/g, '').slice(0, 2);
                       setDistritoInfo({...distritoInfo, numero: v});
                   }}/>
-                  <p className="text-[10px] text-pink-200 italic">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
+                  <p className="text-[10px] text-pink-200">Siempre se pide cargar el padrón de nuevo; tu diseño, ubicación y equipamiento ya guardados se re-vinculan solos.</p>
                   {errorMessage && <p className="text-[10px] text-white bg-red-500/80 rounded-xl px-3 py-2 font-bold text-left">{errorMessage}</p>}
                   <button onClick={() => {
                       const numStr = normalizarDistrito(distritoInfo.numero);
@@ -5692,7 +5688,7 @@ export default function App() {
                       localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
                       setRawElectoralData([]);
                       setView('upload');
-                  }} className="w-full bg-gradient-to-r from-pink-300 to-pink-400 hover:from-pink-200 hover:to-pink-300 text-oxford-900 font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-lg shadow-pink-900/30 transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
+                  }} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-sm transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
               </div>
             </div>
 
@@ -5703,7 +5699,7 @@ export default function App() {
                   <div>
                     <h4 className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2 border-b border-slate-200 pb-2"><Cloud className="w-4 h-4 text-beige-600"/> Respaldos en la Nube</h4>
                     {dashboardData.loading ? <p className="text-sm text-slate-400 flex items-center gap-2"><RefreshCw className="w-4 h-4 animate-spin"/> Buscando...</p> : 
-                     dashboardData.cloud.length === 0 ? <p className="text-sm text-slate-400 italic">No hay distritos guardados en la nube.</p> :
+                     dashboardData.cloud.length === 0 ? <p className="text-sm text-slate-400">No hay distritos guardados en la nube.</p> :
                      <div className="flex flex-wrap gap-2">
                         {dashboardData.cloud.map(d => (
                             <div key={`cloud-${d}`} className="flex shadow-sm rounded-xl overflow-hidden border border-beige-300">
@@ -5727,8 +5723,8 @@ export default function App() {
             <a href="./src/data/Guia_Rapida_Proyector_Cloud.pdf" download="Guia_Rapida_Proyector_Cloud.pdf" className="flex items-center gap-2 bg-white hover:bg-beige-100 text-oxford-700 border-2 border-beige-300 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm transition-all active:scale-95"><FileText className="w-4 h-4" /> Descargar Guía Rápida</a>
         </div>
         <div className="mt-8 flex justify-center">
-            <div className="relative overflow-hidden bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 text-white px-6 py-3 rounded-2xl shadow-md text-center border-b-2 border-beige-400">
-                <p className="text-sm font-black italic tracking-tight">El INE, contigo siempre</p>
+            <div className="relative overflow-hidden bg-oxford-600 text-white px-6 py-3 rounded-2xl shadow-md text-center border-b-2 border-beige-400">
+                <p className="text-sm font-black tracking-tight">El INE, contigo siempre</p>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-beige-200 mt-0.5">Proceso Electoral Federal 2026-2027</p>
             </div>
         </div>
@@ -5766,12 +5762,11 @@ export default function App() {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-900 p-6 text-center">
-        <div className="max-w-md w-full bg-gradient-to-br from-oxford-600 via-oxford-500 to-pink-600 p-10 rounded-[3rem] shadow-2xl border border-pink-400/40 relative overflow-hidden text-center">
-          <div className="absolute -left-16 -bottom-20 w-72 h-72 rounded-full bg-pink-400/35 blur-3xl pointer-events-none" />
+        <div className="max-w-md w-full bg-oxford-600 p-10 rounded-[3rem] shadow-2xl border border-pink-400/40 relative overflow-hidden text-center">
           <button onClick={() => setView('welcome')} className="absolute top-6 left-6 text-pink-200 hover:text-white"><RotateCcw className="w-4 h-4" /></button>
           <Database className="w-12 h-12 mx-auto mb-4 text-white" />
-          <h2 className="text-2xl font-black mb-1 uppercase tracking-tighter text-white leading-tight">Carga de Padrón</h2>
-          <p className="text-pink-200 text-xs mb-8 uppercase tracking-[0.2em] font-bold italic">Distrito {f4(distritoInfo.numero)}</p>
+          <h2 className="text-2xl font-black mb-1 uppercase tracking-tight text-white leading-tight">Carga de Padrón</h2>
+          <p className="text-pink-200 text-xs mb-8 uppercase tracking-[0.2em] font-bold">Distrito {f4(distritoInfo.numero)}</p>
           {errorMessage && ( <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-1"><ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" /><p className="text-xs font-bold text-red-700 leading-tight">{errorMessage}</p></div> )}
 
           {rawElectoralData.length === 0 ? (
@@ -5809,7 +5804,7 @@ export default function App() {
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
                <div className="p-6 bg-white border border-beige-300 rounded-3xl flex flex-col items-center shadow-sm">
                    <CheckCircle2 className="w-12 h-12 text-beige-600 mb-2" />
-                   <h3 className="text-xl font-black text-oxford-700 uppercase tracking-tighter italic">Padrón Cargado</h3>
+                   <h3 className="text-xl font-black text-oxford-700 uppercase tracking-tight">Padrón Cargado</h3>
                    <p className="text-xs text-pink-600 font-bold uppercase tracking-widest mt-1">
                        {rawElectoralData.length.toLocaleString()} Registros procesados
                    </p>
@@ -5856,7 +5851,7 @@ export default function App() {
                   const Icon = sec.icon;
                   const isActive = view === sec.key;
                   return (
-                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-gradient-to-br from-oxford-400 via-oxford-500 to-oxford-600 text-white shadow-sm ring-1 ring-pink-400/50' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
+                      <button key={sec.key} onClick={(e) => { e.stopPropagation(); setView(sec.key); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all cursor-pointer ${isActive ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-800 hover:bg-white'}`}>
                           <Icon className="w-3.5 h-3.5" /> {sec.label}
                       </button>
                   );
@@ -5878,7 +5873,7 @@ export default function App() {
                   downloadBlob(blob, `BACKUP_D${distritoInfo.numero}.json`);
                }} title="Respaldar JSON" className="flex items-center gap-2 bg-beige-100 hover:bg-beige-200 text-oxford-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer border border-beige-300"><History className="w-3 h-3" /> Respaldo</button>
                <label className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all shadow-sm border border-slate-200"><FileUp className="w-3 h-3" /> Cargar <input type="file" className="hidden" accept=".json" onChange={cargarRespaldoJSON} /></label>
-               <button onClick={(e) => { e.stopPropagation(); setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false }); }} title="Guardar una versión de este armado para compararla después (junio vs julio vs agosto…) en Resumen Distrital" className="flex items-center gap-2 bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer"><Bookmark className="w-3 h-3" /> Guardar versión{versionesExtra.length > 0 ? ` (${versionesExtra.length})` : ''}</button>
+               <button onClick={(e) => { e.stopPropagation(); setModalGuardarVersion({ isOpen: true, nombre: '', corte: fechaCorte || '', guardando: false }); }} title="Guardar una versión de este armado para compararla después (junio vs julio vs agosto…) en Resumen Distrital" className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm cursor-pointer"><Bookmark className="w-3 h-3" /> Guardar versión{versionesExtra.length > 0 ? ` (${versionesExtra.length})` : ''}</button>
             </div>
           ) : null}
 
@@ -5911,8 +5906,8 @@ export default function App() {
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200">
             <div className="flex items-center gap-3 mb-1">
-              <div className="bg-gradient-to-br from-pink-500 to-pink-700 text-white p-2 rounded-xl shrink-0"><Bookmark className="w-5 h-5" /></div>
-              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">Guardar versión del armado</h3>
+              <div className="bg-pink-600 text-white p-2 rounded-xl shrink-0"><Bookmark className="w-5 h-5" /></div>
+              <h3 className="text-xl font-black tracking-tight text-slate-900">Guardar versión del armado</h3>
             </div>
             <p className="text-xs font-bold text-slate-500 mb-5 ml-1">Se guarda una "foto" de tus extraordinarias tal como están ahora, para compararla después contra otro corte en Proyección → Resumen Distrital.</p>
 
@@ -5955,8 +5950,8 @@ export default function App() {
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full mx-4 text-left border-2 border-slate-200 max-h-[92vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center gap-3 mb-1">
-              <div className="bg-gradient-to-br from-oxford-400 to-oxford-600 text-white p-2 rounded-xl shrink-0"><History className="w-5 h-5" /></div>
-              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">Agregar un corte anterior</h3>
+              <div className="bg-oxford-500 text-white p-2 rounded-xl shrink-0"><History className="w-5 h-5" /></div>
+              <h3 className="text-xl font-black tracking-tight text-slate-900">Agregar un corte anterior</h3>
             </div>
             <p className="text-xs font-bold text-slate-500 mb-5 ml-1">Calcula la versión de un corte que ya pasó con el Excel de padrón de ese corte. No cambia nada de lo que tienes cargado ahora.</p>
 
@@ -6014,7 +6009,7 @@ export default function App() {
       {modalEspecialConfig.isOpen && (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-left border-2 border-slate-200">
-            <h3 className="text-2xl font-black italic tracking-tighter text-slate-900 mb-1">Agregar Especial</h3>
+            <h3 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Agregar Especial</h3>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Sección donde se instala</p>
             
             <div className="space-y-5 mb-8">
@@ -6045,7 +6040,7 @@ export default function App() {
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200">
             <div className="flex items-center gap-3 mb-1">
               <div className="bg-pink-600 text-white p-2 rounded-xl shrink-0"><Flag className="w-5 h-5" /></div>
-              <h3 className="text-xl font-black italic tracking-tighter text-slate-900">¿Ya terminaste de armar tus casillas?</h3>
+              <h3 className="text-xl font-black tracking-tight text-slate-900">¿Ya terminaste de armar tus casillas?</h3>
             </div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 ml-1">Esto sigue</p>
 
@@ -6093,7 +6088,7 @@ export default function App() {
       {modalUbicacionConfig.isOpen && (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto p-4">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full mx-4 text-left border-2 border-slate-200 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-black italic tracking-tighter text-slate-900 mb-1 flex items-center gap-2"><Building2 className="w-6 h-6 text-pink-600" /> Asignar Domicilio</h3>
+            <h3 className="text-2xl font-black tracking-tight text-slate-900 mb-1 flex items-center gap-2"><Building2 className="w-6 h-6 text-pink-600" /> Asignar Domicilio</h3>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">{modalUbicacionConfig.claves?.length || 0} casilla(s) seleccionada(s)</p>
 
             <div className="space-y-4 mb-8">
