@@ -7,7 +7,7 @@ import {
   UploadCloud, Cloud, CloudOff, ArrowRight, History, FileUp,
   LayoutGrid, Calculator, ChevronLeft, Table as TableIcon,
   Layers, ListOrdered, ChevronDown, ChevronUp, Box, ShieldAlert,
-  Hash, FileDown, MinusCircle, HardDrive, Star, Bookmark,
+  Hash, FileDown, MinusCircle, HardDrive, Star, Bookmark, LogOut,
   FileText, Building2, Home, Pencil, Copy, Lock, Unlock, Flag, Send
 } from 'lucide-react';
 
@@ -256,6 +256,7 @@ export default function App() {
   
   const [modalConfig, setModalConfig] = useState({ isOpen: false, message: '', onConfirm: null });
   const [modalEspecialConfig, setModalEspecialConfig] = useState({ isOpen: false });
+  const [especialPorBorrar, setEspecialPorBorrar] = useState(null); // uid en confirmación
   const [modalSiguientePaso, setModalSiguientePaso] = useState(false);
   const [especialForm, setEspecialForm] = useState({ seccion: "", tipo: "S1" });
 
@@ -320,6 +321,7 @@ export default function App() {
   // cambia un corte de padrón el comparativo se actualice solo, sin tener que volver a cargar el
   // archivo del SUC.
   const [comparativo2024Base, setComparativo2024Base] = useState(null);
+  const [reinicioDesbloqueado, setReinicioDesbloqueado] = useState(false);
   const [comparativo2024Expandido, setComparativo2024Expandido] = useState(false);
   // Bitácora de cambios de domicilio (manual, botón de completar, Excel masivo, SUC). Se conserva
   // para siempre (nunca se borra sola al salir/entrar) — solo se vacía si el usuario da "Limpieza
@@ -1346,6 +1348,9 @@ export default function App() {
     aplicarAsignacion();
   };
 
+  // Todo borrado pide confirmación ("¿Estás seguro?" + botón rojo), nunca borra directo.
+  const confirmarBorrado = (mensaje, accion, etiqueta = 'Sí, borrar') => setModalConfig({ isOpen: true, message: mensaje, onConfirm: accion, confirmLabel: etiqueta, peligro: true });
+
   const desvincularManzana = (boothUid, mzId) => {
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
@@ -1355,12 +1360,36 @@ export default function App() {
     }));
   };
   
-  const agregarCasillaEspecial = () => {
-    if (!especialForm.seccion) return;
+  // Reglas de casillas especiales: nomenclatura "S" + número (S1, S2…) y sin repetir la misma
+  // nomenclatura dentro de una sección (la numeración es por sección: 0034 S1 y 0050 S1 sí pueden
+  // convivir; dos 0034 S1, no).
+  const nomenclaturaEspecial = (t) => String(t || '').replace(/\s+/g, '').toUpperCase();
+  const especialYaExiste = (seccion, tipo) => casillasGlobales.some(c =>
+    String(c.tipo).toUpperCase().startsWith('S') &&
+    normalizarClave(c.sede?.seccion) === normalizarClave(seccion) &&
+    nomenclaturaEspecial(c.tipo) === nomenclaturaEspecial(tipo));
+  const siguienteEspecialLibre = (seccion) => { let n = 1; while (especialYaExiste(seccion, `S${n}`)) n++; return `S${n}`; };
+  const errorEspecial = !especialForm.seccion ? ''
+    : !/^S[1-9][0-9]*$/.test(nomenclaturaEspecial(especialForm.tipo)) ? 'La nomenclatura debe ser S seguida de un número: S1, S2…'
+    : especialYaExiste(especialForm.seccion, especialForm.tipo) ? `La sección ${f4(especialForm.seccion)} ya tiene una ${nomenclaturaEspecial(especialForm.tipo)}. La siguiente libre es ${siguienteEspecialLibre(especialForm.seccion)}.`
+    : '';
+
+  const especialesOrdenadas = useMemo(() => casillasGlobales
+    .filter(c => String(c.tipo).toUpperCase().startsWith('S'))
+    .sort((a, b) => (parseInt(a.sede?.seccion) || 0) - (parseInt(b.sede?.seccion) || 0) || String(a.tipo).localeCompare(String(b.tipo), undefined, { numeric: true })), [casillasGlobales]);
+  const borrarCasillaEspecial = (uid) => {
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
     isLocalActionActive.current = true;
-    setCasillasGlobales(prev => [...prev, { uid: Date.now() + Math.random(), tipo: especialForm.tipo, sede: { seccion: especialForm.seccion }, alimentadoras: [] }]);
-    setModalEspecialConfig({ isOpen: false });
+    setCasillasGlobales(prev => prev.filter(x => x.uid !== uid));
+    setEspecialPorBorrar(null);
+  };
+  const abrirCasillasEspeciales = () => { setEspecialPorBorrar(null); setModalEspecialConfig({ isOpen: true }); };
+
+  const agregarCasillaEspecial = () => {
+    if (!especialForm.seccion || errorEspecial) return;
+    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    isLocalActionActive.current = true;
+    setCasillasGlobales(prev => [...prev, { uid: Date.now() + Math.random(), tipo: nomenclaturaEspecial(especialForm.tipo), sede: { seccion: especialForm.seccion }, alimentadoras: [] }]);
     setEspecialForm({ seccion: "", tipo: "S1" });
   };
 
@@ -3142,8 +3171,8 @@ export default function App() {
 
   const eliminarVersionExtra = (version) => {
     setModalConfig({
-      isOpen: true,
-      message: `¿Eliminar la versión "${version.nombre}"? Ya no se podrá comparar contra ella. Esta acción no se puede deshacer.`,
+      isOpen: true, peligro: true, confirmLabel: 'Sí, borrar',
+      message: `Vas a borrar la versión "${version.nombre}". Ya no se podrá comparar contra ella y no se puede deshacer.`,
       onConfirm: async () => {
         try {
           if (isCloudEnabled && db && user) {
@@ -3516,9 +3545,42 @@ export default function App() {
       });
   };
 
+  // "Reiniciar": borra el ARMADO del distrito para todo el equipo — extraordinarias, especiales y
+  // sede de las básicas — y lo deja listo para armar desde cero. No toca domicilios/ubicación
+  // (tienen su propia "Limpieza Total"), equipamiento, folios, fecha de corte, reportes del SUC,
+  // la cabecera ni las versiones guardadas. Casillas y sede de básicas se toman siempre tal cual
+  // de la nube, así que los compañeros con el distrito abierto reciben el reinicio solos.
+  const reiniciarArmadoDistrito = () => {
+    setModalConfig({
+      isOpen: true, peligro: true, confirmLabel: 'Sí, reiniciar',
+      message: `Estás a punto de reiniciar todos los cambios del armado del Distrito ${f4(distritoInfo.numero)}: se borrarán todas las extraordinarias, las especiales y la sede de las básicas. Domicilios, equipamiento, folios y versiones guardadas no se tocan. Afecta a todo tu equipo y no se puede deshacer. ¿Continuar?`,
+      onConfirm: () => {
+        if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+        isLocalActionActive.current = true;
+        setCasillasGlobales([]);
+        setBasicaSedePorSeccion({});
+        setConflictosDiseno({ desaparecidas: [], desactualizadas: [], total: 0 });
+        setImportJsonAvisos(null);
+        try {
+          localStorage.removeItem(`proyector_casillas_D${distritoInfo.numero}`);
+          localStorage.removeItem(`proyector_basicaSedePorSeccion_D${distritoInfo.numero}`);
+        } catch (e) {}
+        setReinicioDesbloqueado(false);
+        setSuccessMessage(`Armado del Distrito ${f4(distritoInfo.numero)} reiniciado: ya no hay extraordinarias, especiales ni sede de básicas.`);
+      },
+    });
+  };
+
+  // El botón de reinicio se vuelve a bloquear solo a los 15 segundos de desbloquearlo.
+  useEffect(() => {
+    if (!reinicioDesbloqueado) return;
+    const t = setTimeout(() => setReinicioDesbloqueado(false), 15000);
+    return () => clearTimeout(t);
+  }, [reinicioDesbloqueado]);
+
   const limpiarTodosLosDomicilios = () => {
       setModalConfig({
-          isOpen: true,
+          isOpen: true, peligro: true, confirmLabel: 'Sí, borrar todo',
           message: 'Esto borrará TODOS los domicilios y ubicaciones asignadas del distrito (todas las secciones), y también el historial de "Última Actualización". No se puede deshacer. ¿Continuar?',
           onConfirm: () => {
               isLocalActionActive.current = true;
@@ -4759,9 +4821,9 @@ export default function App() {
                                  <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
                              </div>
                              <div className="flex flex-wrap items-stretch gap-2.5">
-                                 <button onClick={() => setModalEspecialConfig({ isOpen: true })} className="bg-oxford-500 hover:bg-oxford-600 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
-                                     <Plus className="w-6 h-6 text-yellow-400 shrink-0" />
-                                     <span className="text-sm font-black uppercase">Casillas Especiales</span>
+                                 <button onClick={abrirCasillasEspeciales} className="bg-oxford-500 hover:bg-oxford-600 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
+                                     <Star className="w-6 h-6 text-beige-300 shrink-0" />
+                                     <span className="text-sm font-black uppercase">Casillas Especiales{especialesOrdenadas.length > 0 ? ` (${especialesOrdenadas.length})` : ''}</span>
                                  </button>
                                  <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
                                      <Download className="w-6 h-6 text-pink-200 shrink-0" />
@@ -5193,7 +5255,7 @@ export default function App() {
                                                               <button onClick={() => { const origen = grupo.casillas.find(other => other.clave !== c.clave && other.grupoFisico === c.grupoFisico && other.asign); if (origen) copiarDomicilioDeCasilla(origen.clave, [c.clave]); }} className="text-slate-500 hover:text-pink-600 p-2 rounded-lg hover:bg-white transition-all" title="Copiar domicilio de otra casilla del mismo grupo físico (básica+contiguas, o la misma extraordinaria/especial)"><Copy className="w-4 h-4" /></button>
                                                           )}
                                                           {c.asign && (
-                                                              <button onClick={() => borrarDomicilioDeCasilla(c.clave)} className="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-white transition-all" title="Borrar domicilio de esta casilla"><Trash2 className="w-4 h-4" /></button>
+                                                              <button onClick={() => confirmarBorrado(`Vas a borrar el domicilio asignado a la casilla ${c.clave}. Tendrás que volver a asignarlo.`, () => borrarDomicilioDeCasilla(c.clave))} className="text-slate-500 hover:text-red-600 p-2 rounded-lg hover:bg-white transition-all" title="Borrar domicilio de esta casilla"><Trash2 className="w-4 h-4" /></button>
                                                           )}
                                                       </div>
                                                   </div>
@@ -5442,10 +5504,16 @@ export default function App() {
           </>
         )}
 
+        {extraordinariasTab === 'poligonos' && especialesOrdenadas.length > 0 && (
+          <button onClick={() => { setView('final'); setProyeccionTab('listado'); abrirCasillasEspeciales(); }} className="w-full mb-3 flex items-center justify-between gap-3 bg-white border-2 border-slate-200 hover:border-slate-300 rounded-xl px-4 py-2.5 text-left transition-colors">
+            <span className="flex items-center gap-2 text-xs font-bold text-slate-600"><Star className="w-4 h-4 text-beige-600" /> {especialesOrdenadas.length} casilla(s) especial(es) en el distrito · se administran en Proyección → Casillas especiales</span>
+            <span className="text-[10px] font-black uppercase text-pink-600 flex items-center gap-1 shrink-0">Ver <ArrowRight className="w-3.5 h-3.5" /></span>
+          </button>
+        )}
         {extraordinariasTab === 'poligonos' && (
         <div className="flex flex-col gap-3 pb-24 text-left">
-          {sortedCasillasGlobales.length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
-            sortedCasillasGlobales.filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
+          {sortedCasillasGlobales.filter(c => !String(c.tipo).toUpperCase().startsWith('S')).length === 0 ? ( <div className="h-[50vh] border-4 border-dashed border-slate-300 rounded-[3rem] flex flex-col items-center justify-center opacity-50 text-center p-8 text-slate-500 text-left bg-white shadow-sm text-lg font-bold">Inicia configurando una sede extraordinaria en la Mesa de Armado.</div> ) : (
+            sortedCasillasGlobales.filter(c => !String(c.tipo).toUpperCase().startsWith('S')).filter(c => String(c.tipo).toLowerCase().includes(searchQuery.toLowerCase()) || String(c.sede?.seccion).toLowerCase().includes(searchQuery.toLowerCase())).map(c => {
                 const stats = calcularProyeccion(c);
                 const isEspecial = String(c.tipo).startsWith('S');
                 const isExpanded = casillasExpandidas.has(String(c.uid));
@@ -5465,7 +5533,7 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                             {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
-                            <button onClick={(e) => { e.stopPropagation(); if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); confirmarBorrado(`Vas a borrar la casilla ${String(c.tipo)} de la sección ${f4(c.sede?.seccion)}${!isEspecial ? ` con sus ${1 + (c.alimentadoras || []).length} manzana(s)` : ''}. Afecta a todo tu equipo.`, () => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }); }} title={`Borrar ${String(c.tipo)}`} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                         </div>
                     </div>
@@ -5516,7 +5584,7 @@ export default function App() {
                                                 <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
                                                 <div className="flex gap-2 items-center shrink-0 ml-2">
                                                     <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
-                                                    <button onClick={() => desvincularManzana(c.uid, a.id)} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => confirmarBorrado(`Vas a quitar la manzana ${f4(a.manzana)} (sección ${f4(a.seccion)}, localidad ${f4(a.localidad)}) de la casilla ${String(c.tipo)}. Su padrón dejará de contar en esa casilla.`, () => desvincularManzana(c.uid, a.id), 'Sí, quitar')} title={`Quitar manzana ${f4(a.manzana)}`} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
                                                 </div>
                                             </div>
                                             );
@@ -5877,13 +5945,19 @@ export default function App() {
             </div>
           ) : null}
 
+          {/* Reiniciar el armado: bloqueado por defecto; el primer clic lo desbloquea (15 s) y el segundo pide confirmación. */}
+          <button onClick={(e) => { e.stopPropagation(); if (reinicioDesbloqueado) reiniciarArmadoDistrito(); else setReinicioDesbloqueado(true); }}
+              title={reinicioDesbloqueado ? 'Desbloqueado: vuelve a presionar para reiniciar el armado del distrito' : 'Bloqueado: presiona para desbloquear el reinicio del armado (extraordinarias, especiales y sede de básicas)'}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all border cursor-pointer ml-1 ${reinicioDesbloqueado ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              {reinicioDesbloqueado ? <><Unlock className="w-3.5 h-3.5" /> Reiniciar armado</> : <><Lock className="w-3.5 h-3.5" /> Reiniciar</>}
+          </button>
           <button onClick={(e) => {
               e.stopPropagation();
-              setModalConfig({ 
-              isOpen: true, 
-              message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.', 
-              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); }
-          })}} className="text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 p-2 rounded-lg border border-slate-200 transition-all text-left cursor-pointer ml-1 shadow-sm"><RotateCcw className="w-4 h-4 text-left" /></button>
+              setModalConfig({
+              isOpen: true,
+              message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.',
+              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); setReinicioDesbloqueado(false); }
+          })}} title="Salir del distrito" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all border cursor-pointer bg-white border-slate-200 text-slate-600 hover:bg-slate-50"><LogOut className="w-3.5 h-3.5" /> Salir</button>
         </div>
       </div>
 
@@ -6005,30 +6079,61 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL ESPECIALES */}
+      {/* MODAL ESPECIALES: se ven, se agregan y se borran aquí (ya no aparecen entre las extraordinarias) */}
       {modalEspecialConfig.isOpen && (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-left border-2 border-slate-200">
-            <h3 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Agregar Especial</h3>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Sección donde se instala</p>
-            
-            <div className="space-y-5 mb-8">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200 max-h-[92vh] overflow-y-auto custom-scrollbar">
+            <h3 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Casillas especiales</h3>
+            <p className="text-xs font-bold text-slate-500 mb-5">Se instalan en una sección y no se arman con manzanas. Aquí puedes verlas, agregarlas o borrarlas.</p>
+
+            <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-2">En este distrito ({especialesOrdenadas.length})</p>
+            {especialesOrdenadas.length === 0 ? (
+              <p className="text-xs font-bold text-slate-400 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl px-4 py-3 mb-6">Todavía no hay casillas especiales.</p>
+            ) : (
+              <div className="border-2 border-slate-200 rounded-xl divide-y divide-slate-100 mb-6 max-h-56 overflow-y-auto custom-scrollbar">
+                {especialesOrdenadas.map(c => (
+                  <div key={c.uid} className="flex items-center justify-between gap-2 px-3 py-2">
+                    {especialPorBorrar === c.uid ? (
+                      <>
+                        <span className="text-xs font-bold text-red-700">¿Seguro que quieres borrar {String(c.tipo)} de la sección {f4(c.sede?.seccion)}?</span>
+                        <span className="flex gap-1.5 shrink-0">
+                          <button onClick={() => borrarCasillaEspecial(c.uid)} className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase">Sí, borrar</button>
+                          <button onClick={() => setEspecialPorBorrar(null)} className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black uppercase">No</button>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-2">
+                          <span className="bg-oxford-500 text-white px-2 py-0.5 rounded-md font-black text-xs">{String(c.tipo)}</span>
+                          <span className="text-sm font-black text-slate-700">Sección {f4(c.sede?.seccion)}</span>
+                        </span>
+                        <button onClick={() => setEspecialPorBorrar(c.uid)} title={`Borrar ${String(c.tipo)} de la sección ${f4(c.sede?.seccion)}`} className="text-slate-400 hover:text-red-600 p-1.5 rounded-md hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-3">Agregar especial</p>
+            <div className="space-y-4 mb-6">
                 <div>
-                    <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Sección Destino</label>
-                    <select className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={especialForm.seccion} onChange={e => setEspecialForm({...especialForm, seccion: e.target.value})}>
+                    <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Sección donde se instala</label>
+                    <select className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={especialForm.seccion} onChange={e => setEspecialForm({ seccion: e.target.value, tipo: e.target.value ? siguienteEspecialLibre(e.target.value) : 'S1' })}>
                         <option value="">-- SELECCIONA SECCIÓN --</option>
                         {sectionsPorNumero.map(s => <option key={s} value={s}>{f4(s)}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nomenclatura (Ej. S1, S2)</label>
+                    <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Nomenclatura (S1, S2…)</label>
                     <input type="text" className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={especialForm.tipo} onChange={e => setEspecialForm({...especialForm, tipo: String(e.target.value).toUpperCase()})} placeholder="S1" />
+                    {errorEspecial && <p className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 mt-2 flex items-start gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {errorEspecial}</p>}
                 </div>
             </div>
 
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setModalEspecialConfig({ isOpen: false })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
-              <button onClick={agregarCasillaEspecial} disabled={!especialForm.seccion || !especialForm.tipo} className="px-5 py-2.5 bg-oxford-500 hover:bg-oxford-600 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><Star className="w-4 h-4 text-beige-600" /> Insertar</button>
+              <button onClick={() => { setEspecialPorBorrar(null); setModalEspecialConfig({ isOpen: false }); }} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cerrar</button>
+              <button onClick={agregarCasillaEspecial} disabled={!especialForm.seccion || !especialForm.tipo || !!errorEspecial} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs flex items-center gap-2 uppercase tracking-wider shadow-md"><Plus className="w-4 h-4" /> Agregar</button>
             </div>
           </div>
         </div>
@@ -6071,13 +6176,13 @@ export default function App() {
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center border-2 border-slate-200">
-            <AlertTriangle className="w-14 h-14 text-pink-600 mx-auto mb-4" />
-            <h3 className="text-xl font-black text-slate-900 mb-2">Confirmar Acción</h3>
+            {modalConfig.peligro ? <Trash2 className="w-14 h-14 text-red-600 mx-auto mb-4" /> : <AlertTriangle className="w-14 h-14 text-pink-600 mx-auto mb-4" />}
+            <h3 className="text-xl font-black text-slate-900 mb-2">{modalConfig.peligro ? '¿Estás seguro?' : 'Confirmar acción'}</h3>
             <p className="text-sm text-slate-600 mb-8 font-bold">{modalConfig.message}</p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => setModalConfig({ isOpen: false, message: '', onConfirm: null })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">Cancelar</button>
               {modalConfig.onConfirm && (
-                <button onClick={() => { try { modalConfig.onConfirm(); } finally { setModalConfig({ isOpen: false, message: '', onConfirm: null }); } }} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs">Confirmar</button>
+                <button onClick={() => { try { modalConfig.onConfirm(); } finally { setModalConfig({ isOpen: false, message: '', onConfirm: null }); } }} className={`px-5 py-2.5 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs ${modalConfig.peligro ? 'bg-red-600 hover:bg-red-700' : 'bg-pink-600 hover:bg-pink-700'}`}>{modalConfig.confirmLabel || 'Confirmar'}</button>
               )}
             </div>
           </div>
