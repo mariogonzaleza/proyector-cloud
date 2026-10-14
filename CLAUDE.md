@@ -18,7 +18,10 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 13-oct-2026: todo en `master` y sincronizado con GitHub; sin trabajo a medias.
+Al 14-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas.
+Último cambio: manzanas con 0 electores (tablero de la Mesa con padrón por manzana, pestaña
+"Manzanas en 0", detalle de manzanas en Sede de la básica y extraordinaria en 0 = no instala).
+Mario lo va a probar con datos reales; atender su retroalimentación.
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -73,7 +76,14 @@ Al 13-oct-2026: todo en `master` y sincronizado con GitHub; sin trabajo a medias
   "Margen al corte" (`margenCorte750`): "Faltan N (+1 casilla)" / "Sobran N (-1 casilla)";
   alerta si N ≤ 15; riesgo ALTO ≤5, MEDIO ≤10, BAJO ≤15. No tocar el cálculo de proyección ni el
   reparto de padrón/lista (Mario confirmó que están bien).
-- Sección sin extraordinaria con remanente 1–99 electores → "NO INSTALA".
+- Básica con 1–99 electores: NO se proyecta ("NO INSTALA"), salvo que su sección tenga una
+  extraordinaria PROYECTADA. Extraordinaria con 1–99: SÍ se proyecta (1 casilla) — regla vieja,
+  no cambiarla.
+- Cualquier casilla con 0 electores no se proyecta. Extraordinaria formada solo por manzanas en 0
+  (dadas de alta en cartografía): "Sin electores · no instala" (0 casillas; `extraTieneElectores`),
+  se conserva en el armado, no cuenta como extraordinaria proyectada de su sección (su básica
+  recibe el trato normal de menos de 100), y en Proyección Oficial/QGIS sus manzanas van a la
+  básica. Las especiales no aplican (no llevan padrón por manzana; siempre 1 casilla).
 - Especiales: nomenclatura S + número, sin repetir dentro de una sección (la numeración es por
   sección); se administran en Proyección → "Casillas especiales" (no salen en Polígonos).
 - "Reiniciar" (barra superior, con candado de 15 s) borra SOLO el armado: extraordinarias,

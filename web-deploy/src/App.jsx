@@ -207,6 +207,12 @@ const MiniColumnas = ({ titulo, valores, etiquetas }) => {
   );
 };
 
+// Una extraordinaria formada SOLO por manzanas con 0 electores (dadas de alta en cartografía) no
+// instala: proyecta 0 casillas ("NO INSTALA"), como las básicas de menos de 100. Se conserva en el
+// armado para no perder la asignación y se marca para revisarla.
+const extraTieneElectores = (c) => [c?.sede, ...((c && c.alimentadoras) || [])].filter(Boolean)
+  .some(m => (parseInt(m.padron) || 0) > 0 || (parseInt(m.lista) || 0) > 0);
+
 export default function App() {
   const [view, setView] = useState('welcome'); 
   const [user, setUser] = useState(null); 
@@ -304,7 +310,10 @@ export default function App() {
   // extraordinaria armada (ahí es donde "cuál manzana queda como básica" deja de ser obvio).
   // { [seccion]: claveManzana(m) }. Sin entrada = se usa la primera manzana sobrante por default.
   const [basicaSedePorSeccion, setBasicaSedePorSeccion] = useState({});
-  const [extraordinariasTab, setExtraordinariasTab] = useState('poligonos'); // 'poligonos' | 'basica'
+  const [extraordinariasTab, setExtraordinariasTab] = useState('poligonos'); // 'poligonos' | 'basica' | 'ceros'
+  const [basicaExpandida, setBasicaExpandida] = useState(() => new Set()); // secciones con el detalle de su básica abierto
+  const [busquedaCeros, setBusquedaCeros] = useState('');
+  const [filtroCeros, setFiltroCeros] = useState('todas'); // 'todas' | 'conExtra' | 'sinExtra'
   const [busquedaBasicaSede, setBusquedaBasicaSede] = useState('');
   const [ocultarBasicaConfirmadas, setOcultarBasicaConfirmadas] = useState(false);
   // Selección todavía no confirmada por sección (el <select> se puede mover libremente sin que
@@ -376,17 +385,20 @@ export default function App() {
     const totalPadron = (parseInt(c.sede?.padron) || 0) + (c.alimentadoras || []).reduce((s, a) => s + (parseInt(a.padron) || 0), 0);
     const totalLista = (parseInt(c.sede?.lista) || 0) + (c.alimentadoras || []).reduce((s, a) => s + (parseInt(a.lista) || 0), 0);
     
-    const numCasillasPadron = Math.ceil(totalPadron / BOOTH_LIMIT) || 1;
-    const numCasillasLista = Math.ceil(totalLista / BOOTH_LIMIT) || 1;
-    
+    // Solo manzanas con 0 electores → NO INSTALA (0 casillas), igual que una básica de menos de 100.
+    const sinElectores = totalPadron === 0 && totalLista === 0;
+    const numCasillasPadron = sinElectores ? 0 : (Math.ceil(totalPadron / BOOTH_LIMIT) || 1);
+    const numCasillasLista = sinElectores ? 0 : (Math.ceil(totalLista / BOOTH_LIMIT) || 1);
+
     const mesasDetallePadron = [];
     for(let i = 0; i < numCasillasPadron; i++) mesasDetallePadron.push(i === 0 ? String(c.tipo) : `${c.tipo}C${i}`);
-    
+
     const mesasDetalleLista = [];
     for(let i = 0; i < numCasillasLista; i++) mesasDetalleLista.push(i === 0 ? String(c.tipo) : `${c.tipo}C${i}`);
-    
-    const distPadron = obtenerDistribucionArray(totalPadron, mesasDetallePadron);
-    const distLista = obtenerDistribucionArray(totalLista, mesasDetalleLista);
+
+    const distPadron = sinElectores ? [{ nombre: 'NO INSTALA', valor: 0 }] : obtenerDistribucionArray(totalPadron, mesasDetallePadron);
+    const distLista = sinElectores ? [{ nombre: 'NO INSTALA', valor: 0 }] : obtenerDistribucionArray(totalLista, mesasDetalleLista);
+    if (sinElectores) { mesasDetallePadron.push('NO INSTALA'); mesasDetalleLista.push('NO INSTALA'); }
     
     const todasMzs = [c.sede, ...(c.alimentadoras || [])].filter(Boolean);
     const localidadesMap = new Map();
@@ -402,7 +414,8 @@ export default function App() {
       mesasDetallePadron, mesasDetalleLista, distPadron, distLista,
       localidadesInvolucradas: localidadesArray.join(', '),
       localidadesInvolucradasArray: localidadesArray,
-      variacion: numCasillasPadron !== numCasillasLista
+      variacion: numCasillasPadron !== numCasillasLista,
+      sinElectores,
     };
   };
 
@@ -1542,7 +1555,7 @@ export default function App() {
 
     sections.forEach(secId => {
         const s = statsPorSeccionQGIS[secId];
-        const extraordinariasDeSeccion = casillasGlobales.filter(c => String(c.sede?.seccion) === secId && !String(c.tipo).startsWith('S'));
+        const extraordinariasDeSeccion = casillasGlobales.filter(c => String(c.sede?.seccion) === secId && !String(c.tipo).startsWith('S') && extraTieneElectores(c));
         let asignacionesMzs = {};
         extraordinariasDeSeccion.forEach(ext => {
             if (ext.sede?.id) asignacionesMzs[ext.sede.id] = { tipo: ext.tipo, esSede: true };
@@ -1725,7 +1738,7 @@ export default function App() {
     
     seccionesConExtra.forEach(secId => {
       const s = statsPorSeccion[secId];
-      const extraordinariasDeSeccion = casillasGlobales.filter(c => String(c.sede?.seccion) === secId && !String(c.tipo).startsWith('S'));
+      const extraordinariasDeSeccion = casillasGlobales.filter(c => String(c.sede?.seccion) === secId && !String(c.tipo).startsWith('S') && extraTieneElectores(c));
       let asignacionesMzs = {};
       extraordinariasDeSeccion.forEach(ext => {
          if(ext.sede?.id) asignacionesMzs[ext.sede.id] = { tipo: ext.tipo, esSede: true };
@@ -2356,6 +2369,19 @@ export default function App() {
     return mz ? mz.municipio : '';
   }, [rawElectoralData, form.seccionOrigen]);
 
+  const resumenLocalidadesMesa = useMemo(() => {
+    const res = {};
+    if (!form.seccionOrigen) return res;
+    rawElectoralData.filter(m => String(m.seccion) === String(form.seccionOrigen)).forEach(m => {
+      const k = String(m.localidad);
+      if (!res[k]) res[k] = { padron: 0, ceros: 0, manzanas: 0 };
+      res[k].padron += parseInt(m.padron) || 0;
+      res[k].manzanas += 1;
+      if ((parseInt(m.padron) || 0) === 0 && (parseInt(m.lista) || 0) === 0) res[k].ceros += 1;
+    });
+    return res;
+  }, [rawElectoralData, form.seccionOrigen]);
+
   const manzanasTablero = useMemo(() => {
     if (!form.seccionOrigen || !form.localidad) return [];
     return rawElectoralData.filter(m => String(m.seccion) === String(form.seccionOrigen) && String(m.localidad) === String(form.localidad));
@@ -2374,6 +2400,72 @@ export default function App() {
   // las secciones con al menos una manzana sobrante — aunque solo quede una, se deja confirmar
   // explícitamente (antes se ocultaban esas secciones asumiendo que "no había nada que decidir",
   // pero eso las dejaba sin poder confirmarse nunca para el envío oficial).
+  // Manzanas con 0 electores (dadas de alta en cartografía): dónde quedó cada una — en una
+  // extraordinaria (como sede o integrante), en la básica de una sección con extraordinaria, o en la
+  // básica de una sección sin extraordinaria. Agrupadas por sección y localidad.
+  const manzanasEnCero = useMemo(() => {
+    const vacio = { secciones: [], total: 0, enExtra: 0, enBasica: 0, localidadesSinElectores: 0 };
+    if (!rawElectoralData.length) return vacio;
+    const esCero = (m) => (parseInt(m.padron) || 0) === 0 && (parseInt(m.lista) || 0) === 0;
+    const asignacion = new Map();
+    sedesActivas.forEach(c => {
+      asignacion.set(claveManzana(c.sede), { tipo: String(c.tipo), rol: 'sede' });
+      (c.alimentadoras || []).forEach(a => asignacion.set(claveManzana(a), { tipo: String(c.tipo), rol: 'integrante' }));
+    });
+    const seccionesConExtra = new Set(sedesActivas.map(c => normalizarClave(c.sede.seccion)));
+    const padronLocalidad = new Map();
+    rawElectoralData.forEach(m => { const k = `${normalizarClave(m.seccion)}|${normalizarClave(m.localidad)}`; padronLocalidad.set(k, (padronLocalidad.get(k) || 0) + (parseInt(m.padron) || 0)); });
+    const porSeccion = new Map();
+    let enExtra = 0;
+    rawElectoralData.filter(esCero).forEach(m => {
+      const s = normalizarClave(m.seccion);
+      if (!porSeccion.has(s)) porSeccion.set(s, { seccion: m.seccion, conExtra: seccionesConExtra.has(s), localidades: new Map(), total: 0 });
+      const sec = porSeccion.get(s);
+      const l = normalizarClave(m.localidad);
+      if (!sec.localidades.has(l)) sec.localidades.set(l, { localidad: m.localidad, municipio: m.municipio, nombre: m.nombreLocalidad, sinElectores: padronLocalidad.get(`${s}|${l}`) === 0, manzanas: [] });
+      const a = asignacion.get(claveManzana(m)) || null;
+      if (a) enExtra += 1;
+      sec.localidades.get(l).manzanas.push({ m, asignacion: a });
+      sec.total += 1;
+    });
+    const secciones = [...porSeccion.values()]
+      .map(sec => ({ ...sec, localidades: [...sec.localidades.values()].map(l => ({ ...l, manzanas: l.manzanas.sort((x, y) => String(x.m.manzana).localeCompare(String(y.m.manzana), undefined, { numeric: true })) })).sort((x, y) => String(x.localidad).localeCompare(String(y.localidad), undefined, { numeric: true })) }))
+      .sort((x, y) => String(x.seccion).localeCompare(String(y.seccion), undefined, { numeric: true }));
+    const total = secciones.reduce((t, sec) => t + sec.total, 0);
+    return {
+      secciones, total, enExtra, enBasica: total - enExtra,
+      localidadesSinElectores: secciones.reduce((t, sec) => t + sec.localidades.filter(l => l.sinElectores).length, 0),
+    };
+  }, [rawElectoralData, sedesActivas]);
+
+  // Lleva la Mesa de Armado a esa sección y localidad: si la sección ya tiene extraordinaria, en modo
+  // "agregar manzanas" a la primera; si no, en modo "crear casilla nueva".
+  const abrirEnMesaDeArmado = (seccion, localidad) => {
+    const extrasSeccion = sedesActivas.filter(c => normalizarClave(c.sede.seccion) === normalizarClave(seccion));
+    if (extrasSeccion.length > 0) setForm(f => ({ ...f, rol: 'alimentadora', casillaUidDestino: String(extrasSeccion[0].uid), seccionOrigen: String(extrasSeccion[0].sede.seccion), localidad: String(localidad), manzanasSeleccionadas: [] }));
+    else setForm(f => ({ ...f, rol: 'sede', tipoElegido: f.tipoElegido || 'E1', seccionOrigen: String(seccion), localidad: String(localidad), manzanasSeleccionadas: [] }));
+  };
+
+  const exportarManzanasEnCero = () => {
+    if (!window.XLSX || manzanasEnCero.total === 0) return;
+    const XL = window.XLSX;
+    const header = ['Sección', 'Municipio', 'Localidad', 'Nombre de localidad', 'Manzana', 'Localidad completa sin electores', 'Dónde está'];
+    const rows = [header];
+    manzanasEnCero.secciones.forEach(sec => sec.localidades.forEach(l => l.manzanas.forEach(({ m, asignacion }) => rows.push([
+      f4(sec.seccion), m.municipio || '', f4(l.localidad), nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad || '', f4(m.manzana),
+      l.sinElectores ? 'Sí' : 'No',
+      asignacion ? (asignacion.rol === 'sede' ? `Sede de ${asignacion.tipo}` : `Integrante de ${asignacion.tipo}`) : sec.conExtra ? 'Básica (sección con extraordinaria)' : 'Básica (sección sin extraordinaria)',
+    ]))));
+    const ws = XL.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 9 }, { wch: 10 }, { wch: 10 }, { wch: 32 }, { wch: 10 }, { wch: 18 }, { wch: 34 }];
+    const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    header.forEach((_, c) => { const a = XL.utils.encode_cell({ r: 0, c }); if (ws[a]) ws[a].s = estiloHeader; });
+    ws['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: header.length - 1 } }) };
+    const wb = XL.utils.book_new();
+    XL.utils.book_append_sheet(wb, ws, 'Manzanas en 0');
+    XL.writeFile(aplicarFuenteInstitucional(wb), `Manzanas_en_0_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
+
   const basicaSedeCandidatas = useMemo(() => {
     if (!rawElectoralData.length || sedesActivas.length === 0) return [];
     const seccionesConExtra = [...new Set(sedesActivas.map(c => String(c.sede.seccion)))];
@@ -2480,7 +2572,7 @@ export default function App() {
       let countPadron = 0; let countLista = 0;
       let nomPadron = ""; let distPadron = []; let nomLista = ""; let distLista = [];
 
-      const tieneExtraordinaria = casillasGlobales.some(c => String(c.sede?.seccion) === sec && !String(c.tipo).startsWith('S'));
+      const tieneExtraordinaria = casillasGlobales.some(c => String(c.sede?.seccion) === sec && !String(c.tipo).startsWith('S') && extraTieneElectores(c));
 
       if (!tieneExtraordinaria && ((remPad > 0 && remPad < 100) || (remLis > 0 && remLis < 100))) {
         nomPadron = "NO INSTALA"; nomLista = "NO INSTALA";
@@ -2569,6 +2661,7 @@ export default function App() {
         const dist = row.distLista;
         (dist || []).forEach((item) => {
             const esNoInstala = item.nombre === 'NO INSTALA';
+            if (esNoInstala && row.categoria === 'EXTRAORDINARIA') return;
             const esEspecial = row.categoria === 'ESPECIAL';
             lista.push({
                 id: `${row.seccion}-${row.categoria}-${item.nombre}`,
@@ -2835,7 +2928,7 @@ export default function App() {
       casillasGlobales.forEach(c => {
           const st = calcularProyeccion(c);
           if (String(c.tipo).startsWith('S')) especiales += st.totalMesasPadron;
-          else { extraordinarias += 1; extraordinariasContiguas += (st.totalMesasPadron - 1); }
+          else if (st.totalMesasPadron > 0) { extraordinarias += 1; extraordinariasContiguas += (st.totalMesasPadron - 1); }
       });
       return { basicas, contiguas, extraordinarias, extraordinariasContiguas, especiales };
   }, [consolidadoB_C, casillasGlobales]);
@@ -2963,7 +3056,7 @@ export default function App() {
     });
     const seccionesConExtra = new Set();
     extrasVinculadas.forEach(c => {
-      seccionesConExtra.add(n4(c.sede?.seccion));
+      if (extraTieneElectores(c)) seccionesConExtra.add(n4(c.sede?.seccion));
       [c.sede, ...(c.alimentadoras || [])].forEach(m => {
         if (!m) return;
         const s = n4(m.seccion);
@@ -2981,6 +3074,7 @@ export default function App() {
     });
     const exPadron = extras.reduce((t, e) => t + e.casillasPadron, 0);
     const exLista = extras.reduce((t, e) => t + e.casillasLista, 0);
+    const extrasQueInstalan = extras.filter(e => e.casillasPadron > 0).length;
     return {
       extras,
       resumenDistrito: {
@@ -2988,8 +3082,8 @@ export default function App() {
         totalLista: basicasLista + contiguasLista + exLista + numEspeciales,
         basicasPadron, contiguasPadron, basicasLista, contiguasLista,
         bcPadron: basicasPadron + contiguasPadron, bcLista: basicasLista + contiguasLista,
-        extraordinarias: extras.length, exPadron, exLista,
-        extraContiguasPadron: exPadron - extras.length, extraContiguasLista: exLista - extras.length,
+        extraordinarias: extrasQueInstalan, exPadron, exLista,
+        extraContiguasPadron: exPadron - extrasQueInstalan, extraContiguasLista: exLista - extrasQueInstalan,
         especiales: numEspeciales, seccionesNoInstala,
       },
       padronDistrito: {
@@ -3244,7 +3338,7 @@ export default function App() {
     ['Casillas del distrito', 'Básicas', f => f.resumenDistrito?.basicasPadron],
     ['Casillas del distrito', 'Contiguas', f => f.resumenDistrito?.contiguasPadron],
     ['Casillas del distrito', 'Secciones que no instalan', f => f.resumenDistrito?.seccionesNoInstala],
-    ['Extraordinarias', 'Extraordinarias (sedes)', f => (f.extras || []).length],
+    ['Extraordinarias', 'Extraordinarias (sedes)', f => (f.extras || []).filter(e => (e.casillasPadron || 0) > 0).length],
     ['Extraordinarias', 'Casillas por padrón', f => sumaExtras(f, 'casillasPadron')],
     ['Extraordinarias', 'Casillas por lista nominal', f => sumaExtras(f, 'casillasLista')],
     ['Extraordinarias', 'Localidades atendidas', f => (f.extras || []).every(e => Array.isArray(e.localidades)) ? new Set((f.extras || []).flatMap(e => e.localidades.map(l => `${e.municipio}|${l.c}`))).size : undefined],
@@ -5363,7 +5457,9 @@ export default function App() {
                               <option value="">-- LOC --</option>
                               {localidadesDisp.map(l => {
                                   const nombre = catalogoLocalidades[`${Number(municipioSeccionOrigen)}-${Number(l)}`] || '';
-                                  return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}</option>;
+                                  const info = resumenLocalidadesMesa[l];
+                                  const nota = !info ? '' : info.padron === 0 ? ' · SIN ELECTORES' : info.ceros > 0 ? ` · ${info.ceros} mz en 0` : '';
+                                  return <option key={l} value={l}>{f4(l)}{nombre ? ` — ${nombre}` : ''}{nota}</option>;
                               })}
                           </select>
                       </div>
@@ -5380,9 +5476,13 @@ export default function App() {
                       if (isSelected) tileClasses = 'border-pink-600 bg-beige-100 scale-105 z-10 shadow-md text-pink-800';
                       else if (assign?.type === 'sede') tileClasses = 'bg-pink-800 border-pink-900 text-white shadow-md';
                       else if (assign?.type === 'alimentadora') tileClasses = 'bg-beige-200 border-beige-400 text-oxford-700 shadow-inner';
+                      else if ((parseInt(m.padron) || 0) === 0 && (parseInt(m.lista) || 0) === 0) tileClasses = 'bg-white border-dashed border-amber-300 text-slate-500 hover:bg-amber-50';
                       else tileClasses = 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-white';
-                      return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-oxford-500 border-2 border-white shadow-sm text-left"></div>}</button>);
+                      return (<button key={m.id} title={m.nombreLocalidad || catalogoLocalidades[`${Number(m.municipio)}-${Number(m.localidad)}`] || ''} onClick={() => toggleManzanaSeleccionada(m)} className={`flex flex-col items-center p-3 rounded-xl border-2 text-[10px] font-black transition-all relative ${tileClasses}`}><span className={`mb-1 font-mono text-[8px] text-left ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : 'opacity-50'}`}>MZ</span><span className="text-sm">{f4(m.manzana)}</span><span className={`text-[9px] font-bold mt-0.5 ${assign?.type === 'sede' && !isSelected ? 'text-pink-200' : (parseInt(m.padron) || 0) === 0 ? 'text-amber-700' : 'text-slate-400'}`}>{(parseInt(m.padron) || 0) === 0 ? '0 elect.' : `P ${parseInt(m.padron) || 0}`}</span>{isSelected && <div className="absolute -top-2 -left-2 bg-pink-600 text-white rounded-full p-1 shadow-sm text-left"><CheckCircle2 className="w-3 h-3" /></div>}{assign?.type === 'alimentadora' && !isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-oxford-500 border-2 border-white shadow-sm text-left"></div>}</button>);
                   })}</div>
+                  {manzanasTablero.some(m => (parseInt(m.padron) || 0) === 0 && (parseInt(m.lista) || 0) === 0) && (
+                    <p className="text-[10px] font-bold text-slate-500 ml-1 flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded border-2 border-dashed border-amber-400 shrink-0"></span> Borde punteado: manzana con 0 electores en el padrón (dada de alta en cartografía). Sí se puede asignar.</p>
+                  )}
                 </div>
                 )}
 
@@ -5413,6 +5513,7 @@ export default function App() {
               {[
                   { key: 'poligonos', label: 'Polígonos Guardados', icon: LayoutGrid },
                   { key: 'basica', label: 'Sede de la Básica', icon: MapPin, badge: basicaSedeCandidatas.filter(s => !basicaSedePorSeccion[s.seccion]).length },
+                  { key: 'ceros', label: `Manzanas en 0${manzanasEnCero.total ? ` (${manzanasEnCero.total})` : ''}`, icon: MinusCircle },
               ].map(tab => {
                   const Icon = tab.icon;
                   const isActive = extraordinariasTab === tab.key;
@@ -5446,7 +5547,7 @@ export default function App() {
                 <div className={`inline-flex items-center gap-2 w-max px-3 py-2 rounded-full text-left ${totalCasillasDistrito.exPadron !== totalCasillasDistrito.exLista ? 'bg-amber-50 border-2 border-amber-300 text-amber-800' : 'bg-white border-2 border-slate-200 text-slate-600'}`}>
                   <Hash className="w-3.5 h-3.5 text-left shrink-0" />
                   <span className="text-[10px] font-black uppercase text-left tracking-wider">
-                    Extraordinarias: {sedesActivas.length} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
+                    Extraordinarias: {sedesActivas.length}{sedesActivas.some(c => !extraTieneElectores(c)) ? ` (${sedesActivas.filter(c => !extraTieneElectores(c)).length} no instala)` : ''} · Contiguas: {desgloseTiposCasilla.extraordinariasContiguas} · P:{totalCasillasDistrito.exPadron} L:{totalCasillasDistrito.exLista}
                   </span>
                 </div>
               </div>
@@ -5460,6 +5561,26 @@ export default function App() {
                 </button>
                 <button onClick={exportarValidacionManzanas} className="bg-slate-700 hover:bg-oxford-600 text-white px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all text-left relative z-40"><FileDown className="w-3.5 h-3.5 text-left" /><span className="text-[10px] font-black uppercase text-left tracking-wider">Validar Manzanas</span></button>
               </div>
+            </div>
+          </div>
+          )}
+          {extraordinariasTab === 'ceros' && (
+          <div className="w-full flex flex-col gap-3 text-left">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-black tracking-tight uppercase text-slate-800 leading-none">MANZANAS EN 0</h2>
+              {manzanasEnCero.total > 0 && <button onClick={exportarManzanasEnCero} className="flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 px-3 py-2 rounded-xl text-[10px] font-black uppercase"><FileDown className="w-3.5 h-3.5" /> Excel</button>}
+            </div>
+            <p className="text-[11px] font-bold text-slate-500">Manzanas dadas de alta en cartografía con 0 electores en el padrón cargado, y dónde quedó cada una. Sí se pueden asignar a una extraordinaria; si una extraordinaria queda solo con manzanas en 0, no instala.</p>
+            <div className="flex flex-wrap gap-2">
+              {[[`${manzanasEnCero.total} manzanas en 0`, 'bg-slate-100 border-slate-200 text-slate-700'], [`${manzanasEnCero.secciones.length} secciones`, 'bg-slate-100 border-slate-200 text-slate-700'], [`${manzanasEnCero.localidadesSinElectores} localidades sin electores`, 'bg-amber-50 border-amber-300 text-amber-800'], [`${manzanasEnCero.enExtra} en extraordinarias`, 'bg-white border-slate-200 text-slate-600'], [`${manzanasEnCero.enBasica} en básicas`, 'bg-white border-slate-200 text-slate-600']].map(([t, c]) => <span key={t} className={`border-2 px-3 py-1 rounded-full text-[10px] font-black uppercase ${c}`}>{t}</span>)}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="Buscar sección..." className="pl-9 pr-4 py-2 bg-white border-2 border-slate-300 rounded-full text-xs font-bold outline-none w-48 focus:ring-2 focus:ring-pink-500 text-slate-800" value={busquedaCeros} onChange={e => setBusquedaCeros(e.target.value)} /></div>
+              <select value={filtroCeros} onChange={e => setFiltroCeros(e.target.value)} className="bg-white border-2 border-slate-300 rounded-full px-3 py-2 text-xs font-bold text-slate-700 outline-none">
+                <option value="todas">Todas las secciones</option>
+                <option value="conExtra">Secciones con extraordinaria</option>
+                <option value="sinExtra">Secciones sin extraordinaria</option>
+              </select>
             </div>
           </div>
           )}
@@ -5532,6 +5653,7 @@ export default function App() {
                             )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                            {stats.sinElectores && <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-800 text-[9px] font-black uppercase" title="Todas sus manzanas tienen 0 electores: no instala (0 casillas)">Sin electores · no instala</span>}
                             {stats.variacion && <AlertTriangle className="w-4 h-4 text-red-500" title="Variación Padrón/Lista" />}
                             <button onClick={(e) => { e.stopPropagation(); confirmarBorrado(`Vas a borrar la casilla ${String(c.tipo)} de la sección ${f4(c.sede?.seccion)}${!isEspecial ? ` con sus ${1 + (c.alimentadoras || []).length} manzana(s)` : ''}. Afecta a todo tu equipo.`, () => { if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current); isLocalActionActive.current = true; setCasillasGlobales(prev => prev.filter(x => x.uid !== c.uid)); }); }} title={`Borrar ${String(c.tipo)}`} className="text-slate-400 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-50 text-left"><X className="w-4 h-4 text-left" /></button>
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -5686,10 +5808,13 @@ export default function App() {
                     const claveMostrada = seleccionBasicaTemp[s.seccion] ?? basicaSedePorSeccion[s.seccion] ?? claveManzana(s.manzanas[0]);
                     const hayCambioPendiente = claveMostrada !== basicaSedePorSeccion[s.seccion];
                     return (
-                      <div key={s.seccion} className={`flex flex-wrap items-center justify-between gap-3 bg-white border-2 rounded-xl px-4 py-2.5 shadow-sm text-left ${confirmada && !hayCambioPendiente ? 'border-slate-200' : 'border-amber-300'}`}>
-                        <div className="flex items-center gap-2.5 min-w-0 text-left">
+                      <div key={s.seccion} className={`bg-white border-2 rounded-xl shadow-sm text-left overflow-hidden ${confirmada && !hayCambioPendiente ? 'border-slate-200' : 'border-amber-300'}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+                        <div onClick={() => setBasicaExpandida(prev => { const n = new Set(prev); n.has(s.seccion) ? n.delete(s.seccion) : n.add(s.seccion); return n; })} title="Ver las manzanas de esta básica con su padrón" className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer select-none">
+                          {basicaExpandida.has(s.seccion) ? <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
                           {confirmada && !hayCambioPendiente ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
                           <p className="text-xs font-black uppercase text-slate-700 tracking-widest shrink-0">SEC. {f4(s.seccion)}</p>
+                          <span className="text-[10px] font-bold text-slate-400 shrink-0">{s.manzanas.length} mz · P {s.manzanas.reduce((t, m) => t + (parseInt(m.padron) || 0), 0).toLocaleString('es-MX')}{s.manzanas.some(m => (parseInt(m.padron) || 0) === 0) ? ` · ${s.manzanas.filter(m => (parseInt(m.padron) || 0) === 0).length} en 0` : ''}</span>
                           {!confirmada && !hayCambioPendiente && <span className="text-[9px] font-bold text-amber-600 uppercase truncate">Sin confirmar · usando Mz {f4(s.manzanas[0]?.manzana)} por default</span>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -5697,7 +5822,7 @@ export default function App() {
                             {s.manzanas.map((m, i) => {
                               const clave = claveManzana(m);
                               const nombreLoc = nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad;
-                              return <option key={i} value={clave}>Mz {f4(m.manzana)} · Loc {f4(m.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</option>;
+                              return <option key={i} value={clave}>Mz {f4(m.manzana)} · Loc {f4(m.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''} · P {parseInt(m.padron) || 0}</option>;
                             })}
                           </select>
                           {hayCambioPendiente ? (
@@ -5708,11 +5833,82 @@ export default function App() {
                           )}
                         </div>
                       </div>
+                      {basicaExpandida.has(s.seccion) && (
+                        <div className="border-t-2 border-slate-100 px-4 py-3 bg-slate-50">
+                          <p className="inline-flex items-center gap-1.5 w-fit bg-beige-400 text-slate-950 text-xs font-bold px-3.5 py-1 rounded-l-md rounded-r-full mb-2">Manzanas de la básica ({s.manzanas.length})</p>
+                          <div className="overflow-x-auto rounded-xl border-2 border-slate-200 bg-white">
+                            <table className="w-full text-xs">
+                              <thead className="bg-slate-100 text-slate-600"><tr>
+                                {['Localidad', 'Manzana', 'Padrón', 'Lista', ''].map((h, i) => <th key={i} className={`px-3 py-1.5 font-black uppercase text-[10px] ${i >= 2 && i <= 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>
+                                {s.manzanas.map((m, i) => {
+                                  const enCero = (parseInt(m.padron) || 0) === 0;
+                                  const esSede = claveManzana(m) === (basicaSedePorSeccion[s.seccion] ?? claveManzana(s.manzanas[0]));
+                                  const nombreLoc = nombreLocalidad(m.municipio, m.localidad) || m.nombreLocalidad;
+                                  return (
+                                    <tr key={i} className={`border-t border-slate-100 ${enCero ? 'bg-amber-50/60' : ''}`}>
+                                      <td className="px-3 py-1.5 font-bold text-slate-600">{f4(m.localidad)}{nombreLoc ? ` · ${nombreLoc}` : ''}</td>
+                                      <td className="px-3 py-1.5 font-black text-slate-800">{f4(m.manzana)}</td>
+                                      <td className={`px-3 py-1.5 text-right font-black ${enCero ? 'text-amber-800' : 'text-slate-800'}`}>{(parseInt(m.padron) || 0).toLocaleString('es-MX')}</td>
+                                      <td className="px-3 py-1.5 text-right font-bold text-slate-600">{(parseInt(m.lista) || 0).toLocaleString('es-MX')}</td>
+                                      <td className="px-3 py-1.5">
+                                        {esSede && <span className="px-2 py-0.5 rounded-md bg-slate-700 text-white text-[9px] font-black uppercase mr-1">Sede</span>}
+                                        {enCero && <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-800 text-[9px] font-black uppercase">0 electores</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      </div>
                     );
                   })}
                 </>
               );
             })()}
+        </div>
+        )}
+
+        {extraordinariasTab === 'ceros' && (
+        <div className="flex flex-col gap-3 pb-24 text-left">
+          {(() => {
+            const visibles = manzanasEnCero.secciones
+              .filter(sec => !busquedaCeros.trim() || f4(sec.seccion).includes(busquedaCeros.trim()))
+              .filter(sec => filtroCeros === 'todas' || (filtroCeros === 'conExtra' ? sec.conExtra : !sec.conExtra));
+            if (manzanasEnCero.total === 0) return <div className="p-8 text-center text-sm font-bold text-slate-400 bg-white border-2 border-dashed border-slate-300 rounded-2xl">El padrón cargado no tiene manzanas con 0 electores.</div>;
+            if (visibles.length === 0) return <div className="p-6 text-center text-sm font-bold text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-2xl">No hay secciones con ese filtro.</div>;
+            return visibles.map(sec => (
+              <div key={sec.seccion} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b-2 border-slate-100">
+                  <p className="text-sm font-black uppercase text-slate-700 tracking-widest">SEC. {f4(sec.seccion)}</p>
+                  <span className="text-[10px] font-bold text-slate-500">{sec.total} manzana(s) en 0 · {sec.conExtra ? 'sección con extraordinaria' : 'sección sin extraordinaria'}</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {sec.localidades.map(l => (
+                    <div key={l.localidad} className="px-4 py-2.5 flex flex-col gap-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-700">Loc {f4(l.localidad)}{(nombreLocalidad(l.municipio, l.localidad) || l.nombre) ? ` · ${nombreLocalidad(l.municipio, l.localidad) || l.nombre}` : ''}
+                          {l.sinElectores && <span className="ml-2 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-800 text-[9px] font-black uppercase">Localidad sin electores</span>}
+                        </p>
+                        <button onClick={() => abrirEnMesaDeArmado(sec.seccion, l.localidad)} title="Abre esta sección y localidad en la Mesa de Armado (izquierda) para asignar sus manzanas" className="text-[10px] font-black uppercase text-pink-600 hover:text-pink-700 flex items-center gap-1">Abrir en la Mesa <ArrowRight className="w-3.5 h-3.5" /></button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {l.manzanas.map(({ m, asignacion }) => (
+                          <span key={m.id} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${asignacion ? 'bg-beige-100 border-beige-300 text-slate-800' : 'bg-white border-dashed border-amber-300 text-slate-600'}`}>
+                            Mz {f4(m.manzana)} · {asignacion ? (asignacion.rol === 'sede' ? `sede de ${asignacion.tipo}` : `en ${asignacion.tipo}`) : 'en básica'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
         </div>
         )}
       </div>
