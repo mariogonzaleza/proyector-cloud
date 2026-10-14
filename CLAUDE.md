@@ -5,6 +5,21 @@ electorales por distrito: armado de extraordinarias, básicas/contiguas, especia
 (domicilios), equipamiento, folios y reportes. La usan los VOES de los 40 distritos. Responder
 siempre en español. Mario aprueba todo viendo primero el ambiente de pruebas.
 
+## Trabajo en dos equipos (casa y trabajo) — OBLIGATORIO
+Mario trabaja este repo desde dos computadoras, cada una con su propio chat. Lo único que
+comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
+- **Al iniciar:** el hook `.claude/hooks/sync_inicio.sh` (SessionStart) hace `git pull --ff-only`
+  y avisa el resultado. Si avisa cambios sin commitear, ramas divergidas o sin internet,
+  resolverlo y decírselo a Mario ANTES de editar nada. Nunca dar el repo por "al día" sin esto.
+- **Al terminar** (cuando Mario diga que ya terminamos, se despida o vaya a cambiar de equipo):
+  actualizar en este archivo "Estado actual" y "Pendientes" con lo hecho y lo que queda,
+  hacer commit (incluyendo cualquier cambio pendiente que Mario haya aprobado) y `git push`.
+  Confirmar con `git status` limpio y `git log origin/master..HEAD` vacío.
+- Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
+
+## Estado actual
+Al 13-oct-2026: todo en `master` y sincronizado con GitHub; sin trabajo a medias.
+
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
   Babel standalone. `index.html` carga React/lucide desde esm.sh, Tailwind por CDN (con su
