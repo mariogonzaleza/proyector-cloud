@@ -18,10 +18,23 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 14-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas.
-Último cambio: manzanas con 0 electores (tablero de la Mesa con padrón por manzana, pestaña
-"Manzanas en 0", detalle de manzanas en Sede de la básica y extraordinaria en 0 = no instala).
-Mario lo va a probar con datos reales; atender su retroalimentación.
+Al 20-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
+sin código a medias. Último cambio en producción (14-oct): manzanas con 0 electores — Mario lo
+probó con datos reales en su distrito y quedó bien; revisión de código y prueba de reglas OK.
+
+**Siguiente tarea (en espera de respuestas de Mario, NO empezar a programar sin ellas):**
+reasignar secciones/casillas de menos de 100 electores que no se proyectan a otra
+sección/casilla: su padrón/lista se suma al destino (puede subir la proyección) y los folios de
+boletas se generan en la sección destino. Preguntas abiertas que hay que contestar primero:
+1. Destino: ¿solo la básica de otra sección, básica o extraordinaria, o cualquier casilla?
+2. Restricción: ¿mismo municipio (recomendado), mismo municipio y distrito local, o cualquiera?
+3. Proyección Oficial INE: ¿la sección asignada queda con 0 casillas y nota "vota en sección X"
+   (con padrón/lista sumados en el destino), o desaparece su fila? (puede requerir consultar a
+   la Junta Local).
+4. ¿Se mueve todo el remanente de la básica o manzanas sueltas?
+Al diseñarlo, revisar todo lo que depende del número de casillas (conteos, Resumen y su PDF,
+Proyección Oficial y QGIS, folios, equipamiento, ubicación, versiones) y evitar cadenas
+(una sección asignada no puede recibir otras) y avisar si el remanente deja de ser < 100.
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -135,6 +148,7 @@ dt.items.add(new File([X.write(wb,{type:'array',bookType:'xlsx'})],'padron.xlsx'
 - Leer Firestore de pruebas por REST con el token de `indexedDB('firebaseLocalStorageDb')`.
 
 ## Pendientes (en orden de prioridad acordada)
+0. **Reasignar secciones de menos de 100 a otra sección/casilla** → ver "Estado actual" (esperando respuestas de Mario).
 1. **Versión sin internet** → ver `docs/PLAN_OFFLINE.md` (Mario lo pidió el 13-oct-2026: los
    VOES no pudieron conectarse en una reunión en Querétaro).
 2. Presencia: mostrar quién está editando cada distrito (Realtime Database con onDisconnect,
