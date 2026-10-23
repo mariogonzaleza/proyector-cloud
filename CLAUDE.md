@@ -92,8 +92,9 @@ asignación 0600→0601 en pausa.
   distrito (cualquier municipio). Su padrón/lista se suma a la básica destino (puede subir de
   casillas) y los folios salen en el destino. Sin cadenas (una sección mandada no recibe ni se
   manda a otra mandada). En Proyección Oficial el origen queda con padrón 0 y nota "Padrón
-  asignado a la sección X"; el destino "Incluye padrón y lista de la sección X asignada por menos
-  de 100". Las notas van en la primera columna vacía después de los datos, SIN encabezado (así lo
+  asignado a la sección X (N de padrón y M de lista)"; el destino "Se le suman N de padrón y M de
+  lista de la sección X (asignada por menos de 100)" (Mario pidió las cifras, 23-oct; también en
+  el Excel de Observaciones). Mario lo probó con su caso real 7292→4116 y quedó bien. Las notas van en la primera columna vacía después de los datos, SIN encabezado (así lo
   pidió Mario). QGIS: manzanas del origen con claveCas `<destino>-B`. Si cambian las condiciones
   (le arman extraordinaria, llega a 100, sale del padrón…), la asignación queda "en pausa" con
   aviso en el Listado y botón "Quitar asignación"; no se borra sola.

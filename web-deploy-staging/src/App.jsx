@@ -1694,16 +1694,31 @@ export default function App() {
 
     // Secciones de menos de 100 asignadas: su padrón y lista pasan a la sección que las recibe, y la
     // aclaración va en la primera columna vacía después de los datos (sin encabezado).
+    // La nota dice cuánto padrón y lista se mueve.
+    const fmtN = (n) => Number(n || 0).toLocaleString('es-MX');
+    const movido = {};
     consolidadoB_C.forEach(r => {
       if (r.asignadaA && statsPorSeccion[r.seccion] && statsPorSeccion[r.asignadaA]) {
-        statsPorSeccion[r.asignadaA].padronSec += statsPorSeccion[r.seccion].padronSec;
-        statsPorSeccion[r.asignadaA].listaSec += statsPorSeccion[r.seccion].listaSec;
+        movido[r.seccion] = { pad: statsPorSeccion[r.seccion].padronSec, lis: statsPorSeccion[r.seccion].listaSec };
+      }
+    });
+    const notaOrigen = (r) => `Padrón asignado a la sección ${f4(r.asignadaA)} (${fmtN(movido[r.seccion]?.pad)} de padrón y ${fmtN(movido[r.seccion]?.lis)} de lista)`;
+    const notaDestino = (r) => {
+      const origenes = (r.recibeDe || []).filter(o => movido[o]);
+      if (!origenes.length) return '';
+      const partes = origenes.map(o => `${fmtN(movido[o].pad)} de padrón y ${fmtN(movido[o].lis)} de lista de la sección ${f4(o)}`);
+      return `Se le suman ${partes.join('; ')} (${origenes.length > 1 ? 'asignadas' : 'asignada'} por menos de 100)`;
+    };
+    consolidadoB_C.forEach(r => {
+      if (movido[r.seccion]) {
+        statsPorSeccion[r.asignadaA].padronSec += movido[r.seccion].pad;
+        statsPorSeccion[r.asignadaA].listaSec += movido[r.seccion].lis;
         statsPorSeccion[r.seccion].padronSec = 0;
         statsPorSeccion[r.seccion].listaSec = 0;
-        statsPorSeccion[r.seccion].nota = `Padrón asignado a la sección ${f4(r.asignadaA)}`;
+        statsPorSeccion[r.seccion].nota = notaOrigen(r);
       }
-      if (r.recibeDe && r.recibeDe.length && statsPorSeccion[r.seccion]) {
-        statsPorSeccion[r.seccion].nota = `Incluye padrón y lista de la sección ${r.recibeDe.map(f4).join(', ')} asignada por menos de 100`;
+      if (r.recibeDe && r.recibeDe.length && statsPorSeccion[r.seccion] && notaDestino(r)) {
+        statsPorSeccion[r.seccion].nota = notaDestino(r);
       }
     });
 
@@ -1795,9 +1810,9 @@ export default function App() {
     filasConsolidadoFinal.forEach(row => {
       const numCasillas = Math.max(row.countPadron, row.countLista);
       const s = statsPorSeccion[row.seccion];
-      const notaRecibe = row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length ? [`Incluye padrón y lista de la sección ${row.recibeDe.map(f4).join(', ')} asignada por menos de 100`] : [];
+      const notaRecibe = row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length && notaDestino(row) ? [notaDestino(row)] : [];
       if (row.asignadaA) {
-        ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", 0, 0, `Padrón asignado a la sección ${f4(row.asignadaA)}` ]);
+        ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", 0, 0, notaOrigen(row) ]);
       } else if (numCasillas === 0 && (row.padronRef > 0 || row.listaRef > 0)) {
         ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", Number(row.padronRef), Number(row.listaRef), ...notaRecibe ]);
       } else {
@@ -3042,8 +3057,10 @@ export default function App() {
         const observaciones = [];
         if (esVariacion) observaciones.push('VARIACIÓN PADRÓN/LISTA');
         if (esMenos100) observaciones.push('MENOS DE 100');
-        if (row.asignadaA) observaciones.push(`PADRÓN ASIGNADO A LA SECCIÓN ${f4(row.asignadaA)}`);
-        if (row.recibeDe && row.recibeDe.length) observaciones.push(`INCLUYE PADRÓN Y LISTA DE LA SECCIÓN ${row.recibeDe.map(f4).join(', ')} (MENOS DE 100)`);
+        const remDe = (sec) => remanentesBasica.remanentes[normalizarClave(sec)] || { pad: 0, lis: 0 };
+        const cifras = (sec) => `${Number(remDe(sec).pad).toLocaleString('es-MX')} DE PADRÓN Y ${Number(remDe(sec).lis).toLocaleString('es-MX')} DE LISTA`;
+        if (row.asignadaA) observaciones.push(`PADRÓN ASIGNADO A LA SECCIÓN ${f4(row.asignadaA)} (${cifras(row.seccion)})`);
+        if (row.recibeDe && row.recibeDe.length) observaciones.push(`SE LE SUMAN ${row.recibeDe.map(o => `${cifras(o)} DE LA SECCIÓN ${f4(o)}`).join('; ')} (MENOS DE 100)`);
         if (esCercaCorte750) observaciones.push(`CERCA DEL CORTE DE 750 (${textoMargen750.toUpperCase()}, RIESGO ${nivelRiesgo750})`);
         filas.push({
           seccion: row.seccion, fed: row.fed, loc: row.loc, mun: row.mun, categoria: row.categoria,
@@ -3056,7 +3073,7 @@ export default function App() {
     });
     filas.sort((a, b) => Number(a.seccion) - Number(b.seccion));
     return filas;
-  }, [seccionesAgrupadas]);
+  }, [seccionesAgrupadas, remanentesBasica]);
 
   const seccionesMostradas = useMemo(() => {
       if (!filtroAlerta) return seccionesFiltradas;
