@@ -360,6 +360,12 @@ doc.info_box('SEGUROS', (
     'está en uso en otra casilla (como sede o como Mz Integrante), no la mueve en silencio: te avisa '
     'primero de dónde se quitaría y qué pasaría con esa otra casilla, y solo continúa si confirmas.'
 ), style='amber')
+doc.info_box('PRIMERO ES LA BÁSICA', (
+    'Una sección no puede quedarse solo con extraordinarias: su básica debe conservar al menos una '
+    'manzana con electores. Si al confirmar todos los electores de la sección quedarían en '
+    'extraordinarias, la Mesa no te deja y te explica por qué. Si ya había secciones así (de antes o '
+    'por un padrón nuevo), aparecen con aviso “Sin básica” en Polígonos Guardados y en el Listado.'
+), style='amber')
 doc.info_box('CORREGIR', (
     '¿Asignaste mal una manzana? Dentro de “Mz Integrantes”, el botón pequeño junto a esa manzana la '
     'quita sin tocar el resto de la casilla. Si necesitas borrar la casilla completa, la ‘X’ en la '
@@ -435,6 +441,14 @@ doc.paragraph([
     (' — Tu proyección completa por sección, con las observaciones (Variación, Menos de 100, Cerca '
      'del Corte de 750). La de 750 indica el margen: “Faltan N (+1 casilla)” o “Sobran N (-1 casilla)”; '
      '750 sigue siendo 1 casilla y la segunda se abre en 751.', False),
+], gap_after=8)
+doc.paragraph([
+    ('•  ', False), ('Asignar a otra sección (básicas de menos de 100)', True),
+    (' — En Listado de Casillas, una básica que no se instala por tener menos de 100 electores tiene '
+     'el botón “Asignar a otra sección”: eliges la sección donde van a votar y su padrón y lista se '
+     'suman a la básica de esa sección (puede subir de casillas); los folios también se generan ahí. '
+     'En la Proyección Oficial INE cada una lleva su nota al lado. Si después cambia algo (por ejemplo, '
+     'le armas una extraordinaria), la asignación queda “en pausa” con aviso y la puedes quitar.', False),
 ], gap_after=8)
 doc.info_box('IMPORTANTE', [
     ('Dentro de Listado de Casillas, el botón ', False), ('“Proyección Oficial INE”', True),

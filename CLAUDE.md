@@ -21,7 +21,7 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 Al 23-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
 sin código a medias. Último cambio en producción (23-oct): asignar secciones de menos de 100 a
 otra sección + regla "sección sin básica" (ver Reglas de negocio). Probado en pruebas D14.
-Falta: agregar estas dos funciones a la Guía Rápida (dentro de 02/05, sin cambiar el orden).
+Guía Rápida actualizada con ambas (recuadro en 02 y viñeta en 05; sigue en 4 páginas).
 En pruebas D14 queda de ejemplo: E1 en la 0600 con toda la sección (sale "sin básica") y la
 asignación 0600→0601 en pausa.
 
@@ -152,8 +152,6 @@ dt.items.add(new File([X.write(wb,{type:'array',bookType:'xlsx'})],'padron.xlsx'
 - Leer Firestore de pruebas por REST con el token de `indexedDB('firebaseLocalStorageDb')`.
 
 ## Pendientes (en orden de prioridad acordada)
-0. **Guía Rápida**: agregar "Asignar a otra sección (menos de 100)" y la regla "primero es la
-   básica" (respetar orden 01→05).
 1. **Versión sin internet** → ver `docs/PLAN_OFFLINE.md` (Mario lo pidió el 13-oct-2026: los
    VOES no pudieron conectarse en una reunión en Querétaro).
 2. Presencia: mostrar quién está editando cada distrito (Realtime Database con onDisconnect,
