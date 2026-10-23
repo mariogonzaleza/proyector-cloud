@@ -18,23 +18,12 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 20-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
-sin código a medias. Último cambio en producción (14-oct): manzanas con 0 electores — Mario lo
-probó con datos reales en su distrito y quedó bien; revisión de código y prueba de reglas OK.
-
-**Siguiente tarea (en espera de respuestas de Mario, NO empezar a programar sin ellas):**
-reasignar secciones/casillas de menos de 100 electores que no se proyectan a otra
-sección/casilla: su padrón/lista se suma al destino (puede subir la proyección) y los folios de
-boletas se generan en la sección destino. Preguntas abiertas que hay que contestar primero:
-1. Destino: ¿solo la básica de otra sección, básica o extraordinaria, o cualquier casilla?
-2. Restricción: ¿mismo municipio (recomendado), mismo municipio y distrito local, o cualquiera?
-3. Proyección Oficial INE: ¿la sección asignada queda con 0 casillas y nota "vota en sección X"
-   (con padrón/lista sumados en el destino), o desaparece su fila? (puede requerir consultar a
-   la Junta Local).
-4. ¿Se mueve todo el remanente de la básica o manzanas sueltas?
-Al diseñarlo, revisar todo lo que depende del número de casillas (conteos, Resumen y su PDF,
-Proyección Oficial y QGIS, folios, equipamiento, ubicación, versiones) y evitar cadenas
-(una sección asignada no puede recibir otras) y avisar si el remanente deja de ser < 100.
+Al 23-oct-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
+sin código a medias. Último cambio en producción (23-oct): asignar secciones de menos de 100 a
+otra sección + regla "sección sin básica" (ver Reglas de negocio). Probado en pruebas D14.
+Falta: agregar estas dos funciones a la Guía Rápida (dentro de 02/05, sin cambiar el orden).
+En pruebas D14 queda de ejemplo: E1 en la 0600 con toda la sección (sale "sin básica") y la
+asignación 0600→0601 en pausa.
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -97,6 +86,21 @@ Proyección Oficial y QGIS, folios, equipamiento, ubicación, versiones) y evita
   se conserva en el armado, no cuenta como extraordinaria proyectada de su sección (su básica
   recibe el trato normal de menos de 100), y en Proyección Oficial/QGIS sus manzanas van a la
   básica. Las especiales no aplican (no llevan padrón por manzana; siempre 1 casilla).
+- **Asignar sección de menos de 100** (`seccionesAsignadas` = {origen: destino}, guardado en el
+  documento del distrito; `resolverAsignacionesMenos100`): una sección cuya básica no se instala
+  (1–99, sin extraordinaria proyectada) se manda COMPLETA a la básica de otra sección del
+  distrito (cualquier municipio). Su padrón/lista se suma a la básica destino (puede subir de
+  casillas) y los folios salen en el destino. Sin cadenas (una sección mandada no recibe ni se
+  manda a otra mandada). En Proyección Oficial el origen queda con padrón 0 y nota "Padrón
+  asignado a la sección X"; el destino "Incluye padrón y lista de la sección X asignada por menos
+  de 100". Las notas van en la primera columna vacía después de los datos, SIN encabezado (así lo
+  pidió Mario). QGIS: manzanas del origen con claveCas `<destino>-B`. Si cambian las condiciones
+  (le arman extraordinaria, llega a 100, sale del padrón…), la asignación queda "en pausa" con
+  aviso en el Listado y botón "Quitar asignación"; no se borra sola.
+- **Primero es la básica**: no puede haber una sección con extraordinaria(s) y básica en 0
+  electores (aunque conserve manzanas en 0; los electores recibidos por asignación sí cuentan).
+  La Mesa de armado BLOQUEA el confirmar que dejaría así una sección; los casos que ya existen
+  solo se avisan en ámbar (Polígonos guardados y Listado, etiqueta "Sin básica").
 - Especiales: nomenclatura S + número, sin repetir dentro de una sección (la numeración es por
   sección); se administran en Proyección → "Casillas especiales" (no salen en Polígonos).
 - "Reiniciar" (barra superior, con candado de 15 s) borra SOLO el armado: extraordinarias,
@@ -148,7 +152,8 @@ dt.items.add(new File([X.write(wb,{type:'array',bookType:'xlsx'})],'padron.xlsx'
 - Leer Firestore de pruebas por REST con el token de `indexedDB('firebaseLocalStorageDb')`.
 
 ## Pendientes (en orden de prioridad acordada)
-0. **Reasignar secciones de menos de 100 a otra sección/casilla** → ver "Estado actual" (esperando respuestas de Mario).
+0. **Guía Rápida**: agregar "Asignar a otra sección (menos de 100)" y la regla "primero es la
+   básica" (respetar orden 01→05).
 1. **Versión sin internet** → ver `docs/PLAN_OFFLINE.md` (Mario lo pidió el 13-oct-2026: los
    VOES no pudieron conectarse en una reunión en Querétaro).
 2. Presencia: mostrar quién está editando cada distrito (Realtime Database con onDisconnect,

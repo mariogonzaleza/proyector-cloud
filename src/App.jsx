@@ -213,6 +213,32 @@ const MiniColumnas = ({ titulo, valores, etiquetas }) => {
 const extraTieneElectores = (c) => [c?.sede, ...((c && c.alimentadoras) || [])].filter(Boolean)
   .some(m => (parseInt(m.padron) || 0) > 0 || (parseInt(m.lista) || 0) > 0);
 
+// Secciones de menos de 100 que no se proyectan, asignadas a otra sección completa (sus electores
+// votan allá; se suman al remanente de la básica de la sección que recibe). `asignaciones`:
+// { origenNormalizado: destinoNormalizado }. `remanentes`: { seccionNormalizada: { pad, lis,
+// tieneExtra } }. Solo valen las asignaciones cuyo origen realmente no se proyecta, cuyo destino
+// existe y sin cadenas (una sección asignada no puede recibir otras); el resto se reporta.
+const resolverAsignacionesMenos100 = (asignaciones, remanentes) => {
+  const asignadaA = {}, recibeDe = {}, invalidas = [];
+  Object.entries(asignaciones || {}).forEach(([o, d]) => {
+    const r = remanentes[o];
+    let motivo = '';
+    const so = String(o).padStart(4, '0'), sd = String(d).padStart(4, '0');
+    if (!r) motivo = `la sección ${so} ya no viene en el padrón que cargaste`;
+    else if (!remanentes[d]) motivo = `la sección ${sd} ya no viene en el padrón que cargaste`;
+    else if (o === d) motivo = 'estaba asignada a sí misma';
+    else if (asignaciones[d]) motivo = `la ${sd} también está mandada a otra sección, y no se pueden encadenar`;
+    else if (r.tieneExtra && r.pad === 0 && r.lis === 0) motivo = `a la ${so} se le armó una extraordinaria con todos sus electores, así que su básica quedó vacía y ya no hay nada que mandar a la ${sd}`;
+    else if (r.tieneExtra) motivo = `a la ${so} se le armó una extraordinaria; con eso su básica ya se instala aunque tenga menos de 100, y ya no hace falta mandarla a la ${sd}`;
+    else if (r.pad === 0 && r.lis === 0) motivo = `la básica de la ${so} ya no tiene electores, así que no hay nada que mandar a la ${sd}`;
+    else if (!((r.pad > 0 && r.pad < 100) || (r.lis > 0 && r.lis < 100))) motivo = `la básica de la ${so} ya llegó a 100 electores o más, así que ya se instala sola`;
+    if (motivo) { invalidas.push({ origen: o, destino: d, motivo }); return; }
+    asignadaA[o] = d;
+    (recibeDe[d] = recibeDe[d] || []).push(o);
+  });
+  return { asignadaA, recibeDe, invalidas };
+};
+
 export default function App() {
   const [view, setView] = useState('welcome'); 
   const [user, setUser] = useState(null); 
@@ -331,6 +357,9 @@ export default function App() {
   // archivo del SUC.
   const [comparativo2024Base, setComparativo2024Base] = useState(null);
   const [reinicioDesbloqueado, setReinicioDesbloqueado] = useState(false);
+  // Secciones de menos de 100 asignadas a otra sección: { origen: destino } con claves de 4 dígitos.
+  const [seccionesAsignadas, setSeccionesAsignadas] = useState({});
+  const [modalAsignarSeccion, setModalAsignarSeccion] = useState({ isOpen: false, origen: '', destino: '' });
   const [comparativo2024Expandido, setComparativo2024Expandido] = useState(false);
   // Bitácora de cambios de domicilio (manual, botón de completar, Excel masivo, SUC). Se conserva
   // para siempre (nunca se borra sola al salir/entrar) — solo se vacía si el usuario da "Limpieza
@@ -548,6 +577,10 @@ export default function App() {
           setBasicaSedePorSeccion(bs ? JSON.parse(bs) : {});
       } catch (e) { setBasicaSedePorSeccion({}); }
       try {
+          const sa = localStorage.getItem(`proyector_seccionesAsignadas_D${numStr}`);
+          setSeccionesAsignadas(sa ? JSON.parse(sa) : {});
+      } catch (e) { setSeccionesAsignadas({}); }
+      try {
           const f = localStorage.getItem(`proyector_folioConfig_D${numStr}`);
           setFolioConfig(f ? { ...DEFAULT_FOLIO_CONFIG, ...JSON.parse(f) } : DEFAULT_FOLIO_CONFIG);
       } catch (e) { setFolioConfig(DEFAULT_FOLIO_CONFIG); }
@@ -590,6 +623,11 @@ export default function App() {
       if (!distritoInfo.numero) return;
       try { localStorage.setItem(`proyector_basicaSedePorSeccion_D${distritoInfo.numero}`, JSON.stringify(basicaSedePorSeccion)); } catch (e) {}
   }, [basicaSedePorSeccion, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try { localStorage.setItem(`proyector_seccionesAsignadas_D${distritoInfo.numero}`, JSON.stringify(seccionesAsignadas)); } catch (e) {}
+  }, [seccionesAsignadas, distritoInfo.numero]);
 
   useEffect(() => {
       if (!distritoInfo.numero) return;
@@ -1333,6 +1371,30 @@ export default function App() {
         }
     }
 
+    // "Primero es la básica": una sección no puede quedarse con todos sus electores en
+    // extraordinarias. Se cuenta por electores (padrón + lista), así que una básica que solo
+    // conserva manzanas en 0 también cuenta como "sin básica". Los electores que la sección recibe
+    // de otra asignada por menos de 100 sí cuentan para su básica.
+    const destinoEsEspecial = form.rol === 'alimentadora' && String(casillasGlobales.find(c => String(c.uid) === String(form.casillaUidDestino))?.tipo || '').toUpperCase().startsWith('S');
+    if (!destinoEsEspecial) {
+      const secN = normalizarClave(form.seccionOrigen);
+      const reclamadas = new Set();
+      casillasGlobales.forEach(c => {
+        if (String(c.tipo).toUpperCase().startsWith('S')) return;
+        [c.sede, ...(c.alimentadoras || [])].filter(Boolean).forEach(m => { if (normalizarClave(m.seccion) === secN) reclamadas.add(claveManzana(m)); });
+      });
+      form.manzanasSeleccionadas.forEach(m => reclamadas.add(claveManzana(m)));
+      const electores = (m) => (parseInt(m.padron) || 0) + (parseInt(m.lista) || 0);
+      const mzsSeccion = rawElectoralData.filter(m => normalizarClave(m.seccion) === secN);
+      const enExtras = mzsSeccion.filter(m => reclamadas.has(claveManzana(m))).reduce((t, m) => t + electores(m), 0);
+      const enBasica = mzsSeccion.filter(m => !reclamadas.has(claveManzana(m))).reduce((t, m) => t + electores(m), 0);
+      const recibidos = (remanentesBasica.recibeDe[secN] || []).reduce((t, o) => t + remanentesBasica.remanentes[o].pad + remanentesBasica.remanentes[o].lis, 0);
+      if (enExtras > 0 && enBasica + recibidos === 0) {
+        setErrorMessage(`Bloqueo: la Sección ${f4(form.seccionOrigen)} se quedaría sin básica — todos sus electores estarían en extraordinarias. Primero es la básica: deja en la básica al menos una manzana con electores.`);
+        return;
+      }
+    }
+
     // Seguro de reasignación: si alguna manzana seleccionada ya pertenece a OTRA casilla
     // (sede o alimentadora) distinta al destino actual, no se mueve en silencio — se avisa
     // primero y se pide confirmar, porque a esa otra casilla se le quitaría de encima.
@@ -1386,6 +1448,28 @@ export default function App() {
     : !/^S[1-9][0-9]*$/.test(nomenclaturaEspecial(especialForm.tipo)) ? 'La nomenclatura debe ser S seguida de un número: S1, S2…'
     : especialYaExiste(especialForm.seccion, especialForm.tipo) ? `La sección ${f4(especialForm.seccion)} ya tiene una ${nomenclaturaEspecial(especialForm.tipo)}. La siguiente libre es ${siguienteEspecialLibre(especialForm.seccion)}.`
     : '';
+
+  // Asignar una sección de menos de 100 (que no se proyecta) a otra sección completa, o quitar la
+  // asignación. Se guarda como { origen: destino } con claves de 4 dígitos.
+  const abrirAsignarSeccion = (origen) => setModalAsignarSeccion({ isOpen: true, origen: String(origen), destino: '' });
+  const guardarAsignacionSeccion = () => {
+    const { origen, destino } = modalAsignarSeccion;
+    if (!origen || !destino) return;
+    if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+    isLocalActionActive.current = true;
+    setSeccionesAsignadas(prev => ({ ...prev, [normalizarClave(origen)]: normalizarClave(destino) }));
+    setModalAsignarSeccion({ isOpen: false, origen: '', destino: '' });
+    setSuccessMessage(`Sección ${f4(origen)} asignada a la sección ${f4(destino)}: su padrón y lista ahora se proyectan allá.`);
+  };
+  const quitarAsignacionSeccion = (origen, destino) => confirmarBorrado(
+    `Vas a quitar la asignación de la sección ${f4(origen)}${destino ? ` a la sección ${f4(destino)}` : ''}. Su padrón y lista regresan a su propia sección (y como tiene menos de 100, no se proyecta).`,
+    () => {
+      if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
+      isLocalActionActive.current = true;
+      setSeccionesAsignadas(prev => { const n = { ...prev }; delete n[normalizarClave(origen)]; return n; });
+    },
+    'Sí, quitar'
+  );
 
   const especialesOrdenadas = useMemo(() => casillasGlobales
     .filter(c => String(c.tipo).toUpperCase().startsWith('S'))
@@ -1555,6 +1639,7 @@ export default function App() {
 
     sections.forEach(secId => {
         const s = statsPorSeccionQGIS[secId];
+        const destinoAsignadoQGIS = remanentesBasica.asignadaA[normalizarClave(secId)] ? remanentesBasica.remanentes[remanentesBasica.asignadaA[normalizarClave(secId)]].sec : null;
         const extraordinariasDeSeccion = casillasGlobales.filter(c => String(c.sede?.seccion) === secId && !String(c.tipo).startsWith('S') && extraTieneElectores(c));
         let asignacionesMzs = {};
         extraordinariasDeSeccion.forEach(ext => {
@@ -1573,10 +1658,11 @@ export default function App() {
                 const sedeElegida = basicaSedePorSeccion[secId];
                 if (sedeElegida ? claveManzana(mz) === sedeElegida : basicasMzsIds[0] === mz.id) marcaSede = "*";
             }
+            if (destinoAsignadoQGIS) marcaSede = '';
             const tipoCas = marcaB || marcaE;
             const manzanaRaw = mz.manzana || '9999';
             const llave = `${secId}${mz.localidad}${manzanaRaw}`;
-            const claveCas = `${secId}-${tipoCas}`;
+            const claveCas = `${destinoAsignadoQGIS || secId}-${tipoCas}`;
             wsQ_data.push([
                 s.fed, s.loc, Number(s.mun), f4(secId), f4(mz.localidad), mz.manzana ? f4(mz.manzana) : "9999",
                 parseInt(mz.padron) || 0, parseInt(mz.lista) || 0, "", marcaB, marcaE, marcaSede,
@@ -1604,6 +1690,21 @@ export default function App() {
       const padronSec = mzsDeEstaSeccion.reduce((sum, m) => sum + (parseInt(m.padron) || 0), 0);
       const listaSec = mzsDeEstaSeccion.reduce((sum, m) => sum + (parseInt(m.lista) || 0), 0);
       statsPorSeccion[secId] = { fed, loc, mun, padronSec, listaSec, basicas: 0, contiguas: 0, extraordinarias: 0, especiales: 0, mzs: mzsDeEstaSeccion };
+    });
+
+    // Secciones de menos de 100 asignadas: su padrón y lista pasan a la sección que las recibe, y la
+    // aclaración va en la primera columna vacía después de los datos (sin encabezado).
+    consolidadoB_C.forEach(r => {
+      if (r.asignadaA && statsPorSeccion[r.seccion] && statsPorSeccion[r.asignadaA]) {
+        statsPorSeccion[r.asignadaA].padronSec += statsPorSeccion[r.seccion].padronSec;
+        statsPorSeccion[r.asignadaA].listaSec += statsPorSeccion[r.seccion].listaSec;
+        statsPorSeccion[r.seccion].padronSec = 0;
+        statsPorSeccion[r.seccion].listaSec = 0;
+        statsPorSeccion[r.seccion].nota = `Padrón asignado a la sección ${f4(r.asignadaA)}`;
+      }
+      if (r.recibeDe && r.recibeDe.length && statsPorSeccion[r.seccion]) {
+        statsPorSeccion[r.seccion].nota = `Incluye padrón y lista de la sección ${r.recibeDe.map(f4).join(', ')} asignada por menos de 100`;
+      }
     });
 
     consolidadoB_C.forEach(r => {
@@ -1638,7 +1739,8 @@ export default function App() {
       ws1_data.push([
         String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, String(f4(secId)), s.padronSec, s.listaSec, "",
         s.basicas, s.contiguas, s.extraordinarias, s.especiales, "",
-        {t: 'n', f: `SUM(H${rowIdx}:K${rowIdx})`}
+        {t: 'n', f: `SUM(H${rowIdx}:K${rowIdx})`},
+        ...(s.nota ? [s.nota] : [])
       ]);
       rowIdx++;
     });
@@ -1693,8 +1795,11 @@ export default function App() {
     filasConsolidadoFinal.forEach(row => {
       const numCasillas = Math.max(row.countPadron, row.countLista);
       const s = statsPorSeccion[row.seccion];
-      if (numCasillas === 0 && (row.padronRef > 0 || row.listaRef > 0)) {
-        ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", Number(row.padronRef), Number(row.listaRef) ]);
+      const notaRecibe = row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length ? [`Incluye padrón y lista de la sección ${row.recibeDe.map(f4).join(', ')} asignada por menos de 100`] : [];
+      if (row.asignadaA) {
+        ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", 0, 0, `Padrón asignado a la sección ${f4(row.asignadaA)}` ]);
+      } else if (numCasillas === 0 && (row.padronRef > 0 || row.listaRef > 0)) {
+        ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), "", "", Number(row.padronRef), Number(row.listaRef), ...notaRecibe ]);
       } else {
         for (let i = 0; i < numCasillas; i++) {
           let nomenclaturaCasilla = '';
@@ -1703,7 +1808,7 @@ export default function App() {
           else { nomenclaturaCasilla = i === 0 ? 'B' : `C${i}`; }
           const valorPadron = row.distPadron[i] ? row.distPadron[i].valor : 0;
           const valorLista = row.distLista[i] ? row.distLista[i].valor : 0;
-          ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), nomenclaturaCasilla, "", valorPadron, valorLista ]);
+          ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), nomenclaturaCasilla, "", valorPadron, valorLista, ...(i === 0 ? notaRecibe : []) ]);
         }
       }
     });
@@ -2545,15 +2650,19 @@ export default function App() {
     window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Aviso_Importacion_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
-  const consolidadoB_C = useMemo(() => {
-    if (rawElectoralData.length === 0) return [];
+  // Remanente de la básica de cada sección (lo que no atienden sus extraordinarias proyectadas) y
+  // asignaciones de secciones de menos de 100 a otra sección. Se resuelve aquí una sola vez y todo lo
+  // demás (Listado, Resumen y su PDF, Proyección Oficial, QGIS, folios, equipamiento, ubicación)
+  // toma el resultado de consolidadoB_C.
+  const remanentesBasica = useMemo(() => {
+    const remanentes = {};
+    if (rawElectoralData.length === 0) return { remanentes, asignadaA: {}, recibeDe: {}, invalidas: [] };
     const padronPorSec = {}; const listaPorSec = {};
     rawElectoralData.forEach(mz => {
       const s = String(mz.seccion);
       padronPorSec[s] = (padronPorSec[s] || 0) + (parseInt(mz.padron) || 0);
       listaPorSec[s] = (listaPorSec[s] || 0) + (parseInt(mz.lista) || 0);
     });
-    
     const consumedPad = {}; const consumedLis = {};
     casillasGlobales.forEach(c => {
       [c.sede, ...(c.alimentadoras || [])].forEach(m => {
@@ -2563,16 +2672,49 @@ export default function App() {
         consumedLis[s] = (consumedLis[s] || 0) + (parseInt(m.lista) || 0);
       });
     });
-    
+    sections.forEach(sec => {
+      remanentes[normalizarClave(sec)] = {
+        sec,
+        pad: Math.max(0, (padronPorSec[sec] || 0) - (consumedPad[sec] || 0)),
+        lis: Math.max(0, (listaPorSec[sec] || 0) - (consumedLis[sec] || 0)),
+        tieneExtra: casillasGlobales.some(c => String(c.sede?.seccion) === sec && !String(c.tipo).startsWith('S') && extraTieneElectores(c)),
+      };
+    });
+    return { remanentes, ...resolverAsignacionesMenos100(seccionesAsignadas, remanentes) };
+  }, [rawElectoralData, casillasGlobales, sections, seccionesAsignadas]);
+
+  const seccionesSinBasica = useMemo(() => {
+    const { remanentes, asignadaA } = remanentesBasica;
+    return Object.entries(remanentes)
+      .filter(([k, r]) => r.tieneExtra && !asignadaA[k] && r.pad === 0 && r.lis === 0 && !((remanentesBasica.recibeDe[k] || []).length))
+      .map(([, r]) => r.sec)
+      .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  }, [remanentesBasica]);
+
+  const consolidadoB_C = useMemo(() => {
+    if (rawElectoralData.length === 0) return [];
+    const { remanentes, asignadaA, recibeDe } = remanentesBasica;
     return sections.map(sec => {
-      const totalPad = padronPorSec[sec] || 0; const totalLis = listaPorSec[sec] || 0;
-      const consPad = consumedPad[sec] || 0; const consLis = consumedLis[sec] || 0;
-      const remPad = Math.max(0, totalPad - consPad); const remLis = Math.max(0, totalLis - consLis);
-      
+      const k = normalizarClave(sec);
+      const r = remanentes[k];
+      // Sección asignada a otra: no se proyecta aquí; su padrón y lista se suman en la que recibe.
+      if (asignadaA[k]) {
+        return {
+          seccion: sec, padronRestante: 0, listaRestante: 0, padronPropio: r.pad, listaPropia: r.lis,
+          nomenclaturaPadron: 'NO INSTALA', nomenclaturaLista: 'NO INSTALA', countPadron: 0, countLista: 0,
+          distPadron: [{ nombre: 'NO INSTALA', valor: 0 }], distLista: [{ nombre: 'NO INSTALA', valor: 0 }],
+          variacion: false, asignadaA: remanentes[asignadaA[k]].sec, recibeDe: [], padronRecibido: 0, listaRecibida: 0,
+        };
+      }
+      const recibidas = (recibeDe[k] || []).map(o => remanentes[o]);
+      const padronRecibido = recibidas.reduce((t, x) => t + x.pad, 0);
+      const listaRecibida = recibidas.reduce((t, x) => t + x.lis, 0);
+      const remPad = r.pad + padronRecibido; const remLis = r.lis + listaRecibida;
+
       let countPadron = 0; let countLista = 0;
       let nomPadron = ""; let distPadron = []; let nomLista = ""; let distLista = [];
 
-      const tieneExtraordinaria = casillasGlobales.some(c => String(c.sede?.seccion) === sec && !String(c.tipo).startsWith('S') && extraTieneElectores(c));
+      const tieneExtraordinaria = r.tieneExtra;
 
       if (!tieneExtraordinaria && ((remPad > 0 && remPad < 100) || (remLis > 0 && remLis < 100))) {
         nomPadron = "NO INSTALA"; nomLista = "NO INSTALA";
@@ -2590,12 +2732,13 @@ export default function App() {
         }
       }
       
-      return { 
-        seccion: sec, padronRestante: remPad, listaRestante: remLis, 
-        nomenclaturaPadron: nomPadron, nomenclaturaLista: nomLista, countPadron, countLista, distPadron, distLista, variacion: countPadron !== countLista
+      return {
+        seccion: sec, padronRestante: remPad, listaRestante: remLis,
+        nomenclaturaPadron: nomPadron, nomenclaturaLista: nomLista, countPadron, countLista, distPadron, distLista, variacion: countPadron !== countLista,
+        asignadaA: null, recibeDe: recibidas.map(x => x.sec), padronRecibido, listaRecibida,
       };
     });
-  }, [rawElectoralData, casillasGlobales, sections]);
+  }, [rawElectoralData, sections, remanentesBasica]);
 
   const filasConsolidadoFinal = useMemo(() => {
     const res = [];
@@ -2605,8 +2748,8 @@ export default function App() {
       const loc = mzsDeEstaSeccion.length > 0 ? String(mzsDeEstaSeccion[0].local) : "N/A";
       const mun = mzsDeEstaSeccion.length > 0 && mzsDeEstaSeccion[0].municipio ? String(mzsDeEstaSeccion[0].municipio).trim().padStart(3, '0') : "000";
 
-      if (row.countPadron > 0 || row.countLista > 0 || row.padronRestante > 0 || row.listaRestante > 0) {
-        res.push({ fed, loc, mun, seccion: row.seccion, categoria: 'BASICA', nomenclaturaPadron: row.nomenclaturaPadron, nomenclaturaLista: row.nomenclaturaLista, distPadron: row.distPadron, distLista: row.distLista, padronRef: row.padronRestante, listaRef: row.listaRestante, countPadron: row.countPadron, countLista: row.countLista, variacion: row.variacion });
+      if (row.countPadron > 0 || row.countLista > 0 || row.padronRestante > 0 || row.listaRestante > 0 || row.asignadaA) {
+        res.push({ fed, loc, mun, seccion: row.seccion, categoria: 'BASICA', asignadaA: row.asignadaA || null, recibeDe: row.recibeDe || [], padronRecibido: row.padronRecibido || 0, listaRecibida: row.listaRecibida || 0, nomenclaturaPadron: row.nomenclaturaPadron, nomenclaturaLista: row.nomenclaturaLista, distPadron: row.distPadron, distLista: row.distLista, padronRef: row.padronRestante, listaRef: row.listaRestante, countPadron: row.countPadron, countLista: row.countLista, variacion: row.variacion });
       }
       sortedCasillasGlobales.filter(c => String(c.sede?.seccion) === String(row.seccion)).forEach(c => {
         const stats = calcularProyeccion(c);
@@ -2658,6 +2801,7 @@ export default function App() {
     // sin importar el toggle Padrón/Lista que usa el módulo de Equipamiento.
     const lista = [];
     filasConsolidadoFinal.forEach(row => {
+        if (row.asignadaA) return;
         const dist = row.distLista;
         (dist || []).forEach((item) => {
             const esNoInstala = item.nombre === 'NO INSTALA';
@@ -2898,6 +3042,8 @@ export default function App() {
         const observaciones = [];
         if (esVariacion) observaciones.push('VARIACIÓN PADRÓN/LISTA');
         if (esMenos100) observaciones.push('MENOS DE 100');
+        if (row.asignadaA) observaciones.push(`PADRÓN ASIGNADO A LA SECCIÓN ${f4(row.asignadaA)}`);
+        if (row.recibeDe && row.recibeDe.length) observaciones.push(`INCLUYE PADRÓN Y LISTA DE LA SECCIÓN ${row.recibeDe.map(f4).join(', ')} (MENOS DE 100)`);
         if (esCercaCorte750) observaciones.push(`CERCA DEL CORTE DE 750 (${textoMargen750.toUpperCase()}, RIESGO ${nivelRiesgo750})`);
         filas.push({
           seccion: row.seccion, fed: row.fed, loc: row.loc, mun: row.mun, categoria: row.categoria,
@@ -3065,9 +3211,14 @@ export default function App() {
       });
     });
     let basicasPadron = 0, contiguasPadron = 0, basicasLista = 0, contiguasLista = 0, seccionesNoInstala = 0;
+    const remanentesFoto = {};
+    Object.keys(padSec).forEach(s => { remanentesFoto[s] = { pad: Math.max(0, padSec[s] - (consPad[s] || 0)), lis: Math.max(0, (lisSec[s] || 0) - (consLis[s] || 0)), tieneExtra: seccionesConExtra.has(s) }; });
+    const asignFoto = resolverAsignacionesMenos100(seccionesAsignadas, remanentesFoto);
     Object.keys(padSec).forEach(s => {
-      const remPad = Math.max(0, padSec[s] - (consPad[s] || 0));
-      const remLis = Math.max(0, (lisSec[s] || 0) - (consLis[s] || 0));
+      if (asignFoto.asignadaA[s]) { seccionesNoInstala += 1; return; }
+      const recibidas = (asignFoto.recibeDe[s] || []).map(o => remanentesFoto[o]);
+      const remPad = remanentesFoto[s].pad + recibidas.reduce((t, x) => t + x.pad, 0);
+      const remLis = remanentesFoto[s].lis + recibidas.reduce((t, x) => t + x.lis, 0);
       if (!seccionesConExtra.has(s) && ((remPad > 0 && remPad < 100) || (remLis > 0 && remLis < 100))) { seccionesNoInstala += 1; return; }
       if (remPad > 0) { const n = Math.ceil(remPad / BOOTH_LIMIT) || 1; basicasPadron += 1; contiguasPadron += n - 1; }
       if (remLis > 0) { const n = Math.ceil(remLis / BOOTH_LIMIT) || 1; basicasLista += 1; contiguasLista += n - 1; }
@@ -3122,7 +3273,7 @@ export default function App() {
   const fotoExtraActual = useMemo(() => ({
     id: 'actual', nombre: 'Armado actual', fechaCorte,
     ...armarFotoExtra(rawElectoralData, sedesActivas, numEspecialesActual),
-  }), [rawElectoralData, sedesActivas, fechaCorte, numEspecialesActual, catalogoLocalidades]);
+  }), [rawElectoralData, sedesActivas, fechaCorte, numEspecialesActual, catalogoLocalidades, seccionesAsignadas]);
 
   const refsDeArmadoActual = () => casillasGlobales.map(c => (String(c.tipo).toUpperCase().startsWith('S') || !c.sede)
     ? { tipo: c.tipo, sedeRef: null }
@@ -3647,17 +3798,19 @@ export default function App() {
   const reiniciarArmadoDistrito = () => {
     setModalConfig({
       isOpen: true, peligro: true, confirmLabel: 'Sí, reiniciar',
-      message: `Estás a punto de reiniciar todos los cambios del armado del Distrito ${f4(distritoInfo.numero)}: se borrarán todas las extraordinarias, las especiales y la sede de las básicas. Domicilios, equipamiento, folios y versiones guardadas no se tocan. Afecta a todo tu equipo y no se puede deshacer. ¿Continuar?`,
+      message: `Estás a punto de reiniciar todos los cambios del armado del Distrito ${f4(distritoInfo.numero)}: se borrarán todas las extraordinarias, las especiales, la sede de las básicas y las secciones de menos de 100 asignadas a otra. Domicilios, equipamiento, folios y versiones guardadas no se tocan. Afecta a todo tu equipo y no se puede deshacer. ¿Continuar?`,
       onConfirm: () => {
         if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
         isLocalActionActive.current = true;
         setCasillasGlobales([]);
         setBasicaSedePorSeccion({});
+        setSeccionesAsignadas({});
         setConflictosDiseno({ desaparecidas: [], desactualizadas: [], total: 0 });
         setImportJsonAvisos(null);
         try {
           localStorage.removeItem(`proyector_casillas_D${distritoInfo.numero}`);
           localStorage.removeItem(`proyector_basicaSedePorSeccion_D${distritoInfo.numero}`);
+          localStorage.removeItem(`proyector_seccionesAsignadas_D${distritoInfo.numero}`);
         } catch (e) {}
         setReinicioDesbloqueado(false);
         setSuccessMessage(`Armado del Distrito ${f4(distritoInfo.numero)} reiniciado: ya no hay extraordinarias, especiales ni sede de básicas.`);
@@ -3918,6 +4071,7 @@ export default function App() {
             reporteDiferenciaProyeccion: data.reporteDiferenciaProyeccion || null,
             comparativo2024Base: data.comparativo2024Base || null,
             historialCambiosDomicilio: data.historialCambiosDomicilio || [],
+            seccionesAsignadas: data.seccionesAsignadas || {},
           };
           const cloudJson = JSON.stringify(remoto);
 
@@ -3939,6 +4093,7 @@ export default function App() {
             setEquipConfig({ ...DEFAULT_EQUIP_CONFIG, ...remoto.equipConfig });
             setMamparasPorCasilla(remoto.mamparasPorCasilla);
             setBasicaSedePorSeccion(remoto.basicaSedePorSeccion);
+            setSeccionesAsignadas(remoto.seccionesAsignadas);
             setFolioConfig({ ...DEFAULT_FOLIO_CONFIG, ...remoto.folioConfig });
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
@@ -4006,6 +4161,7 @@ export default function App() {
       reporteDiferenciaProyeccion,
       comparativo2024Base,
       historialCambiosDomicilio,
+      seccionesAsignadas,
     };
     const currentJson = JSON.stringify(payload);
     if (currentJson === lastSavedJson.current) return;
@@ -4018,7 +4174,7 @@ export default function App() {
     unlockTimerRef.current = setTimeout(() => { flushPendingSave(); }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
-  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, comparativo2024Base, historialCambiosDomicilio, distritoInfo.numero, user, isInitialLoadFinished]);
+  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, comparativo2024Base, historialCambiosDomicilio, seccionesAsignadas, distritoInfo.numero, user, isInitialLoadFinished]);
 
   useEffect(() => {
     if (view === 'welcome') {
@@ -4963,6 +5119,23 @@ export default function App() {
                          </div>
                       </div>
 
+                      {seccionesSinBasica.length > 0 && (
+                          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-3 mb-3 flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <p className="text-xs font-bold text-amber-800">Sección(es) sin básica: {seccionesSinBasica.map(f4).join(', ')}. Todos sus electores están en extraordinarias, y primero es la básica: deja en la básica al menos una manzana con electores (quítala de la extraordinaria en Polígonos guardados).</p>
+                          </div>
+                      )}
+                      {remanentesBasica.invalidas.length > 0 && (
+                          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-4 space-y-2">
+                              <p className="text-xs font-black uppercase text-amber-800 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> {remanentesBasica.invalidas.length === 1 ? 'Hay 1 asignación en pausa' : `Hay ${remanentesBasica.invalidas.length} asignaciones en pausa`} (no se está aplicando)</p>
+                              {remanentesBasica.invalidas.map(inv => (
+                                  <div key={inv.origen} className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-800">
+                                      <span><span className="font-black">Sección {f4(inv.origen)} → {f4(inv.destino)}:</span> {inv.motivo.charAt(0).toUpperCase() + inv.motivo.slice(1)}. Mientras esté en pausa, sus electores se quedan en su propia sección; si ya no la necesitas, quítala.</span>
+                                      <button onClick={() => quitarAsignacionSeccion(inv.origen, inv.destino)} className="text-[10px] font-black uppercase text-red-600 hover:text-red-700">Quitar asignación</button>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
                       {seccionesMostradas.length === 0 ? (
                           <div className="p-16 text-center text-slate-400 font-bold">No se encontraron secciones o casillas que coincidan con los filtros aplicados.</div>
                       ) : (
@@ -4992,6 +5165,9 @@ export default function App() {
                                                                   {grupo.categorias.map(cat => (
                                                                       <span key={cat} className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${cat === 'EXTRAORDINARIA' ? 'bg-beige-200 text-oxford-700' : cat === 'ESPECIAL' ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'}`}>{cat}</span>
                                                                   ))}
+                                                                  {seccionesSinBasica.some(sb => String(sb) === String(grupo.seccion)) && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Sin básica</span>}
+                                                                  {grupo.rows.some(r => r.asignadaA) && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-100 border border-slate-300 text-slate-700">Asignada a sec {f4(grupo.rows.find(r => r.asignadaA).asignadaA)}</span>}
+                                                                  {grupo.rows.some(r => r.recibeDe && r.recibeDe.length) && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-100 border border-slate-300 text-slate-700">Recibe sec {grupo.rows.find(r => r.recibeDe && r.recibeDe.length).recibeDe.map(f4).join(', ')}</span>}
                                                                   {grupo.tieneNoInstala && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No Instala</span>}
                                                                   {grupo.tieneVariacion && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Variación</span>}
                                                                   {grupo.tieneCercaCorte750 && <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-violet-100 text-violet-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Cerca del Corte de 750 · {textoMargenCorte750(grupo.margenMinCorte750)}</span>}
@@ -5023,6 +5199,21 @@ export default function App() {
                                                                   <div className="flex flex-col gap-0.5">
                                                                       <span className="text-slate-900 font-black text-sm">P: {Number(row.padronRef).toLocaleString()}</span>
                                                                       <span className="text-slate-500 text-[11px] font-bold">L: {Number(row.listaRef).toLocaleString()}</span>
+                                                                      {row.asignadaA && (
+                                                                          <span className="mt-0.5 inline-flex flex-wrap items-center gap-1.5 w-fit">
+                                                                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-100 border border-slate-300 text-slate-700 font-sans">Padrón asignado a la sección {f4(row.asignadaA)}</span>
+                                                                              <button onClick={(e) => { e.stopPropagation(); quitarAsignacionSeccion(row.seccion, row.asignadaA); }} className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 font-sans">Quitar asignación</button>
+                                                                          </span>
+                                                                      )}
+                                                                      {!row.asignadaA && row.categoria === 'BASICA' && noInstala && !(row.recibeDe && row.recibeDe.length) && (
+                                                                          <button onClick={(e) => { e.stopPropagation(); abrirAsignarSeccion(row.seccion); }} title="Los electores de esta sección irán a votar a otra sección; su padrón y lista se suman allá" className="mt-0.5 w-fit px-2 py-0.5 rounded-md bg-pink-600 hover:bg-pink-700 text-white text-[9px] font-black uppercase font-sans">Asignar a otra sección</button>
+                                                                      )}
+                                                                      {row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length > 0 && (
+                                                                          <span className="mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-100 border border-slate-300 text-slate-700 w-fit font-sans">Incluye padrón y lista de la sección {row.recibeDe.map(f4).join(', ')} asignada por menos de 100 (+{Number(row.padronRecibido).toLocaleString()} / +{Number(row.listaRecibida).toLocaleString()})</span>
+                                                                      )}
+                                                                      {row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length > 0 && noInstala && (
+                                                                          <span className="mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 border border-amber-300 text-amber-800 w-fit font-sans">Aun con lo asignado no llega a 100: no se proyecta</span>
+                                                                      )}
                                                                       {row.categoria !== 'ESPECIAL' && (estaCercaDelCorte750(row.padronRef) || estaCercaDelCorte750(row.listaRef)) && (() => {
                                                                           const margen = margenMinCorte750(row.padronRef, row.listaRef);
                                                                           const nivel = nivelRiesgoCorte750(margen.electores);
@@ -5620,6 +5811,12 @@ export default function App() {
             ocupan solo lo que miden (antes eran una fila de toda la pantalla y se estiraban). */}
         {extraordinariasTab === 'poligonos' && (
           <>
+            {seccionesSinBasica.length > 0 && (
+                          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-3 mb-3 flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <p className="text-xs font-bold text-amber-800">Sección(es) sin básica: {seccionesSinBasica.map(f4).join(', ')}. Todos sus electores están en extraordinarias, y primero es la básica: deja en la básica al menos una manzana con electores (quítala de la extraordinaria en Polígonos guardados).</p>
+                          </div>
+                      )}
             <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
             <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
           </>
@@ -6274,6 +6471,55 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* MODAL ASIGNAR SECCIÓN DE MENOS DE 100 A OTRA SECCIÓN */}
+      {modalAsignarSeccion.isOpen && (() => {
+        const origenN = normalizarClave(modalAsignarSeccion.origen);
+        const rOrigen = remanentesBasica.remanentes[origenN];
+        // Destinos posibles: cualquier sección del distrito, salvo ella misma y las que ya están
+        // asignadas a otra (no hay cadenas). Primero las de su mismo municipio.
+        const munOrigen = (rawElectoralData.find(m => normalizarClave(m.seccion) === origenN) || {}).municipio;
+        const munDe = (secRaw) => (rawElectoralData.find(m => String(m.seccion) === String(secRaw)) || {}).municipio;
+        const opciones = consolidadoB_C
+          .filter(r => normalizarClave(r.seccion) !== origenN && !seccionesAsignadas[normalizarClave(r.seccion)])
+          .map(r => ({ r, mismoMun: String(munDe(r.seccion)) === String(munOrigen) }))
+          .sort((a, b) => (b.mismoMun - a.mismoMun) || (parseInt(a.r.seccion) - parseInt(b.r.seccion)));
+        const elegida = consolidadoB_C.find(r => String(r.seccion) === String(modalAsignarSeccion.destino));
+        return (
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full mx-4 text-left border-2 border-slate-200">
+            <h3 className="text-2xl font-black tracking-tight text-slate-900 mb-1">Asignar a otra sección</h3>
+            <p className="text-xs font-bold text-slate-500 mb-5">La sección {f4(modalAsignarSeccion.origen)} tiene menos de 100 electores y no se proyecta. Sus electores irán a votar a la sección que elijas: su padrón y lista se suman allá (puede subir la proyección) y sus folios se generan en esa sección.</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-center"><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Padrón a asignar</p><p className="text-lg font-black text-slate-800">{(rOrigen ? rOrigen.pad : 0).toLocaleString('es-MX')}</p></div>
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-center"><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Lista a asignar</p><p className="text-lg font-black text-slate-800">{(rOrigen ? rOrigen.lis : 0).toLocaleString('es-MX')}</p></div>
+            </div>
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Sección que la recibe</label>
+            <select className="w-full bg-slate-50 border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 outline-none mt-1 text-slate-800" value={modalAsignarSeccion.destino} onChange={e => setModalAsignarSeccion(prev => ({ ...prev, destino: e.target.value }))}>
+              <option value="">-- SELECCIONA SECCIÓN --</option>
+              {opciones.map(({ r, mismoMun }) => (
+                <option key={r.seccion} value={r.seccion}>{f4(r.seccion)} · básica P {Number(r.padronRestante).toLocaleString('es-MX')} · {r.countPadron > 0 ? `${r.countPadron} casilla(s)` : 'no instala'}{mismoMun ? '' : ' · otro municipio'}</option>
+              ))}
+            </select>
+            {elegida && rOrigen && (() => {
+              const nuevoPad = Number(elegida.padronRestante) + rOrigen.pad;
+              const antes = elegida.countPadron;
+              const tieneExtra = remanentesBasica.remanentes[normalizarClave(elegida.seccion)]?.tieneExtra;
+              const despues = (!tieneExtra && nuevoPad > 0 && nuevoPad < 100) ? 0 : (nuevoPad > 0 ? Math.ceil(nuevoPad / BOOTH_LIMIT) || 1 : 0);
+              return (
+                <p className={`text-xs font-bold mt-2 rounded-lg px-3 py-2 border ${despues === 0 ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  La básica de la sección {f4(elegida.seccion)} pasaría de {Number(elegida.padronRestante).toLocaleString('es-MX')} a {nuevoPad.toLocaleString('es-MX')} electores: {antes === despues ? `sigue con ${despues} casilla(s)` : `pasa de ${antes} a ${despues} casilla(s)`}.{despues === 0 ? ' Aun así no llega a 100: no se proyectaría.' : ''}
+                </p>
+              );
+            })()}
+            <div className="flex gap-3 justify-end mt-6">
+              <button onClick={() => setModalAsignarSeccion({ isOpen: false, origen: '', destino: '' })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl transition-colors text-xs uppercase tracking-wider">Cancelar</button>
+              <button onClick={guardarAsignacionSeccion} disabled={!modalAsignarSeccion.destino} className="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 disabled:bg-slate-300 text-white font-black rounded-xl transition-colors text-xs uppercase tracking-wider shadow-md">Asignar</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
 
       {/* MODAL ESPECIALES: se ven, se agregan y se borran aquí (ya no aparecen entre las extraordinarias) */}
       {modalEspecialConfig.isOpen && (
