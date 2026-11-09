@@ -44,7 +44,7 @@ try {
 
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar }) => {
+const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar, onQuitar, delRepositorio = [] }) => {
     if (!conflictos) return null;
     const sinConflictos = conflictos.total === 0;
     if (sinConflictos && !expandido) return null;
@@ -54,11 +54,11 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
                 {sinConflictos ? <CheckCircle2 className="w-6 h-6 text-slate-400 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />}
                 <div className="flex-1">
                     <p className={`text-sm font-black uppercase tracking-wide ${sinConflictos ? 'text-slate-700' : 'text-amber-800'}`}>
-                        {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu diseño que ya no están en el padrón'}
+                        {sinConflictos ? 'Tu diseño coincide con el padrón cargado' : 'Manzanas de tu armado que no vienen en este padrón'}
                     </p>
                     <p className={`text-xs mt-1 font-bold ${sinConflictos ? 'text-slate-500' : 'text-amber-700'}`}>
-                        {sinConflictos ? 'Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y Mz integrantes) siguen existiendo en él.' : <>
-                            {conflictos.desaparecidas.length} manzana(s) que usa tu diseño ya no existen en el padrón que acabas de cargar. Esas casillas quedaron sin esa manzana — revísalas en la Mesa de Armado.
+                        {sinConflictos ? <>Al cargar este padrón se comparó contra tu diseño guardado (Extraordinarias) y todas las manzanas asignadas (sede y Mz integrantes) siguen existiendo en él.{delRepositorio.length > 0 ? ` ${delRepositorio.length} de las manzanas en 0 vienen del repositorio porque este padrón no trae manzanas en 0.` : ''}</> : <>
+                            {conflictos.desaparecidas.length} manzana(s) de tu armado no vienen en este padrón ni en el repositorio de manzanas en 0. No se borraron: siguen en su casilla contadas en 0 electores. Puede ser que se hayan dado de baja — revísalas con Cartografía y, si se confirma, quítalas con “Quitar”.
                         </>}
                     </p>
                 </div>
@@ -68,11 +68,12 @@ const AlertaConflictosDiseno = ({ conflictos, expandido, onToggle, onExportar })
                 <div className="mt-4 pt-4 border-t border-amber-200 space-y-3">
                     {conflictos.desaparecidas.length > 0 && (
                         <div>
-                            <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-1.5">Manzanas desaparecidas (en uso en tu diseño)</p>
+                            <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-1.5">Manzanas de tu armado que no vienen (se conservan en 0)</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {conflictos.desaparecidas.map((m, i) => (
-                                    <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-800 px-2 py-1 rounded-lg">
+                                    <span key={i} className="text-[10px] font-bold bg-white border-2 border-amber-200 text-amber-800 px-2 py-1 rounded-lg inline-flex items-center gap-2">
                                         {String(m.tipo)} · {m.rol} · Sec {p4(m.seccion)} · Loc {p4(m.localidad)} · Mz {p4(m.manzana)}
+                                        {onQuitar && <button onClick={() => onQuitar(m)} className="text-[9px] font-black uppercase text-red-600 hover:text-red-700">Quitar</button>}
                                     </span>
                                 ))}
                             </div>
@@ -92,9 +93,9 @@ const AvisoImportacionJSON = ({ aviso, onClose, onExportar }) => {
             <div className="flex items-start gap-4">
                 <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                    <p className="text-sm font-black text-amber-700 uppercase tracking-wide">Tu respaldo traía manzanas que ya no están en el padrón</p>
+                    <p className="text-sm font-black text-amber-700 uppercase tracking-wide">Tu respaldo trae manzanas que no vienen en el padrón</p>
                     <p className="text-xs text-amber-600 mt-1 font-bold">
-                        Se cargaron {aviso.totalCargadas} de {aviso.totalOriginal} polígonos. {aviso.noEncontradas.length} manzana(s) referenciadas en el respaldo no se encontraron en el padrón cargado y se omitieron.
+                        Se cargaron {aviso.totalCargadas} de {aviso.totalOriginal} polígonos. {aviso.noEncontradas.length} manzana(s) referenciadas en el respaldo no vienen en el padrón cargado: se conservaron en tu armado contadas en 0 (revísalas en el aviso “Armado vs Padrón”).
                     </p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
                         {aviso.noEncontradas.map((m, i) => (
@@ -218,6 +219,34 @@ const extraTieneElectores = (c) => [c?.sede, ...((c && c.alimentadoras) || [])].
 // { origenNormalizado: destinoNormalizado }. `remanentes`: { seccionNormalizada: { pad, lis,
 // tieneExtra } }. Solo valen las asignaciones cuyo origen realmente no se proyecta, cuyo destino
 // existe y sin cadenas (una sección asignada no puede recibir otras); el resto se reporta.
+// ===================== Repositorio de manzanas en 0 =====================
+// Algunos padrones no traen las manzanas con 0 electores. Para no perderlas del armado, cada distrito
+// guarda las manzanas que alguna vez vinieron en 0 (clave normalizada -> "sec|loc|mz|mun|fed|loc|nombre|corte").
+// - Si el padrón SÍ trae manzanas en 0, el repositorio se vuelve exactamente esas (las que ya no vienen
+//   probablemente se dieron de baja).
+// - Si el padrón NO trae ninguna en 0, se conservan las del repositorio (menos las que ahora tienen
+//   electores) y se agregan al padrón en 0, marcadas como "del repositorio".
+const esManzanaEnCero = (m) => (parseInt(m.padron) || 0) === 0 && (parseInt(m.lista) || 0) === 0;
+const ordenarObjeto = (o) => Object.keys(o || {}).sort().reduce((acc, k) => { acc[k] = o[k]; return acc; }, {});
+const actualizarRepoCeros = (padron, repo, corte) => {
+  const ceros = padron.filter(esManzanaEnCero);
+  const nuevo = {};
+  if (ceros.length) {
+    const limpio = (x) => String(x ?? '').replace(/\|/g, ' ').trim();
+    ceros.forEach(m => { nuevo[claveManzana(m)] = [m.seccion, m.localidad, m.manzana, m.municipio, m.federal, m.local, m.nombreLocalidad, corte].map(limpio).join('|'); });
+  } else {
+    const presentes = new Set(padron.map(claveManzana));
+    Object.entries(repo || {}).forEach(([k, v]) => { if (!presentes.has(k)) nuevo[k] = v; });
+  }
+  return ordenarObjeto(nuevo);
+};
+const filaDesdeRepoCeros = (k, v) => {
+  const [s, l, mz, mun, fed, loc, nom, corte] = String(v).split('|');
+  return { id: `repo-${k}`, seccion: s, localidad: l, manzana: mz, padron: 0, lista: 0, nombreLocalidad: nom || '', federal: fed || 'N/A', local: loc || 'N/A', municipio: mun || 'N/A', delRepositorio: true, cortRepositorio: corte || '' };
+};
+// Manzana del armado que no viene en el padrón cargado: se conserva en 0 en vez de borrarla.
+const manzanaFaltante = (s, l, m) => ({ id: `faltante-${normalizarClave(s)}-${normalizarClave(l)}-${normalizarClave(m)}`, seccion: String(s), localidad: String(l), manzana: String(m), padron: 0, lista: 0, faltante: true });
+
 const resolverAsignacionesMenos100 = (asignaciones, remanentes) => {
   const asignadaA = {}, recibeDe = {}, invalidas = [];
   Object.entries(asignaciones || {}).forEach(([o, d]) => {
@@ -246,7 +275,17 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   
-  const [rawElectoralData, setRawElectoralData] = useState([]);
+  // padronCargado = el Excel tal cual; rawElectoralData = padrón efectivo (con las manzanas en 0 del
+  // repositorio cuando el padrón no las trae).
+  const [padronCargado, setPadronCargado] = useState([]);
+  const [repoCeros, setRepoCeros] = useState({});
+  const rawElectoralData = useMemo(() => {
+    if (!padronCargado.length || padronCargado.some(esManzanaEnCero)) return padronCargado;
+    const presentes = new Set(padronCargado.map(claveManzana));
+    const delRepo = Object.entries(repoCeros).filter(([k]) => !presentes.has(k)).map(([k, v]) => filaDesdeRepoCeros(k, v));
+    return delRepo.length ? [...padronCargado, ...delRepo] : padronCargado;
+  }, [padronCargado, repoCeros]);
+  const manzanasDelRepositorio = useMemo(() => rawElectoralData.filter(m => m.delRepositorio), [rawElectoralData]);
   const [isXlsxLibLoading, setIsXlsxLibLoading] = useState(true);
   const [isPdfLibLoading, setIsPdfLibLoading] = useState(true);
   const [catalogoLocalidades, setCatalogoLocalidades] = useState({});
@@ -327,7 +366,15 @@ export default function App() {
   const [comparandoPadron, setComparandoPadron] = useState(false);
   const [archivosComparacionLibre, setArchivosComparacionLibre] = useState({ anterior: null, actual: null });
   const [detalleConflictosAbierto, setDetalleConflictosAbierto] = useState(false);
-  const [conflictosDiseno, setConflictosDiseno] = useState({ desaparecidas: [], desactualizadas: [], total: 0 });
+  const conflictosDiseno = useMemo(() => {
+    const desaparecidas = [];
+    casillasGlobales.forEach(c => {
+      if (String(c.tipo).toUpperCase().startsWith('S')) return;
+      if (c.sede?.faltante) desaparecidas.push({ uid: c.uid, tipo: c.tipo, rol: 'SEDE', seccion: c.sede.seccion, localidad: c.sede.localidad, manzana: c.sede.manzana });
+      (c.alimentadoras || []).forEach(a => { if (a.faltante) desaparecidas.push({ uid: c.uid, tipo: c.tipo, rol: 'MZ INTEGRANTE', seccion: a.seccion, localidad: a.localidad, manzana: a.manzana }); });
+    });
+    return { desaparecidas, desactualizadas: [], total: desaparecidas.length };
+  }, [casillasGlobales]);
   const [importJsonAvisos, setImportJsonAvisos] = useState(null);
 
   const [domicilios, setDomicilios] = useState({});
@@ -531,16 +578,15 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const parsed = parsearManzanasDeArchivo(event.target.result);
-        setRawElectoralData(parsed);
+        setPadronCargado(parsed);
         // El padrón en sí NUNCA se guarda en este equipo (siempre hay que volver a subirlo);
         // solo se recuerda qué distrito es, y se re-vincula el diseño ya guardado (Extraordinarias)
         // contra este padrón recién cargado. cargarCasillasLocal reporta qué manzanas de ese
         // diseño ya no existen en el padrón nuevo, que es la única comparación que se puede
         // hacer de forma confiable (el padrón/lista de la versión anterior nunca se guarda).
         try { localStorage.setItem('proyector_last_district', JSON.stringify(distritoInfo)); } catch(err) {}
-        const { casillas, desaparecidas } = cargarCasillasLocal(distritoInfo.numero, parsed);
+        const { casillas } = cargarCasillasLocal(distritoInfo.numero, parsed);
         setCasillasGlobales(casillas);
-        setConflictosDiseno({ desaparecidas, desactualizadas: [], total: desaparecidas.length });
         setDetalleConflictosAbierto(false);
 
         setErrorMessage(null);
@@ -580,6 +626,10 @@ export default function App() {
           const sa = localStorage.getItem(`proyector_seccionesAsignadas_D${numStr}`);
           setSeccionesAsignadas(sa ? JSON.parse(sa) : {});
       } catch (e) { setSeccionesAsignadas({}); }
+      try {
+          const rc = localStorage.getItem(`proyector_repoCeros_D${numStr}`);
+          setRepoCeros(rc ? ordenarObjeto(JSON.parse(rc)) : {});
+      } catch (e) { setRepoCeros({}); }
       try {
           const f = localStorage.getItem(`proyector_folioConfig_D${numStr}`);
           setFolioConfig(f ? { ...DEFAULT_FOLIO_CONFIG, ...JSON.parse(f) } : DEFAULT_FOLIO_CONFIG);
@@ -628,6 +678,34 @@ export default function App() {
       if (!distritoInfo.numero) return;
       try { localStorage.setItem(`proyector_seccionesAsignadas_D${distritoInfo.numero}`, JSON.stringify(seccionesAsignadas)); } catch (e) {}
   }, [seccionesAsignadas, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero) return;
+      try { localStorage.setItem(`proyector_repoCeros_D${distritoInfo.numero}`, JSON.stringify(repoCeros)); } catch (e) {}
+  }, [repoCeros, distritoInfo.numero]);
+
+  // Cada padrón que se carga actualiza el repositorio de manzanas en 0 (ver actualizarRepoCeros).
+  useEffect(() => {
+      if (!padronCargado.length) return;
+      const nuevo = actualizarRepoCeros(padronCargado, repoCeros, fechaCorte || '');
+      if (JSON.stringify(nuevo) !== JSON.stringify(repoCeros)) setRepoCeros(nuevo);
+  }, [padronCargado, repoCeros, fechaCorte]);
+
+  // Cuando cambia el padrón efectivo (p. ej. llegan del repositorio manzanas en 0), el armado se vuelve a
+  // enlazar: la manzana que ya existe toma sus datos; la que no viene se conserva en 0 como faltante.
+  useEffect(() => {
+      if (!rawElectoralData.length) return;
+      const idx = new Map(rawElectoralData.map(m => [claveManzana(m), m]));
+      let cambio = false;
+      const enlazar = (m) => {
+          if (!m) return m;
+          const nuevo = idx.get(claveManzana(m)) || (m.faltante ? m : manzanaFaltante(m.seccion, m.localidad, m.manzana));
+          if (nuevo !== m) cambio = true;
+          return nuevo;
+      };
+      const nuevas = casillasGlobales.map(c => String(c.tipo).toUpperCase().startsWith('S') ? c : { ...c, sede: enlazar(c.sede), alimentadoras: (c.alimentadoras || []).map(enlazar) });
+      if (cambio) setCasillasGlobales(nuevas);
+  }, [rawElectoralData]);
 
   useEffect(() => {
       if (!distritoInfo.numero) return;
@@ -686,16 +764,14 @@ export default function App() {
           const norm = (v) => String(v).trim().padStart(4, '0');
           const casillas = refs.map(c => {
               if (String(c.tipo).startsWith('S')) return { uid: c.uid, tipo: c.tipo, sede: { seccion: c.sedeRef.s }, alimentadoras: [] };
-              const sede = padron.find(m => norm(m.seccion) === norm(c.sedeRef.s) && norm(m.localidad) === norm(c.sedeRef.l) && norm(m.manzana) === norm(c.sedeRef.m));
-              if (!sede) {
-                  desaparecidas.push({ tipo: c.tipo, rol: 'SEDE', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
-                  return null;
-              }
+              // Si una manzana no viene en este padrón NO se borra: se conserva en 0 (ver manzanaFaltante).
+              const sede = padron.find(m => norm(m.seccion) === norm(c.sedeRef.s) && norm(m.localidad) === norm(c.sedeRef.l) && norm(m.manzana) === norm(c.sedeRef.m)) || manzanaFaltante(c.sedeRef.s, c.sedeRef.l, c.sedeRef.m);
+              if (sede.faltante) desaparecidas.push({ tipo: c.tipo, rol: 'SEDE', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
               const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
                   const mz = padron.find(m => norm(m.seccion) === norm(ref.s) && norm(m.localidad) === norm(ref.l) && norm(m.manzana) === norm(ref.m));
                   if (!mz) desaparecidas.push({ tipo: c.tipo, rol: 'MZ INTEGRANTE', seccion: ref.s, localidad: ref.l, manzana: ref.m });
-                  return mz;
-              }).filter(Boolean);
+                  return mz || manzanaFaltante(ref.s, ref.l, ref.m);
+              });
               return { uid: c.uid, tipo: c.tipo, sede, alimentadoras };
           }).filter(Boolean);
           return { casillas, desaparecidas };
@@ -1278,14 +1354,13 @@ export default function App() {
         const vinculadas = casillasData.map(c => {
           const isEspecial = String(c.tipo).startsWith('S');
           if (isEspecial) return { uid: c.uid || Date.now() + Math.random(), tipo: c.tipo, sede: { seccion: c.sedeRef.s }, alimentadoras: [] };
-          const sede = rawElectoralData.find(m => normalize(m.seccion) === normalize(c.sedeRef.s) && normalize(m.localidad) === normalize(c.sedeRef.l) && normalize(m.manzana) === normalize(c.sedeRef.m));
-          if (!sede) noEncontradas.push({ tipo: c.tipo, rol: 'Sede', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
+          const sede = rawElectoralData.find(m => normalize(m.seccion) === normalize(c.sedeRef.s) && normalize(m.localidad) === normalize(c.sedeRef.l) && normalize(m.manzana) === normalize(c.sedeRef.m)) || manzanaFaltante(c.sedeRef.s, c.sedeRef.l, c.sedeRef.m);
+          if (sede.faltante) noEncontradas.push({ tipo: c.tipo, rol: 'Sede', seccion: c.sedeRef.s, localidad: c.sedeRef.l, manzana: c.sedeRef.m });
           const alimentadoras = (c.alimentadorasRefs || []).map(ref => {
               const mz = rawElectoralData.find(m => normalize(m.seccion) === normalize(ref.s) && normalize(m.localidad) === normalize(ref.l) && normalize(m.manzana) === normalize(ref.m));
               if (!mz) noEncontradas.push({ tipo: c.tipo, rol: 'Mz Integrante', seccion: ref.s, localidad: ref.l, manzana: ref.m });
-              return mz;
-          }).filter(Boolean);
-          if (!sede) return null;
+              return mz || manzanaFaltante(ref.s, ref.l, ref.m);
+          });
           return { uid: c.uid || Date.now() + Math.random(), tipo: c.tipo, sede, alimentadoras };
         }).filter(Boolean);
 
@@ -1297,7 +1372,7 @@ export default function App() {
         // que ya estaba cargado en vez de borrarlo, para no romper respaldos viejitos.
         if (config.basicaSedePorSeccion) setBasicaSedePorSeccion(config.basicaSedePorSeccion);
         setImportJsonAvisos({ totalOriginal: casillasData.length, totalCargadas: vinculadas.length, noEncontradas });
-        setSuccessMessage(`Restaurado: ${vinculadas.length} Polígonos cargados.${noEncontradas.length > 0 ? ` ⚠ ${noEncontradas.length} manzana(s) no se encontraron en el padrón actual.` : ''}`);
+        setSuccessMessage(`Restaurado: ${vinculadas.length} Polígonos cargados.${noEncontradas.length > 0 ? ` ⚠ ${noEncontradas.length} manzana(s) no vienen en el padrón actual (se conservan en 0).` : ''}`);
         setTimeout(() => setSuccessMessage(null), 4000);
       } catch (err) { setErrorMessage("Error al procesar el archivo JSON."); }
       finally { inputElement.value = null; }
@@ -1425,6 +1500,27 @@ export default function App() {
 
   // Todo borrado pide confirmación ("¿Estás seguro?" + botón rojo), nunca borra directo.
   const confirmarBorrado = (mensaje, accion, etiqueta = 'Sí, borrar') => setModalConfig({ isOpen: true, message: mensaje, onConfirm: accion, confirmLabel: etiqueta, peligro: true });
+
+  // Para cuando ya se confirmó que la manzana se dio de baja. Si era la sede, la primera integrante
+  // pasa a ser la nueva sede; si era la única manzana, se borra la casilla.
+  const quitarManzanaFaltante = (d) => {
+    const k = `${normalizarClave(d.seccion)}|${normalizarClave(d.localidad)}|${normalizarClave(d.manzana)}`;
+    const casilla = casillasGlobales.find(c => String(c.uid) === String(d.uid));
+    if (!casilla) return;
+    const resto = (casilla.alimentadoras || []).filter(a => claveManzana(a) !== k);
+    const nombre = `la manzana ${f4(d.manzana)} (Sec ${f4(d.seccion)} · Loc ${f4(d.localidad)})`;
+    const msg = d.rol !== 'SEDE' ? `¿Quitar ${nombre} de la ${d.tipo}? Hazlo solo si ya confirmaste que se dio de baja.`
+      : resto.length ? `¿Quitar ${nombre} de la ${d.tipo}? Es su sede: la manzana ${f4(resto[0].manzana)} pasará a ser la nueva sede.`
+      : `¿Quitar ${nombre}? Es la única manzana de la ${d.tipo} de la sección ${f4(d.seccion)}, así que se borra la casilla completa.`;
+    confirmarBorrado(msg, () => {
+      setCasillasGlobales(prev => prev.map(c => {
+        if (String(c.uid) !== String(d.uid)) return c;
+        const r = (c.alimentadoras || []).filter(a => claveManzana(a) !== k);
+        if (d.rol !== 'SEDE') return { ...c, alimentadoras: r };
+        return r.length ? { ...c, sede: r[0], alimentadoras: r.slice(1) } : null;
+      }).filter(Boolean));
+    }, 'Sí, quitar');
+  };
 
   const desvincularManzana = (boothUid, mzId) => {
     if (unlockTimerRef.current) clearTimeout(unlockTimerRef.current);
@@ -2616,12 +2712,12 @@ export default function App() {
         ['REPORTE DE CONFLICTOS: DISEÑO VS. PADRÓN CARGADO', ''],
         [`Distrito ${f4(distritoInfo.numero)}`, ''],
         [],
-        ['Manzanas usadas en el diseño que ya no existen', conflictosDiseno.desaparecidas.length],
+        ['Manzanas del armado que no vienen en el padrón (se conservan en 0)', conflictosDiseno.desaparecidas.length],
         ['Secciones con manzanas afectadas', seccionesAfectadas.length],
         ['Localidades con manzanas afectadas', localidadesAfectadas.length],
     ];
     const wsResumen = window.XLSX.utils.aoa_to_sheet(wsResumenData);
-    wsResumen['!cols'] = [{ wch: 44 }, { wch: 14 }];
+    wsResumen['!cols'] = [{ wch: 62 }, { wch: 14 }];
     if (wsResumen['A1']) wsResumen['A1'].s = { font: { bold: true, sz: 14 } };
     window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
@@ -2631,7 +2727,7 @@ export default function App() {
     wsDesap['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
     for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r: 0, c }); if (wsDesap[addr]) wsDesap[addr].s = estiloHeaderConf; }
     for (let r = 1; r < hojaDesap.length; r++) { for (let c = 0; c < 5; c++) { const addr = window.XLSX.utils.encode_cell({ r, c }); if (wsDesap[addr]) wsDesap[addr].s = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, alignment: { horizontal: 'center' } }; } }
-    window.XLSX.utils.book_append_sheet(wb, wsDesap, 'Manzanas Desaparecidas');
+    window.XLSX.utils.book_append_sheet(wb, wsDesap, 'No vienen en el padrón');
 
     window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Conflictos_Diseno_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
@@ -3822,7 +3918,6 @@ export default function App() {
         setCasillasGlobales([]);
         setBasicaSedePorSeccion({});
         setSeccionesAsignadas({});
-        setConflictosDiseno({ desaparecidas: [], desactualizadas: [], total: 0 });
         setImportJsonAvisos(null);
         try {
           localStorage.removeItem(`proyector_casillas_D${distritoInfo.numero}`);
@@ -4089,6 +4184,7 @@ export default function App() {
             comparativo2024Base: data.comparativo2024Base || null,
             historialCambiosDomicilio: data.historialCambiosDomicilio || [],
             seccionesAsignadas: data.seccionesAsignadas || {},
+            manzanasEnCeroRepo: ordenarObjeto(data.manzanasEnCeroRepo || {}),
           };
           const cloudJson = JSON.stringify(remoto);
 
@@ -4097,9 +4193,9 @@ export default function App() {
               const isEspecial = String(c.tipo).startsWith('S');
               if (isEspecial) return { uid: c.uid, tipo: c.tipo, sede: { seccion: c.sedeRef.s }, alimentadoras: [] };
 
-              const sede = rawElectoralData.find(m => normalize(m.seccion) === normalize(c.sedeRef.s) && normalize(m.localidad) === normalize(c.sedeRef.l) && normalize(m.manzana) === normalize(c.sedeRef.m));
-              const alimentadoras = (c.alimentadorasRefs || []).map(ref => rawElectoralData.find(m => normalize(m.seccion) === normalize(ref.s) && normalize(m.localidad) === normalize(ref.l) && normalize(m.manzana) === normalize(ref.m))).filter(Boolean);
-              if (!sede) return null;
+              // Lo que no viene en este padrón se conserva en 0 (nunca se borra del armado al cargar).
+              const sede = rawElectoralData.find(m => normalize(m.seccion) === normalize(c.sedeRef.s) && normalize(m.localidad) === normalize(c.sedeRef.l) && normalize(m.manzana) === normalize(c.sedeRef.m)) || manzanaFaltante(c.sedeRef.s, c.sedeRef.l, c.sedeRef.m);
+              const alimentadoras = (c.alimentadorasRefs || []).map(ref => rawElectoralData.find(m => normalize(m.seccion) === normalize(ref.s) && normalize(m.localidad) === normalize(ref.l) && normalize(m.manzana) === normalize(ref.m)) || manzanaFaltante(ref.s, ref.l, ref.m));
               return { uid: c.uid, tipo: c.tipo, sede, alimentadoras };
             }).filter(Boolean);
 
@@ -4111,6 +4207,7 @@ export default function App() {
             setMamparasPorCasilla(remoto.mamparasPorCasilla);
             setBasicaSedePorSeccion(remoto.basicaSedePorSeccion);
             setSeccionesAsignadas(remoto.seccionesAsignadas);
+            setRepoCeros(remoto.manzanasEnCeroRepo);
             setFolioConfig({ ...DEFAULT_FOLIO_CONFIG, ...remoto.folioConfig });
             setFechaCorte(remoto.fechaCorte);
             if (remoto.cabeceraDistrital) setCabeceraDistrital(remoto.cabeceraDistrital);
@@ -4179,6 +4276,7 @@ export default function App() {
       comparativo2024Base,
       historialCambiosDomicilio,
       seccionesAsignadas,
+      manzanasEnCeroRepo: repoCeros,
     };
     const currentJson = JSON.stringify(payload);
     if (currentJson === lastSavedJson.current) return;
@@ -4191,7 +4289,7 @@ export default function App() {
     unlockTimerRef.current = setTimeout(() => { flushPendingSave(); }, 1500);
 
     return () => clearTimeout(unlockTimerRef.current);
-  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, comparativo2024Base, historialCambiosDomicilio, seccionesAsignadas, distritoInfo.numero, user, isInitialLoadFinished]);
+  }, [casillasGlobales, domicilios, ubicacionCasillas, equipConfig, mamparasPorCasilla, basicaSedePorSeccion, folioConfig, fechaCorte, cabeceraDistrital, reporteDiferenciaProyeccion, comparativo2024Base, historialCambiosDomicilio, seccionesAsignadas, repoCeros, distritoInfo.numero, user, isInitialLoadFinished]);
 
   useEffect(() => {
     if (view === 'welcome') {
@@ -4638,7 +4736,7 @@ export default function App() {
   const renderProyeccion = () => (
     <div className="lg:col-span-12 overflow-y-auto p-10 text-left bg-slate-50">
       <div className="max-w-7xl mx-auto space-y-8 pb-24 text-left">
-          <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+          <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} onQuitar={quitarManzanaFaltante} delRepositorio={manzanasDelRepositorio} />
 
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit flex-wrap">
               {[
@@ -5835,7 +5933,7 @@ export default function App() {
                           </div>
                       )}
             <AvisoImportacionJSON aviso={importJsonAvisos} onClose={() => setImportJsonAvisos(null)} onExportar={exportarReporteImportacionJSON} />
-            <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} />
+            <AlertaConflictosDiseno conflictos={conflictosDiseno} expandido={detalleConflictosAbierto} onToggle={() => setDetalleConflictosAbierto(v => !v)} onExportar={exportarReporteConflictosDiseno} onQuitar={quitarManzanaFaltante} delRepositorio={manzanasDelRepositorio} />
           </>
         )}
 
@@ -5909,7 +6007,7 @@ export default function App() {
                                           <span className="bg-pink-600 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0">Sede</span>
                                           <span className="text-slate-700 truncate" title={nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}>Mz {f4(c.sede?.manzana)} <span className="text-pink-400 font-bold">· Loc {f4(c.sede?.localidad)}{(nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad) ? ` - ${nombreLocalidad(c.sede?.municipio, c.sede?.localidad) || c.sede?.nombreLocalidad}` : ''}</span></span>
                                       </span>
-                                      <span className="text-pink-600 font-bold shrink-0 ml-2">P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
+                                      <span className="text-pink-600 font-bold shrink-0 ml-2">{c.sede?.faltante && <span className="mr-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[8px] font-black uppercase">No viene en el padrón</span>}P:{String(c.sede?.padron)} / L:{String(c.sede?.lista)}</span>
                                   </div>
                                   {(c.alimentadoras || []).length > 0 && (
                                     <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto custom-scrollbar text-left">
@@ -5919,6 +6017,7 @@ export default function App() {
                                             <div key={i} className="flex items-center justify-between bg-white border-2 border-slate-200 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors text-left text-[10px] font-black text-slate-700 shadow-sm">
                                                 <span className="truncate" title={nombreLoc}>Mz {f4(a.manzana)} <span className="text-slate-400 font-bold ml-1">· Sec {f4(a.seccion)} · Loc {f4(a.localidad)}{nombreLoc ? ` - ${nombreLoc}` : ''}</span></span>
                                                 <div className="flex gap-2 items-center shrink-0 ml-2">
+                                                    {a.faltante && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[8px] font-black uppercase">No viene en el padrón</span>}
                                                     <span className="text-slate-500 font-bold">P:{a.padron} / L:{a.lista}</span>
                                                     <button onClick={() => confirmarBorrado(`Vas a quitar la manzana ${f4(a.manzana)} (sección ${f4(a.seccion)}, localidad ${f4(a.localidad)}) de la casilla ${String(c.tipo)}. Su padrón dejará de contar en esa casilla.`, () => desvincularManzana(c.uid, a.id), 'Sí, quitar')} title={`Quitar manzana ${f4(a.manzana)}`} className="text-slate-300 hover:text-red-500 transition-colors bg-white p-1 rounded-md shadow-sm border border-slate-200 hover:border-red-200"><MinusCircle className="w-3.5 h-3.5" /></button>
                                                 </div>
@@ -6095,7 +6194,13 @@ export default function App() {
               .filter(sec => filtroCeros === 'todas' || (filtroCeros === 'conExtra' ? sec.conExtra : !sec.conExtra));
             if (manzanasEnCero.total === 0) return <div className="p-8 text-center text-sm font-bold text-slate-400 bg-white border-2 border-dashed border-slate-300 rounded-2xl">El padrón cargado no tiene manzanas con 0 electores.</div>;
             if (visibles.length === 0) return <div className="p-6 text-center text-sm font-bold text-slate-400 bg-white border-2 border-dashed border-slate-200 rounded-2xl">No hay secciones con ese filtro.</div>;
-            return visibles.map(sec => (
+            const cortesRepo = [...new Set(manzanasDelRepositorio.map(m => m.cortRepositorio).filter(Boolean))];
+            return [manzanasDelRepositorio.length > 0 && (
+              <div key="aviso-repo" className="bg-amber-50 border-2 border-amber-300 rounded-2xl px-5 py-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs font-bold text-amber-800">Este padrón no trae manzanas en 0. Se agregaron {manzanasDelRepositorio.length} del repositorio del distrito{cortesRepo.length ? ` (vinieron en 0 en el corte ${cortesRepo.join(', ')})` : ''}, para que tu armado no las pierda. Aparecen marcadas como “del repositorio”.</p>
+              </div>
+            ), ...visibles.map(sec => (
               <div key={sec.seccion} className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b-2 border-slate-100">
                   <p className="text-sm font-black uppercase text-slate-700 tracking-widest">SEC. {f4(sec.seccion)}</p>
@@ -6113,7 +6218,7 @@ export default function App() {
                       <div className="flex flex-wrap gap-1.5">
                         {l.manzanas.map(({ m, asignacion }) => (
                           <span key={m.id} className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${asignacion ? 'bg-beige-100 border-beige-300 text-slate-800' : 'bg-white border-dashed border-amber-300 text-slate-600'}`}>
-                            Mz {f4(m.manzana)} · {asignacion ? (asignacion.rol === 'sede' ? `sede de ${asignacion.tipo}` : `en ${asignacion.tipo}`) : 'en básica'}
+                            Mz {f4(m.manzana)} · {asignacion ? (asignacion.rol === 'sede' ? `sede de ${asignacion.tipo}` : `en ${asignacion.tipo}`) : 'en básica'}{m.delRepositorio ? ' · del repositorio' : ''}
                           </span>
                         ))}
                       </div>
@@ -6121,7 +6226,7 @@ export default function App() {
                   ))}
                 </div>
               </div>
-            ));
+            ))];
           })()}
         </div>
         )}
@@ -6164,7 +6269,7 @@ export default function App() {
                       setErrorMessage(null);
                       setDistritoInfo({ numero: numStr, estado: "MÉXICO" });
                       localStorage.setItem('proyector_last_district', JSON.stringify({ numero: numStr, estado: "MÉXICO" }));
-                      setRawElectoralData([]);
+                      setPadronCargado([]);
                       setView('upload');
                   }} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-black py-4 rounded-2xl active:scale-95 uppercase tracking-widest text-xs shadow-sm transition-all">Validar Distrito <ArrowRight className="w-4 h-4 inline ml-1" /></button>
               </div>
@@ -6366,7 +6471,7 @@ export default function App() {
               setModalConfig({
               isOpen: true,
               message: '¿Seguro que deseas salir? Te recomendamos exportar un respaldo primero.',
-              onConfirm: () => { setRawElectoralData([]); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); setReinicioDesbloqueado(false); }
+              onConfirm: () => { setPadronCargado([]); setRepoCeros({}); setCasillasGlobales([]); setDistritoInfo({ numero: "", estado: "MÉXICO" }); lastSavedJson.current = ""; setIsInitialLoadFinished(false); setView('welcome'); setReinicioDesbloqueado(false); }
           })}} title="Salir del distrito" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all border cursor-pointer bg-white border-slate-200 text-slate-600 hover:bg-slate-50"><LogOut className="w-3.5 h-3.5" /> Salir</button>
         </div>
       </div>
