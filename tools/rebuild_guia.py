@@ -421,7 +421,8 @@ doc.section_header('05', 'Referencia rápida del resto del sistema')
 doc.paragraph([
     ('•  ', False), ('Proyección → Resumen Distrital', True),
     (' — Vista general del distrito con gráficas: casillas por tipo (padrón y lista), por municipio y '
-     'comparativo vs 2023-2024. El botón “Descargar PDF” genera el resumen listo para presentar.', False),
+     'comparativo vs 2023-2024, con la lista de secciones que aumentan casillas respecto a 2024 y su '
+     '“Excel por sección y municipio”. El botón “Descargar PDF” genera el resumen listo para presentar.', False),
 ], gap_after=6)
 doc.paragraph([
     ('•  ', False), ('Versiones de la proyección', True),
@@ -463,24 +464,29 @@ doc.paragraph([
 ], gap_after=8)
 doc.paragraph([
     ('•  ', False), ('Proyección → Tipos de Domicilios de Casillas (Ubicación)', True),
-    (' — Dos botones de carga, cada uno con un uso distinto:', False),
+    (' — Tres botones de carga, cada uno con un uso distinto:', False),
+], gap_after=6)
+doc.paragraph([
+    ('•  ', False), ('“Cargar base 2024”', True),
+    (' — Tu Listado de Ubicación de Casillas 2023-2024. Se carga una vez y queda guardado para todo el '
+     'equipo como base del Comparativo y del reporte de secciones que aumentan; solo cambia si lo '
+     'actualizas. Asigna sus domicilios y, si una casilla ya tiene otro, te pregunta.', False),
 ], gap_after=6)
 doc.paragraph([
     ('•  ', False), ('“Importar Listado SUC”', True),
-    (' — Solo para el Listado de Ubicación de Casillas oficial del INE (2023-2024, o el real de este '
-     'proceso). Una sola carga asigna todos los domicilios que coincidan y recalcula Diferencia de '
-     'Proyección y el Comparativo vs 2023-2024.', False),
+    (' — El listado oficial de este proceso: asigna todos los domicilios que coincidan y recalcula la '
+     'Diferencia de Proyección, sin tocar la base 2024.', False),
 ], gap_after=6)
 doc.paragraph([
     ('•  ', False), ('“Importar Listado”', True),
     (' — Para tu propia plantilla del día a día. Actualiza domicilios (nuevos o ya asignados) sin '
-     'tocar los otros dos reportes.', False),
+     'tocar los reportes.', False),
 ], gap_after=8)
 doc.info_box('IMPORTANTE', [
     ('Cada carga avisa cuántos domicilios cambiaron; el detalle queda en la pestaña ', False),
     ('“Última Actualización”', True),
     (' (también se incluye al exportar “Listado Tipos de Domicilio”). El Comparativo 2023-2024 se '
-     'actualiza solo si cambia tu proyección — no hace falta recargar el archivo del SUC.', False),
+     'actualiza solo si cambia tu proyección — no hace falta volver a cargar la base 2024.', False),
 ])
 doc.paragraph([
     ('•  ', False), ('Equipamiento', True),

@@ -403,6 +403,11 @@ export default function App() {
   // cambia un corte de padrón el comparativo se actualice solo, sin tener que volver a cargar el
   // archivo del SUC.
   const [comparativo2024Base, setComparativo2024Base] = useState(null);
+  // Base 2024: el Listado de Ubicación de Casillas 2023-2024 completo, guardado aparte en la nube
+  // (maquetas/distrito_N/base/listado2024) para no crecer el documento del distrito. Solo cambia
+  // cuando se vuelve a cargar con "Actualizar base 2024". { archivo, cargadoEn, totalCasillas,
+  // totalSecciones, filas: [{ s, c, d, u, r, t, p }] }
+  const [base2024, setBase2024] = useState(null);
   const [reinicioDesbloqueado, setReinicioDesbloqueado] = useState(false);
   // Secciones de menos de 100 asignadas a otra sección: { origen: destino } con claves de 4 dígitos.
   const [seccionesAsignadas, setSeccionesAsignadas] = useState({});
@@ -627,6 +632,10 @@ export default function App() {
           setSeccionesAsignadas(sa ? JSON.parse(sa) : {});
       } catch (e) { setSeccionesAsignadas({}); }
       try {
+          const b24 = localStorage.getItem(`proyector_base2024_D${numStr}`);
+          setBase2024(b24 ? JSON.parse(b24) : null);
+      } catch (e) { setBase2024(null); }
+      try {
           const rc = localStorage.getItem(`proyector_repoCeros_D${numStr}`);
           setRepoCeros(rc ? ordenarObjeto(JSON.parse(rc)) : {});
       } catch (e) { setRepoCeros({}); }
@@ -683,6 +692,19 @@ export default function App() {
       if (!distritoInfo.numero) return;
       try { localStorage.setItem(`proyector_repoCeros_D${distritoInfo.numero}`, JSON.stringify(repoCeros)); } catch (e) {}
   }, [repoCeros, distritoInfo.numero]);
+
+  useEffect(() => {
+      if (!distritoInfo.numero || !base2024) return;
+      try { localStorage.setItem(`proyector_base2024_D${distritoInfo.numero}`, JSON.stringify(base2024)); } catch (e) {}
+  }, [base2024, distritoInfo.numero]);
+
+  // La Base 2024 vive en su propio documento de la nube y se escucha aparte.
+  useEffect(() => {
+      if (!isCloudEnabled || !db || !user || !distritoInfo.numero) return;
+      const ref = doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'base', 'listado2024');
+      const unsub = onSnapshot(ref, (snap) => { if (snap.exists()) setBase2024(snap.data()); }, () => {});
+      return () => unsub();
+  }, [user, distritoInfo.numero]);
 
   // Cada padrón que se carga actualiza el repositorio de manzanas en 0 (ver actualizarRepoCeros).
   useEffect(() => {
@@ -942,6 +964,77 @@ export default function App() {
       reader.readAsArrayBuffer(file);
   };
 
+  // Cargar / actualizar la Base 2024. Asigna los domicilios 2024 a las casillas que coincidan (como
+  // "Importar Listado SUC"), pero si alguna casilla ya tiene OTRO domicilio, primero pregunta si se
+  // actualizan esas o solo se llenan las vacías.
+  const handleCargarBase2024 = (e) => {
+      const inputElement = e.target;
+      const file = inputElement.files[0];
+      if (!file) return;
+      if (isXlsxLibLoading) { setErrorMessage("La librería de Excel aún está cargando. Intenta de nuevo."); inputElement.value = null; return; }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          let filas;
+          try { filas = dedupeFilasPorClave(parsearUbicacionCasillas(event.target.result)); }
+          catch (err) { setErrorMessage(err.message || "El archivo no tiene un formato de ubicación de casillas válido."); inputElement.value = null; return; }
+          inputElement.value = null;
+          if (!filas.length) { setErrorMessage('El archivo no trae casillas.'); return; }
+          const nueva = {
+              archivo: file.name, cargadoEn: new Date().toISOString(),
+              totalCasillas: filas.length, totalSecciones: new Set(filas.map(f => f4(f.seccion))).size,
+              filas: filas.map(f => ({ s: f4(f.seccion), c: f.casillaCodigo, d: f.domicilio, u: f.ubicacion, r: f.referencia, t: f.tipoDomicilio, p: f.nombrePropietario })),
+          };
+          if (JSON.stringify(nueva).length > 900000) { setErrorMessage('El archivo es demasiado grande para guardarlo como Base 2024.'); return; }
+
+          const clavesValidas = new Set(todasLasCasillasEquipamiento.map(c => claveCasillaUbicacion(c.seccion, c.nombre)));
+          const conflictos = filas.filter(f => {
+              const clave = claveCasillaUbicacion(f.seccion, f.casillaCodigo);
+              if (!clavesValidas.has(clave)) return false;
+              const id = ubicacionCasillas[clave]?.domicilioId;
+              const actual = id ? domicilios[id] : null;
+              return actual && firmaDomicilioContenido(actual) !== firmaDomicilioContenido(f);
+          });
+          const clavesConflicto = new Set(conflictos.map(f => claveCasillaUbicacion(f.seccion, f.casillaCodigo)));
+
+          const aplicar = (actualizarDistintos) => {
+              setBase2024(nueva);
+              if (isCloudEnabled && db && user) {
+                  setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maquetas', `distrito_${distritoInfo.numero}`, 'base', 'listado2024'), nueva)
+                      .catch(() => setErrorMessage('La Base 2024 se cargó en este equipo, pero no se pudo guardar en la nube. Revisa tu conexión y vuelve a cargarla.'));
+              }
+              setReporteDiferenciaProyeccion(generarReporteDiferenciaProyeccion(filas));
+              setComparativo2024Base(generarComparativo2024Base(filas));
+              const paraDomicilios = actualizarDistintos ? filas : filas.filter(f => !clavesConflicto.has(claveCasillaUbicacion(f.seccion, f.casillaCodigo)));
+              procesarImportacionDomicilios(paraDomicilios, { origen: 'base2024', actualizarReportes: false });
+              setErrorMessage(null);
+              setSuccessMessage(`Base 2024 guardada: ${nueva.totalCasillas} casillas de ${nueva.totalSecciones} secciones (${file.name}).`);
+              setTimeout(() => setSuccessMessage(null), 5000);
+          };
+          // Se encadenan las preguntas con setTimeout para que el modal anterior ya esté cerrado.
+          const paso2 = () => {
+              if (!conflictos.length) { aplicar(true); return; }
+              const ejemplos = conflictos.slice(0, 8).map(f => `${f4(f.seccion)}-${f.casillaCodigo}`).join(', ');
+              setModalConfig({
+                  isOpen: true,
+                  message: `${conflictos.length} casilla(s) ya tienen un domicilio distinto al de la Base 2024 (${ejemplos}${conflictos.length > 8 ? '…' : ''}). ¿Las actualizo con el domicilio de 2024? Las demás casillas que coincidan se llenan en ambos casos.`,
+                  confirmLabel: `Sí, actualizar las ${conflictos.length}`,
+                  onConfirm: () => setTimeout(() => aplicar(true), 0),
+                  secondaryLabel: 'No, conservar las mías',
+                  onSecondary: () => setTimeout(() => aplicar(false), 0),
+              });
+          };
+          if (base2024) {
+              setModalConfig({
+                  isOpen: true,
+                  message: `Ya tienes una Base 2024 guardada ("${base2024.archivo}", cargada el ${new Date(base2024.cargadoEn).toLocaleDateString('es-MX')}). ¿La reemplazo con "${file.name}" (${nueva.totalCasillas} casillas)? El Comparativo vs 2023-2024 y el reporte de secciones que aumentan se recalculan con la nueva.`,
+                  confirmLabel: 'Sí, reemplazar',
+                  onConfirm: () => setTimeout(paso2, 0),
+              });
+          } else paso2();
+      };
+      reader.readAsArrayBuffer(file);
+  };
+
   // Importar Listado (plano): actualiza domicilios (nuevos o ya asignados — si cambiaste dónde se
   // instala una casilla, esto sí lo sobrescribe) a partir de tu propia plantilla del día a día. NO
   // recalcula Diferencia de Proyección ni el Comparativo vs Proceso 2023-2024 — esos reportes solo
@@ -1075,7 +1168,7 @@ export default function App() {
       }
 
       if (historialCambiosDomicilio.length > 0) {
-          const origenLabelExport = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC' };
+          const origenLabelExport = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC', base2024: 'Base 2024' };
           const headersHist = ['Sección', 'Casilla', 'Fecha y Hora', 'Origen', 'Domicilio Anterior', 'Ubicación Anterior', 'Referencia Anterior', 'Tipo Domicilio Anterior', 'Propietario Anterior', 'Domicilio Nuevo', 'Ubicación Nueva', 'Referencia Nueva', 'Tipo Domicilio Nuevo', 'Propietario Nuevo'];
           const rowsHist = [headersHist, ...historialCambiosDomicilio.map(c => [
               c.seccion, c.casilla, new Date(c.fecha).toLocaleString('es-MX'), origenLabelExport[c.origen] || c.origen,
@@ -3203,9 +3296,14 @@ export default function App() {
       const conteo2024 = { basicas: 0, contiguas: 0, extraordinarias: 0, extraordinariasContiguas: 0, especiales: 0 };
       const secciones2024 = new Set();
       const codigosNoReconocidos = new Set();
+      // Conteo por sección [básicas, contiguas, extraordinarias, extra. contiguas, especiales] para el
+      // reporte de secciones que aumentan casillas.
+      const porSeccion = {};
+      const ORDEN = { BASICA: 0, CONTIGUA: 1, EXTRAORDINARIA: 2, EXTRAORDINARIA_CONTIGUA: 3, ESPECIAL: 4 };
       filasImportadas.forEach(f => {
           secciones2024.add(f4(f.seccion));
           const cat = clasificarCategoriaCasillaINE(f.casillaCodigo);
+          if (cat in ORDEN) (porSeccion[f4(f.seccion)] = porSeccion[f4(f.seccion)] || [0, 0, 0, 0, 0])[ORDEN[cat]] += 1;
           if (cat === 'BASICA') conteo2024.basicas += 1;
           else if (cat === 'CONTIGUA') conteo2024.contiguas += 1;
           else if (cat === 'EXTRAORDINARIA') conteo2024.extraordinarias += 1;
@@ -3220,6 +3318,7 @@ export default function App() {
           conteo2024,
           secciones2024: [...secciones2024].sort(),
           codigosNoReconocidos: [...codigosNoReconocidos].sort(),
+          porSeccion,
       };
   };
 
@@ -3228,7 +3327,15 @@ export default function App() {
   // (desgloseTiposCasilla, seccionesAgrupadas). Así, si mañana cambia un corte de padrón y sube o
   // baja el número de casillas proyectadas, este comparativo se actualiza solo, sin necesidad de
   // volver a subir el archivo 2024.
+  const filasBase2024 = useMemo(() => (base2024?.filas || []).map(f => ({ seccion: f.s, casillaCodigo: f.c, domicilio: f.d || '', ubicacion: f.u || '', referencia: f.r || '', tipoDomicilio: f.t || '', nombrePropietario: f.p || '' })), [base2024]);
+  // Si hay Base 2024 guardada, todo lo que compara contra 2024 sale de ella; si no, de lo que dejó
+  // la última carga de "Importar Listado SUC" (distritos que lo cargaron antes de existir la base).
+  const comparativo2024BaseEfectiva = useMemo(() => filasBase2024.length
+      ? { ...generarComparativo2024Base(filasBase2024), fechaCargaSUC: base2024.cargadoEn, archivo: base2024.archivo, desdeBase2024: true }
+      : comparativo2024Base, [filasBase2024, comparativo2024Base]);
+
   const comparativo2024 = useMemo(() => {
+      const comparativo2024Base = comparativo2024BaseEfectiva;
       if (!comparativo2024Base) return null;
       const secciones2024Set = new Set(comparativo2024Base.secciones2024);
       const seccionesActuales = new Set(seccionesAgrupadas.map(g => f4(g.seccion)));
@@ -3249,8 +3356,104 @@ export default function App() {
           conteoActual,
           diffs,
           codigosNoReconocidos: comparativo2024Base.codigosNoReconocidos || [],
+          archivo: comparativo2024Base.archivo || null,
+          desdeBase2024: !!comparativo2024Base.desdeBase2024,
       };
-  }, [comparativo2024Base, seccionesAgrupadas, desgloseTiposCasilla]);
+  }, [comparativo2024BaseEfectiva, seccionesAgrupadas, desgloseTiposCasilla]);
+
+  // Casillas por sección: 2024 (Listado SUC cargado) vs 2026 (proyección actual, contando igual que
+  // la Proyección Oficial: por casilla, el mayor entre padrón y lista). Si la base del SUC es de antes
+  // de guardar el desglose por sección, se usa el total por sección del reporte "Diferencia de
+  // Proyección", que sale de la misma carga.
+  const comparativoSecciones2024 = useMemo(() => {
+    const base = comparativo2024BaseEfectiva?.porSeccion;
+    const reales = reporteDiferenciaProyeccion?.filas || [];
+    if (!base && !reales.some(r => Number(r.real) > 0)) return null;
+    const v24 = {};
+    if (base) Object.entries(base).forEach(([s, t]) => { v24[f4(s)] = { total: t.reduce((a, b) => a + b, 0), b: t[0], c: t[1], e: t[2] + t[3], s: t[4] }; });
+    else reales.forEach(r => { if (Number(r.real) > 0) v24[f4(r.seccion)] = { total: Number(r.real) }; });
+    const v26 = {};
+    filasConsolidadoFinal.forEach(r => {
+      const s = f4(r.seccion);
+      const n = Math.max(Number(r.countPadron) || 0, Number(r.countLista) || 0);
+      const x = v26[s] || (v26[s] = { total: 0, b: 0, c: 0, e: 0, s: 0, mun: r.mun, padron: 0, lista: 0, nota: '' });
+      if (r.asignadaA) x.nota = `Padrón asignado a la sección ${f4(r.asignadaA)} (menos de 100)`;
+      else if (r.recibeDe && r.recibeDe.length) x.nota = `Incluye la sección ${r.recibeDe.map(f4).join(', ')} asignada por menos de 100`;
+      x.total += n;
+      if (r.categoria === 'BASICA') { if (n > 0) { x.b += 1; x.c += n - 1; } }
+      else if (r.categoria === 'EXTRAORDINARIA') x.e += n;
+      else x.s += n;
+      if (r.categoria !== 'ESPECIAL') { x.padron += Number(r.padronRef) || 0; x.lista += Number(r.listaRef) || 0; }
+    });
+    const nombreMun = (m) => m ? (MUNICIPIOS_MEXICO[String(Number(m))] || `MUNICIPIO ${m}`) : '';
+    const filas = [...new Set([...Object.keys(v24), ...Object.keys(v26)])].map(s => {
+      const a = v24[s], b = v26[s];
+      const t24 = a ? a.total : 0, t26 = b ? b.total : 0;
+      const estado = !a ? 'Sección nueva' : !b ? 'Ya no está en el padrón' : t26 > t24 ? 'Aumentó' : t26 < t24 ? 'Disminuyó' : 'Igual';
+      return { seccion: s, mun: b?.mun || '', municipio: nombreMun(b?.mun), a, b, t24, t26, diferencia: t26 - t24, estado, nota: b?.nota || '' };
+    }).sort((x, y) => (!x.municipio - !y.municipio) || x.municipio.localeCompare(y.municipio) || x.seccion.localeCompare(y.seccion, undefined, { numeric: true }));
+    const aumentaron = filas.filter(f => f.diferencia > 0);
+    return { filas, aumentaron, casillasDeMas: aumentaron.reduce((t, f) => t + f.diferencia, 0), conTipos2024: !!base, fechaCargaSUC: comparativo2024BaseEfectiva?.fechaCargaSUC || null, archivo: comparativo2024BaseEfectiva?.archivo || null };
+  }, [comparativo2024BaseEfectiva, reporteDiferenciaProyeccion, filasConsolidadoFinal]);
+
+  const exportarAumentosCasillas2024 = () => {
+    const cmp = comparativoSecciones2024;
+    if (!window.XLSX || !cmp) return;
+    const XL = window.XLSX;
+    const wb = XL.utils.book_new();
+    const fechaSUC = cmp.fechaCargaSUC ? new Date(cmp.fechaCargaSUC).toLocaleDateString('es-MX') : 's/f';
+    const titulo = (t) => [[t], [`Distrito ${f4(distritoInfo.numero)} · Casillas 2024: ${cmp.archivo ? `Base 2024 "${cmp.archivo}"` : 'Listado SUC'} cargado el ${fechaSUC} · Casillas 2026: proyección actual${fechaCorte ? ` (corte ${fechaCorte})` : ''}, contando por casilla el mayor entre padrón y lista (igual que la Proyección Oficial)`], []];
+    const estiloHeader = { fill: { patternType: 'solid', fgColor: { rgb: '454248' } }, font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    const estiloTotal = { fill: { patternType: 'solid', fgColor: { rgb: 'DDD4CE' } }, font: { bold: true } };
+    const estiloAumento = { fill: { patternType: 'solid', fgColor: { rgb: 'C5A989' } }, font: { bold: true }, alignment: { horizontal: 'center' } };
+    const hoja = (nombre, tituloTxt, header, filas, total, colAumento, anchos) => {
+      const rows = [...titulo(tituloTxt), header, ...filas, ...(total ? [total] : [])];
+      const ws = XL.utils.aoa_to_sheet(rows);
+      const h = 3;
+      if (ws.A1) ws.A1.s = { font: { bold: true, sz: 13 } };
+      header.forEach((_, c) => { const a = XL.utils.encode_cell({ r: h, c }); if (ws[a]) ws[a].s = estiloHeader; });
+      if (colAumento != null) filas.forEach((_, i) => { const a = XL.utils.encode_cell({ r: h + 1 + i, c: colAumento }); if (ws[a] && Number(ws[a].v) > 0) ws[a].s = estiloAumento; });
+      if (total) header.forEach((_, c) => { const a = XL.utils.encode_cell({ r: h + 1 + filas.length, c }); if (ws[a]) ws[a].s = estiloTotal; });
+      ws['!cols'] = anchos.map(w => ({ wch: w }));
+      ws['!autofilter'] = { ref: XL.utils.encode_range({ s: { r: h, c: 0 }, e: { r: h + filas.length, c: header.length - 1 } }) };
+      XL.utils.book_append_sheet(wb, ws, nombre);
+    };
+    const tipos = (x) => x ? [x.b ?? '', x.c ?? '', x.e ?? '', x.s ?? ''] : ['', '', '', ''];
+    const conTipos = cmp.conTipos2024;
+    const sumar = (lista, campo) => lista.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
+
+    // 1) Secciones que aumentaron
+    const hAum = ['Municipio', 'Nombre del municipio', 'Sección', 'Casillas 2024', 'Casillas 2026', 'Aumento', 'Padrón 2026', 'Lista 2026',
+      ...(conTipos ? ['Básica 2024', 'Contiguas 2024', 'Extraord. 2024', 'Especiales 2024'] : []), 'Básica 2026', 'Contiguas 2026', 'Extraord. 2026', 'Especiales 2026', 'Nota'];
+    const fAum = cmp.aumentaron.map(f => [f.mun, f.municipio, f.seccion, f.t24, f.t26, f.diferencia, f.b?.padron ?? '', f.b?.lista ?? '',
+      ...(conTipos ? tipos(f.a) : []), ...tipos(f.b), [f.estado === 'Sección nueva' ? 'Sección nueva (no estaba en 2024)' : '', f.nota].filter(Boolean).join(' · ')]);
+    hoja('Aumentaron', `Secciones que aumentan su proyección de casillas: 2024 vs 2026 (${cmp.aumentaron.length})`, hAum, fAum,
+      ['TOTAL', '', `${cmp.aumentaron.length} secciones`, sumar(cmp.aumentaron, 't24'), sumar(cmp.aumentaron, 't26'), cmp.casillasDeMas], 5,
+      [10, 26, 9, 11, 11, 10, 11, 11, ...(conTipos ? [10, 11, 11, 11] : []), 10, 11, 11, 11, 30]);
+
+    // 2) Resumen por municipio
+    const porMun = new Map();
+    cmp.filas.forEach(f => {
+      const k = f.mun || '—';
+      const m = porMun.get(k) || { mun: f.mun || '—', nombre: f.municipio || 'Sin municipio en el padrón', secciones: 0, aumentaron: 0, t24: 0, t26: 0, aumento: 0 };
+      m.secciones += 1; m.t24 += f.t24; m.t26 += f.t26;
+      if (f.diferencia > 0) { m.aumentaron += 1; m.aumento += f.diferencia; }
+      porMun.set(k, m);
+    });
+    const muns = [...porMun.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    hoja('Por municipio', 'Resumen por municipio', ['Municipio', 'Nombre del municipio', 'Secciones', 'Secciones que aumentaron', 'Casillas 2024', 'Casillas 2026', 'Diferencia total', 'Casillas de más (solo las que aumentaron)'],
+      muns.map(m => [m.mun, m.nombre, m.secciones, m.aumentaron, m.t24, m.t26, m.t26 - m.t24, m.aumento]),
+      ['TOTAL', '', sumar(muns, 'secciones'), sumar(muns, 'aumentaron'), sumar(muns, 't24'), sumar(muns, 't26'), sumar(muns, 't26') - sumar(muns, 't24'), sumar(muns, 'aumento')], 3,
+      [10, 26, 10, 14, 12, 12, 12, 20]);
+
+    // 3) Todas las secciones
+    hoja('Todas las secciones', 'Todas las secciones: 2024 vs 2026', ['Municipio', 'Nombre del municipio', 'Sección', 'Casillas 2024', 'Casillas 2026', 'Diferencia', 'Estado', 'Nota'],
+      cmp.filas.map(f => [f.mun, f.municipio, f.seccion, f.t24, f.t26, f.diferencia, f.estado, f.nota]),
+      ['TOTAL', '', `${cmp.filas.length} secciones`, sumar(cmp.filas, 't24'), sumar(cmp.filas, 't26'), sumar(cmp.filas, 't26') - sumar(cmp.filas, 't24'), '', ''], 5,
+      [10, 26, 9, 12, 12, 11, 24, 44]);
+
+    XL.writeFile(aplicarFuenteInstitucional(wb), `Secciones_que_aumentan_casillas_2024_vs_2026_D${f4(distritoInfo.numero)}_${obtenerFechaHoraArchivo()}.xlsx`);
+  };
 
   const totalCasillasDistrito = useMemo(() => {
     let bcPadron = 0; let bcLista = 0;
@@ -4819,6 +5022,40 @@ export default function App() {
                                       <p className="text-xs font-bold text-amber-800">{comparativo2024.codigosNoReconocidos.length} código(s) de casilla del archivo 2023-2024 no se reconocieron y no entraron en el conteo por tipo.</p>
                                   </div>
                               )}
+                              <div className="mt-5 pt-4 border-t-2 border-slate-100">
+                                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                      <div>
+                                          <p className="text-sm font-black uppercase text-slate-700">Secciones que aumentan casillas: 2024 vs 2026</p>
+                                          {comparativoSecciones2024 && <p className="text-xs font-bold text-slate-500 mt-0.5">{comparativoSecciones2024.aumentaron.length} sección(es) con {comparativoSecciones2024.casillasDeMas} casilla(s) más que en 2024 · contando por casilla el mayor entre padrón y lista, como la Proyección Oficial</p>}
+                                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">{base2024 ? `2024 según la Base 2024 “${base2024.archivo}” (cargada el ${new Date(base2024.cargadoEn).toLocaleDateString('es-MX')})` : '2024 según el último “Importar Listado SUC”. Para fijarlo, carga la Base 2024 en Proyección → Tipos de Domicilios.'}</p>
+                                      </div>
+                                      {comparativoSecciones2024 && <button onClick={exportarAumentosCasillas2024} className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2 active:scale-95 transition-all"><FileSpreadsheet className="w-4 h-4" /> Excel por sección y municipio</button>}
+                                  </div>
+                                  {!comparativoSecciones2024 ? (
+                                      <p className="text-xs font-bold text-slate-500">Para ver este reporte carga tu Listado de Ubicación de Casillas 2023-2024 en Proyección → Tipos de Domicilios → “Cargar base 2024”.</p>
+                                  ) : comparativoSecciones2024.aumentaron.length === 0 ? (
+                                      <p className="text-xs font-bold text-slate-500">Ninguna sección tiene más casillas que en 2024.</p>
+                                  ) : (
+                                      <div className="max-h-72 overflow-y-auto custom-scrollbar border-2 border-slate-100 rounded-xl">
+                                          <table className="w-full text-xs">
+                                              <thead className="sticky top-0 bg-slate-100 text-slate-600 text-[10px] uppercase">
+                                                  <tr><th className="p-2 text-left">Municipio</th><th className="p-2 text-left">Sección</th><th className="p-2 text-center">2024</th><th className="p-2 text-center">2026</th><th className="p-2 text-center">Aumento</th></tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-slate-100 font-bold">
+                                                  {comparativoSecciones2024.aumentaron.map(f => (
+                                                      <tr key={f.seccion}>
+                                                          <td className="p-2 text-slate-600">{f.mun} · {f.municipio}</td>
+                                                          <td className="p-2 text-slate-800">{f.seccion}{f.estado === 'Sección nueva' && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[9px] font-black uppercase">Nueva</span>}</td>
+                                                          <td className="p-2 text-center text-slate-500">{f.t24}</td>
+                                                          <td className="p-2 text-center text-slate-800">{f.t26}</td>
+                                                          <td className="p-2 text-center"><span className="px-2 py-0.5 rounded-full bg-beige-100 text-slate-800 font-black">+{f.diferencia}</span></td>
+                                                      </tr>
+                                                  ))}
+                                              </tbody>
+                                          </table>
+                                      </div>
+                                  )}
+                              </div>
                           </div>
                       )}
 
@@ -5408,7 +5645,8 @@ export default function App() {
                                   </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
-                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Listado oficial del SUC (INE): asigna/actualiza TODOS los domicilios que coincidan, y recalcula Diferencia de Proyección y Comparativo vs Proceso 2023-2024"><BarChart3 className="w-4 h-4" /> Importar Listado SUC<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarListadoSUC} /></label>
+                                  <label className="flex items-center gap-2 bg-white text-oxford-700 hover:bg-beige-100 px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all shadow-md" title="Listado de Ubicación de Casillas 2023-2024: queda guardado como base para el Comparativo vs 2023-2024 y el reporte de secciones que aumentan, y asigna sus domicilios (te pregunta antes de cambiar uno que ya tengas)"><History className="w-4 h-4" /> {base2024 ? 'Actualizar base 2024' : 'Cargar base 2024'}<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleCargarBase2024} /></label>
+                                  <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Listado oficial del SUC (INE) de este proceso: asigna/actualiza TODOS los domicilios que coincidan y recalcula la Diferencia de Proyección. No cambia la Base 2024."><BarChart3 className="w-4 h-4" /> Importar Listado SUC<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarListadoSUC} /></label>
                                   <label className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-all border border-white/30" title="Uso diario con tu propia plantilla: actualiza domicilios (nuevos o ya asignados). No toca la Diferencia de Proyección ni el Comparativo 2023-2024"><FileUp className="w-4 h-4" /> Importar Listado<input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImportarDomicilios} /></label>
                                   <button onClick={exportarPlantillaUbicacion} className="flex items-center gap-2 bg-white text-oxford-700 hover:bg-beige-100 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md"><FileDown className="w-4 h-4" /> Listado Tipos de Domicilio</button>
                                   <button onClick={() => setLimpiezaDomiciliosBloqueada(v => !v)} title={limpiezaDomiciliosBloqueada ? 'Toca para desbloquear la limpieza total (solo pruebas)' : 'Toca para bloquear de nuevo'} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all shadow-md border ${limpiezaDomiciliosBloqueada ? 'bg-white/15 hover:bg-white/25 text-white border-white/30' : 'bg-amber-400 hover:bg-amber-500 text-amber-950 border-amber-300'}`}>
@@ -5419,7 +5657,12 @@ export default function App() {
                                   )}
                               </div>
                           </div>
-                          <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">"Importar Listado SUC" es para el Listado de Ubicación de Casillas oficial del sistema del INE (del proceso 2023-2024 o el real de este proceso): con una sola carga asigna todos los domicilios que coincidan y recalcula Diferencia de Proyección y Comparativo vs 2023-2024. "Importar Listado" es para tu propia plantilla del día a día: exporta "Listado Tipos de Domicilio", complétala y vuelve a subirla — actualiza domicilios nuevos o ya asignados (por ejemplo, si una casilla cambió de sede), sin tocar los demás reportes. Cada carga te avisa cuántos domicilios cambiaron, y el detalle queda en la pestaña "Última Actualización".</p>
+                          <div className="mt-4 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-xs font-bold text-white">
+                              {base2024
+                                  ? <>Base 2024 guardada: “{base2024.archivo}” · {Number(base2024.totalCasillas).toLocaleString('es-MX')} casillas de {Number(base2024.totalSecciones).toLocaleString('es-MX')} secciones · cargada el {new Date(base2024.cargadoEn).toLocaleDateString('es-MX')}. Solo cambia si la actualizas.</>
+                                  : <>Todavía no hay Base 2024 guardada. Cárgala una vez con tu Listado de Ubicación de Casillas 2023-2024: queda guardada para todo el equipo.</>}
+                          </div>
+                          <p className="text-xs text-pink-100 mt-4 font-bold max-w-3xl">"Cargar base 2024" guarda el Listado de Ubicación de Casillas 2023-2024 como base fija del Comparativo vs 2023-2024 y del reporte de secciones que aumentan, y asigna sus domicilios (si una casilla ya tiene otro, te pregunta). "Importar Listado SUC" es para el listado oficial de este proceso: asigna todos los domicilios que coincidan y recalcula la Diferencia de Proyección, sin tocar la Base 2024. "Importar Listado" es para tu propia plantilla del día a día: exporta "Listado Tipos de Domicilio", complétala y vuelve a subirla — actualiza domicilios nuevos o ya asignados (por ejemplo, si una casilla cambió de sede), sin tocar los demás reportes. Cada carga te avisa cuántos domicilios cambiaron, y el detalle queda en la pestaña "Última Actualización".</p>
                       </div>
 
                       <div className="flex gap-2">
@@ -5448,7 +5691,7 @@ export default function App() {
                                           </thead>
                                           <tbody className="text-xs font-bold divide-y divide-slate-100">
                                               {historialCambiosDomicilio.map(c => {
-                                                  const origenLabel = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC' }[c.origen] || c.origen;
+                                                  const origenLabel = { manual: 'Manual', completar: 'Completar', excel: 'Excel', suc: 'SUC', base2024: 'Base 2024' }[c.origen] || c.origen;
                                                   const origenColor = { manual: 'bg-slate-100 text-slate-700', completar: 'bg-violet-100 text-violet-700', excel: 'bg-amber-100 text-amber-700', suc: 'bg-sky-100 text-sky-700' }[c.origen] || 'bg-slate-100 text-slate-700';
                                                   const textoDom = (d) => d ? (d.domicilio || d.ubicacion || '(sin domicilio)') : '— (sin domicilio)';
                                                   return (
@@ -6739,12 +6982,15 @@ export default function App() {
       {/* MODAL DE CONFIRMACIÓN */}
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pointer-events-auto">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full mx-4 text-center border-2 border-slate-200">
+          <div className={`bg-white p-8 rounded-3xl shadow-2xl ${modalConfig.onSecondary ? 'max-w-lg' : 'max-w-sm'} w-full mx-4 text-center border-2 border-slate-200`}>
             {modalConfig.peligro ? <Trash2 className="w-14 h-14 text-red-600 mx-auto mb-4" /> : <AlertTriangle className="w-14 h-14 text-pink-600 mx-auto mb-4" />}
             <h3 className="text-xl font-black text-slate-900 mb-2">{modalConfig.peligro ? '¿Estás seguro?' : 'Confirmar acción'}</h3>
             <p className="text-sm text-slate-600 mb-8 font-bold">{modalConfig.message}</p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               <button onClick={() => setModalConfig({ isOpen: false, message: '', onConfirm: null })} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">Cancelar</button>
+              {modalConfig.onSecondary && (
+                <button onClick={() => { try { modalConfig.onSecondary(); } finally { setModalConfig({ isOpen: false, message: '', onConfirm: null }); } }} className="px-5 py-2.5 bg-white border-2 border-pink-600 text-pink-700 hover:bg-pink-50 font-black uppercase tracking-wider rounded-xl transition-colors text-xs">{modalConfig.secondaryLabel || 'Otra opción'}</button>
+              )}
               {modalConfig.onConfirm && (
                 <button onClick={() => { try { modalConfig.onConfirm(); } finally { setModalConfig({ isOpen: false, message: '', onConfirm: null }); } }} className={`px-5 py-2.5 text-white font-black uppercase tracking-wider rounded-xl transition-colors shadow-md text-xs ${modalConfig.peligro ? 'bg-red-600 hover:bg-red-700' : 'bg-pink-600 hover:bg-pink-700'}`}>{modalConfig.confirmLabel || 'Confirmar'}</button>
               )}

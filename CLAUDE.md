@@ -18,10 +18,12 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 10-nov-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas.
-Último cambio en producción (10-nov): "el armado ya no borra manzanas" + repositorio de manzanas
-en 0 (ver Reglas de negocio) y Guía Rápida actualizada (sección 04, sigue en 4 páginas).
-Siguiente tarea en curso: reporte de secciones que aumentan casillas 2024 vs 2026 (con municipio).
+Al 10-nov-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
+sin código a medias. Últimos cambios en producción (10-nov): repositorio de manzanas en 0 (el
+armado ya no se borra al cargar padrón), Base 2024 y reporte de secciones que aumentan casillas
+2024 vs 2026 (ver Reglas de negocio). Guía Rápida actualizada (04 y 05, sigue en 4 páginas).
+Sugerencia para Mario: cargar una vez su padrón actual (llena el repositorio de manzanas en 0) y su
+Listado de Ubicación 2023-2024 con "Cargar base 2024" (deja fijo el desglose por tipo de 2024).
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -111,6 +113,21 @@ Siguiente tarea en curso: reporte de secciones que aumentan casillas 2024 vs 202
   ninguna, se agregan al padrón efectivo (`rawElectoralData` = `padronCargado` + repositorio)
   marcadas "del repositorio", con aviso en la pestaña Manzanas en 0. Llaves ordenadas
   (`ordenarObjeto`) para que el autoguardado no entre en ciclo.
+- **Base 2024** (Proyección → Tipos de Domicilios → "Cargar/Actualizar base 2024",
+  `handleCargarBase2024`): el Listado de Ubicación 2023-2024 completo se guarda en
+  `maquetas/distrito_N/base/listado2024` (doc aparte para no crecer el del distrito; filas
+  `{s,c,d,u,r,t,p}`) + localStorage `proyector_base2024_D<N>`. Solo cambia si se vuelve a cargar
+  (pregunta antes de reemplazar). Asigna sus domicilios; si una casilla ya tiene otro, pregunta
+  "Sí, actualizar las N" / "No, conservar las mías" (modal con `onSecondary`). El Comparativo vs
+  2023-2024 y el reporte de aumentos usan `comparativo2024BaseEfectiva` (la base si existe; si no,
+  el `comparativo2024Base` del último "Importar Listado SUC"). "Importar Listado SUC" queda para el
+  listado real de este proceso (domicilios + Diferencia de Proyección).
+- **Reporte de secciones que aumentan casillas 2024 vs 2026** (Resumen Distrital, tarjeta del
+  Comparativo; `comparativoSecciones2024`, `exportarAumentosCasillas2024`): 2026 = por casilla el
+  mayor entre padrón y lista (igual que la Proyección Oficial), incluye extraordinarias y
+  especiales. Excel con hojas Aumentaron (municipio, desglose por tipo, nota de asignadas),
+  Por municipio y Todas las secciones. El desglose por tipo de 2024 necesita la Base 2024 (o un
+  "Importar Listado SUC" hecho después del 10-nov); sin eso usa el total por sección.
 - Especiales: nomenclatura S + número, sin repetir dentro de una sección (la numeración es por
   sección); se administran en Proyección → "Casillas especiales" (no salen en Polígonos).
 - "Reiniciar" (barra superior, con candado de 15 s) borra SOLO el armado: extraordinarias,
