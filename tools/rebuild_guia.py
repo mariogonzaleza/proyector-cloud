@@ -410,8 +410,10 @@ doc.candados_grid([
 ])
 doc.paragraph([
     ('Aviso “Armado vs Padrón”', True),
-    (' (no es candado): en gris cuando todo coincide; en ámbar si alguna manzana de tu armado ya no está '
-     'en el padrón que acabas de cargar. Da clic para ver cuáles y descargar el Excel de conflictos.', False),
+    (' (no es candado): un padrón nuevo ya no borra nada de tu armado. Si no trae las manzanas en 0, se '
+     'toman del repositorio del distrito (“del repositorio”). Si una manzana de tu armado no viene, se '
+     'conserva en 0 y el aviso sale en ámbar: puede ser una baja — revísala con Cartografía y, si se '
+     'confirma, usa “Quitar”.', False),
 ])
 
 # ===================== 05 — Referencia rápida del resto del sistema =====================

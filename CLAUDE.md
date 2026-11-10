@@ -18,27 +18,10 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 09-nov-2026: producción = `master` (último cambio en producción 23-oct: asignar secciones de
-menos de 100 + regla "sin básica" + notas con cifras).
-
-**EN REVISIÓN (solo en PRUEBAS, rama `manzanas-repo-ceros`, NO en producción):** "el armado ya no
-borra manzanas" + repositorio de manzanas en 0. Mario lo vio en pruebas el 09-nov y lo va a revisar
-antes de dar "súbelo". Al aprobar: merge de la rama a `master`, `deploy.ps1`, push, y actualizar
-Guía Rápida (02/05) y "Reglas de negocio" de este archivo. Qué hace:
-- Al cargar un padrón, una manzana del armado que no viene ya NO se borra (antes se quitaba, y si
-  era sede se borraba la extraordinaria completa y el autoguardado lo subía a la nube): se conserva
-  en 0 (`manzanaFaltante`, `faltante: true`), sale en la alerta "Armado vs Padrón" con botón
-  "Quitar" (con confirmación; si era sede, la primera integrante pasa a sede; si era la única, se
-  borra la casilla) y en Polígonos con etiqueta "No viene en el padrón".
-- Repositorio por distrito `manzanasEnCeroRepo` (Firestore + localStorage `proyector_repoCeros_D<N>`;
-  clave `SSSS|LLLL|MMMM` → "sec|loc|mz|mun|fed|loc|nombre|corte"). Si el padrón trae manzanas en 0,
-  el repositorio = esas (las que ya no vienen = posible baja). Si no trae ninguna en 0, se agregan
-  al padrón efectivo (`rawElectoralData` = `padronCargado` + repositorio) marcadas "del
-  repositorio", con aviso en la pestaña Manzanas en 0. Las llaves se ordenan (`ordenarObjeto`) para
-  que el autoguardado no entre en ciclo.
-- Probado en pruebas D14 con 3 padrones (con 0, sin 0 y sin la 0503-0001-001, y completo de
-  nuevo): nada se pierde y la 0503 recupera sus electores sola. D14 en pruebas quedó con el padrón
-  incompleto cargado (normal).
+Al 10-nov-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas.
+Último cambio en producción (10-nov): "el armado ya no borra manzanas" + repositorio de manzanas
+en 0 (ver Reglas de negocio) y Guía Rápida actualizada (sección 04, sigue en 4 páginas).
+Siguiente tarea en curso: reporte de secciones que aumentan casillas 2024 vs 2026 (con municipio).
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -117,6 +100,17 @@ Guía Rápida (02/05) y "Reglas de negocio" de este archivo. Qué hace:
   electores (aunque conserve manzanas en 0; los electores recibidos por asignación sí cuentan).
   La Mesa de armado BLOQUEA el confirmar que dejaría así una sección; los casos que ya existen
   solo se avisan en ámbar (Polígonos guardados y Listado, etiqueta "Sin básica").
+- **El armado nunca se borra al cargar un padrón.** Una manzana del armado que no viene se conserva
+  en 0 (`manzanaFaltante`, `faltante: true`), sale en "Armado vs Padrón" con botón "Quitar"
+  (confirmación; si era sede, la primera integrante pasa a sede; si era la única, se borra la
+  casilla) y en Polígonos con etiqueta "No viene en el padrón". Antes se quitaba (y si era sede se
+  borraba la extraordinaria completa) y el autoguardado lo subía a la nube.
+- **Repositorio de manzanas en 0** por distrito: `manzanasEnCeroRepo` (Firestore) y localStorage
+  `proyector_repoCeros_D<N>`; clave `SSSS|LLLL|MMMM` → "sec|loc|mz|mun|fed|loc|nombre|corte". Si el
+  padrón trae manzanas en 0, el repositorio = esas (las que ya no vienen = posible baja). Si no trae
+  ninguna, se agregan al padrón efectivo (`rawElectoralData` = `padronCargado` + repositorio)
+  marcadas "del repositorio", con aviso en la pestaña Manzanas en 0. Llaves ordenadas
+  (`ordenarObjeto`) para que el autoguardado no entre en ciclo.
 - Especiales: nomenclatura S + número, sin repetir dentro de una sección (la numeración es por
   sección); se administran en Proyección → "Casillas especiales" (no salen en Polígonos).
 - "Reiniciar" (barra superior, con candado de 15 s) borra SOLO el armado: extraordinarias,
