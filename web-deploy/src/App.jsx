@@ -8,7 +8,7 @@ import {
   LayoutGrid, Calculator, ChevronLeft, Table as TableIcon,
   Layers, ListOrdered, ChevronDown, ChevronUp, Box, ShieldAlert,
   Hash, FileDown, MinusCircle, HardDrive, Star, Bookmark, LogOut,
-  FileText, Building2, Home, Pencil, Copy, Lock, Unlock, Flag, Send
+  FileText, Building2, Home, Pencil, Copy, Lock, Unlock, Flag, Send, Info
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -408,6 +408,11 @@ export default function App() {
   // cuando se vuelve a cargar con "Actualizar base 2024". { archivo, cargadoEn, totalCasillas,
   // totalSecciones, filas: [{ s, c, d, u, r, t, p }] }
   const [base2024, setBase2024] = useState(null);
+  // Check junto a "Proyección Oficial INE": (1) las básicas de menos de 100 que no se instalan salen
+  // como 1 casilla normal y (2) padrón y lista se distribuyen proporcionalmente en el mayor número de casillas
+  // (padrón o lista). Solo afecta esa descarga.
+  const [oficialAjustada, setOficialAjustada] = useState(() => { try { return localStorage.getItem('proyector_oficialAjustada') === '1'; } catch (e) { return false; } });
+  useEffect(() => { try { localStorage.setItem('proyector_oficialAjustada', oficialAjustada ? '1' : '0'); } catch (e) {} }, [oficialAjustada]);
   const [reinicioDesbloqueado, setReinicioDesbloqueado] = useState(false);
   // Secciones de menos de 100 asignadas a otra sección: { origen: destino } con claves de 4 dígitos.
   const [seccionesAsignadas, setSeccionesAsignadas] = useState({});
@@ -1911,10 +1916,18 @@ export default function App() {
       }
     });
 
+    // Con el check "ajustada": menos de 100 = 1 casilla y se cuenta el mayor entre padrón y lista.
+    const ajustada = oficialAjustada;
     consolidadoB_C.forEach(r => {
-      if (statsPorSeccion[r.seccion] && r.countPadron > 0) {
+      if (!statsPorSeccion[r.seccion]) return;
+      let n = r.countPadron;
+      if (ajustada && !r.asignadaA) {
+        n = Math.max(r.countPadron, r.countLista);
+        if (n === 0 && ((Number(r.padronRestante) || 0) > 0 || (Number(r.listaRestante) || 0) > 0)) n = 1;
+      }
+      if (n > 0) {
         statsPorSeccion[r.seccion].basicas = 1;
-        statsPorSeccion[r.seccion].contiguas = (r.countPadron - 1);
+        statsPorSeccion[r.seccion].contiguas = (n - 1);
       }
     });
 
@@ -1923,7 +1936,7 @@ export default function App() {
       if (statsPorSeccion[secId]) {
         const st = calcularProyeccion(c);
         if (String(c.tipo).startsWith('S')) { statsPorSeccion[secId].especiales += st.totalMesasPadron; } 
-        else { statsPorSeccion[secId].extraordinarias += st.totalMesasPadron; }
+        else { statsPorSeccion[secId].extraordinarias += ajustada ? Math.max(st.totalMesasPadron, st.totalMesasLista) : st.totalMesasPadron; }
       }
     });
 
@@ -1996,8 +2009,19 @@ export default function App() {
       ["", "", "", "", "", "", "", ""]
     ];
 
+    // Casillas y reparto de cada fila. Normal: como siempre (padrón y lista cada uno en sus casillas).
+    // Ajustada: menos de 100 = 1 casilla, y padrón y lista se distribuyen proporcionalmente en el mayor número.
+    const casillasDeFila = (row) => {
+      let n = Math.max(row.countPadron, row.countLista);
+      if (!ajustada || row.asignadaA || row.categoria === 'ESPECIAL') return { n, dp: row.distPadron, dl: row.distLista };
+      const pad = Number(row.padronRef) || 0, lis = Number(row.listaRef) || 0;
+      if (n === 0 && row.categoria === 'BASICA' && (pad > 0 || lis > 0)) n = 1;
+      const nombres = Array.from({ length: n }, (_, i) => String(i));
+      return { n, dp: obtenerDistribucionArray(pad, nombres), dl: obtenerDistribucionArray(lis, nombres) };
+    };
+
     filasConsolidadoFinal.forEach(row => {
-      const numCasillas = Math.max(row.countPadron, row.countLista);
+      const { n: numCasillas, dp, dl } = casillasDeFila(row);
       const s = statsPorSeccion[row.seccion];
       const notaRecibe = row.categoria === 'BASICA' && row.recibeDe && row.recibeDe.length && notaDestino(row) ? [notaDestino(row)] : [];
       if (row.asignadaA) {
@@ -2008,10 +2032,10 @@ export default function App() {
         for (let i = 0; i < numCasillas; i++) {
           let nomenclaturaCasilla = '';
           if (row.categoria === 'ESPECIAL') { nomenclaturaCasilla = row.nomenclaturaPadron; }
-          else if (row.categoria === 'EXTRAORDINARIA') { nomenclaturaCasilla = i === 0 ? row.nomenclaturaPadron.split(',')[0] : `${row.nomenclaturaPadron.split(',')[0]}C${i}`; }
+          else if (row.categoria === 'EXTRAORDINARIA') { const tipoExtra = String(row.nomenclaturaPadron || row.nomenclaturaLista || '').split(',')[0].trim(); nomenclaturaCasilla = i === 0 ? tipoExtra : `${tipoExtra}C${i}`; }
           else { nomenclaturaCasilla = i === 0 ? 'B' : `C${i}`; }
-          const valorPadron = row.distPadron[i] ? row.distPadron[i].valor : 0;
-          const valorLista = row.distLista[i] ? row.distLista[i].valor : 0;
+          const valorPadron = dp[i] ? dp[i].valor : 0;
+          const valorLista = dl[i] ? dl[i].valor : 0;
           ws2_data.push([ String(s.fed).padStart(2, '0'), String(s.loc).padStart(2, '0'), s.mun, f4(row.seccion), nomenclaturaCasilla, "", valorPadron, valorLista, ...(i === 0 ? notaRecibe : []) ]);
         }
       }
@@ -2092,7 +2116,7 @@ export default function App() {
     }
 
     window.XLSX.utils.book_append_sheet(wb, ws3, "Extraordinarias");
-    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Proyeccion_corte_D${distritoInfo.numero}_${obtenerFechaHoraArchivo()}.xlsx`);
+    window.XLSX.writeFile(aplicarFuenteInstitucional(wb), `Proyeccion_corte_D${distritoInfo.numero}${ajustada ? '_ajustada' : ''}_${obtenerFechaHoraArchivo()}.xlsx`);
   };
 
   const exportarReporteObservaciones = () => {
@@ -5422,18 +5446,36 @@ export default function App() {
                                  <h2 className="text-3xl font-black tracking-tight uppercase text-slate-800 text-left">PROYECCIÓN DE CASILLAS</h2>
                                  <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] text-left mt-1">Listado consolidado por sección con proyección individual</p>
                              </div>
-                             <div className="flex flex-wrap items-stretch gap-2.5">
+                             <div className="flex flex-wrap items-start gap-2.5">
                                  <button onClick={abrirCasillasEspeciales} className="bg-oxford-500 hover:bg-oxford-600 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
                                      <Star className="w-6 h-6 text-beige-300 shrink-0" />
                                      <span className="text-sm font-black uppercase">Casillas Especiales{especialesOrdenadas.length > 0 ? ` (${especialesOrdenadas.length})` : ''}</span>
                                  </button>
-                                 <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left relative z-40">
-                                     <Download className="w-6 h-6 text-pink-200 shrink-0" />
-                                     <span className="text-left leading-tight">
-                                         <span className="block text-sm font-black uppercase">Proyección Oficial INE</span>
-                                         <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">Envío oficial a Junta Local</span>
-                                     </span>
-                                 </button>
+                                 <div className="flex flex-col gap-2 relative z-40">
+                                     <button onClick={exportarProyeccionOficial} className="bg-pink-600 hover:bg-pink-700 text-white px-5 py-3 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center gap-3 text-left">
+                                         <Download className="w-6 h-6 text-pink-200 shrink-0" />
+                                         <span className="text-left leading-tight">
+                                             <span className="block text-sm font-black uppercase">Proyección Oficial INE</span>
+                                             <span className="block text-[9px] font-bold uppercase text-pink-200 tracking-wide">{oficialAjustada ? 'Versión ajustada' : 'Envío oficial a Junta Local'}</span>
+                                         </span>
+                                     </button>
+                                     <div className="flex items-center gap-2 px-1 w-0 min-w-full">
+                                         <button type="button" role="switch" aria-checked={oficialAjustada} onClick={() => setOficialAjustada(v => !v)} className="flex items-center gap-2 group text-left">
+                                             <span className={`relative inline-flex shrink-0 w-8 h-[18px] rounded-full transition-colors ${oficialAjustada ? 'bg-pink-600' : 'bg-slate-300 group-hover:bg-slate-400'}`}>
+                                                 <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform ${oficialAjustada ? 'translate-x-[14px]' : ''}`} />
+                                             </span>
+                                             <span className={`text-[11px] leading-snug font-bold ${oficialAjustada ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-700'}`}>Incluir menores de 100 y distribución proporcional de padrón y lista</span>
+                                         </button>
+                                         <span className="relative group/info">
+                                             <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                                             <span className="pointer-events-none absolute right-0 top-5 w-72 rounded-xl bg-slate-800 text-white text-[11px] font-medium leading-snug px-3.5 py-2.5 shadow-xl opacity-0 group-hover/info:opacity-100 transition-opacity z-50">
+                                                 Solo cambia esta descarga:<br />
+                                                 • Las básicas de menos de 100 electores que no se instalan salen como una casilla normal.<br />
+                                                 • Si padrón y lista dan distinto número de casillas, ambos se distribuyen proporcionalmente en el número mayor (p. ej., padrón 3 y lista 2: la lista se distribuye en las 3 casillas).
+                                             </span>
+                                         </span>
+                                     </div>
+                                 </div>
                              </div>
                          </div>
 

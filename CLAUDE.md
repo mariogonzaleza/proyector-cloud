@@ -18,12 +18,12 @@ comparten es GitHub, Firebase y este archivo; la memoria de cada chat NO viaja.
 - Todo lo que deba recordarse entre equipos va aquí, no en la memoria del chat.
 
 ## Estado actual
-Al 10-nov-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
-sin código a medias. Últimos cambios en producción (10-nov): repositorio de manzanas en 0 (el
-armado ya no se borra al cargar padrón), Base 2024 y reporte de secciones que aumentan casillas
-2024 vs 2026 (ver Reglas de negocio). Guía Rápida actualizada (04 y 05, sigue en 4 páginas).
+Al 11-nov-2026: todo en `master`, sincronizado con GitHub y publicado en producción y pruebas;
+sin código a medias. Último cambio en producción (11-nov): interruptor "Incluir menores de 100 y
+distribución proporcional de padrón y lista" en la Proyección Oficial INE (ver Reglas de negocio).
+Antes (10-nov): repositorio de manzanas en 0, Base 2024 y reporte de secciones que aumentan.
 Sugerencia para Mario: cargar una vez su padrón actual (llena el repositorio de manzanas en 0) y su
-Listado de Ubicación 2023-2024 con "Cargar base 2024" (deja fijo el desglose por tipo de 2024).
+Listado de Ubicación 2023-2024 con "Cargar base 2024".
 
 ## Stack (sin build)
 - Una sola app React 18 en `src/App.jsx` (~6,000 líneas), compilada **en el navegador** con
@@ -128,6 +128,12 @@ Listado de Ubicación 2023-2024 con "Cargar base 2024" (deja fijo el desglose po
   especiales. Excel con hojas Aumentaron (municipio, desglose por tipo, nota de asignadas),
   Por municipio y Todas las secciones. El desglose por tipo de 2024 necesita la Base 2024 (o un
   "Importar Listado SUC" hecho después del 10-nov); sin eso usa el total por sección.
+- **Proyección Oficial INE "ajustada"** (interruptor bajo el botón, `oficialAjustada`, se recuerda
+  por equipo en localStorage `proyector_oficialAjustada`; archivo `…_ajustada_…xlsx`). Solo cambia
+  esa descarga: (1) básicas de 1–99 que no se instalan salen como 1 casilla "B"; (2) por fila se usa
+  el mayor entre casillas de padrón y de lista y AMBOS se distribuyen proporcionalmente en ese número
+  (`casillasDeFila`). Las secciones asignadas a otra siguen asignadas; especiales y básicas en 0 no
+  cambian. Mario pidió decir "distribución proporcional" (no "reparto parejo").
 - Especiales: nomenclatura S + número, sin repetir dentro de una sección (la numeración es por
   sección); se administran en Proyección → "Casillas especiales" (no salen en Polígonos).
 - "Reiniciar" (barra superior, con candado de 15 s) borra SOLO el armado: extraordinarias,

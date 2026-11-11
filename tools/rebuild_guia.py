@@ -455,7 +455,10 @@ doc.paragraph([
 ], gap_after=8)
 doc.info_box('IMPORTANTE', [
     ('Dentro de Listado de Casillas, el botón ', False), ('“Proyección Oficial INE”', True),
-    (' es el que se tiene que mandar a la Junta Local — no los otros exportes.', False),
+    (' es el que se tiene que mandar a la Junta Local — no los otros exportes. Debajo, el interruptor ', False),
+    ('“Incluir menores de 100 y distribución proporcional de padrón y lista”', True),
+    (' genera una versión ajustada (archivo “_ajustada”): las básicas de menos de 100 salen como casilla '
+     'normal y padrón y lista se distribuyen en el mismo número de casillas.', False),
 ])
 doc.paragraph([
     ('•  ', False), ('Casillas especiales', True),
